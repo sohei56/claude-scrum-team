@@ -1,50 +1,83 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+===================
+Version change: 1.0.0 → 2.0.0
+Removed principles:
+  - VI. Claude Code Plugin Distribution (moved to spec.md — product requirement)
+  - VII. User as Product Owner (moved to spec.md — product requirement)
+Modified principles: (none — I through V unchanged)
+Added sections: (none)
+Removed sections: (none)
+Templates checked:
+  - .specify/templates/plan-template.md        ✅ compatible (no references to removed principles)
+  - .specify/templates/spec-template.md         ✅ compatible (will receive removed principles as requirements)
+  - .specify/templates/tasks-template.md        ✅ compatible (no references to removed principles)
+  - .specify/templates/commands/               ✅ N/A (directory does not exist)
+  - README.md                                   ✅ no constitution references to update
+Follow-up TODOs: none
+Rationale: Principles VI and VII are product requirements, not governance
+  principles. They belong in spec.md, not constitution.md. Removing
+  principles is a backward-incompatible change → MAJOR bump.
+-->
+
+# Claude Scrum Team Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. English Language (NON-NEGOTIABLE)
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+All files, documentation, code comments, commit messages, and
+project artifacts MUST be written in English. No exceptions.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Specification Compliance
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+All code MUST follow the approved specification. Implementation
+that deviates from `spec.md` without an explicit amendment is a
+blocker and MUST NOT be merged.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. SOLID Principles
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Apply SOLID principles (Single Responsibility, Open/Closed,
+Liskov Substitution, Interface Segregation, Dependency Inversion)
+unless they conflict with higher-priority principles (I or II).
+When a conflict arises, document the rationale in the plan.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Task-Based Commit Strategy (NON-NEGOTIABLE)
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+- One commit per completed task. No multi-task commits.
+- Each commit message MUST use the project commit message template.
+- Incomplete tasks MUST NOT be committed.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Spec/Plan Separation
+
+- `spec.md` MUST contain only **What** (requirements, user stories,
+  acceptance criteria) and **Why** (rationale, business value).
+- All technical details (architecture, data models, implementation
+  approach) MUST go in `plan.md`.
+- Any document violating this separation is a blocker and MUST be
+  corrected before implementation proceeds.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution takes precedence over all other practices,
+templates, and workflow documents. In case of conflict, the
+constitution wins.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Amendment procedure**:
+
+1. Any amendment MUST include a documented rationale explaining
+   why the change is necessary.
+2. A migration plan MUST accompany the amendment, describing how
+   existing artifacts and workflows adapt to the change.
+3. Version increments follow semantic versioning:
+   - **MAJOR**: Principle removal or backward-incompatible redefinition.
+   - **MINOR**: New principle added or existing principle materially expanded.
+   - **PATCH**: Clarifications, wording fixes, non-semantic refinements.
+
+**Compliance review**: All pull requests and code reviews MUST
+verify adherence to these principles. Constitutional violations
+MUST be documented in the Complexity Tracking table (see
+`plan-template.md`) with justification for why the violation is
+needed and why simpler alternatives were rejected.
+
+**Version**: 2.0.0 | **Ratified**: 2026-02-21 | **Last Amended**: 2026-02-21
