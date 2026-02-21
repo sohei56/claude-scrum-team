@@ -33,6 +33,11 @@ with coarse-grained PBIs.
    **Then** a Scrum Master and one Developer are created, and the
    Developer begins asking requirements questions.
 
+5. **Given** a project already exists on disk,
+   **When** the user runs `/scrum start`,
+   **Then** the system resumes the existing project from the exact
+   point where it was last interrupted.
+
 2. **Given** the Requirements Sprint is in progress,
    **When** the user answers all questions and confirms the
    requirements,
@@ -183,13 +188,16 @@ progress indicators, and agent activity in real time.
 **Acceptance Scenarios**:
 
 1. **Given** a Development Sprint is in progress,
-   **When** the user views the dashboard,
+   **When** the dashboard is displayed,
    **Then** the Product Backlog, Sprint Backlog, sprint progress,
-   and agent activity are displayed.
+   and agent activity are persistently visible alongside the
+   conversation.
 
 2. **Given** a Developer completes a PBI,
-   **When** the dashboard is viewed,
-   **Then** the sprint progress reflects the completed PBI.
+   **When** the dashboard updates,
+   **Then** the sprint progress reflects the completed PBI in
+   real time without the user needing to refresh or invoke a
+   command.
 
 ---
 
@@ -257,12 +265,25 @@ based on their assigned PBIs.
   new ones. If a conflict is discovered, the Change Process is
   followed to update the affected documents.
 
+- What happens when the user closes Claude Code mid-Sprint?
+  All project state is persisted to disk. When the user starts a
+  new session, the project resumes from the exact point where it
+  was interrupted.
+
+- What happens when a Developer agent fails or crashes
+  mid-implementation?
+  The Scrum Master detects the failure, reassigns the PBI to a
+  new Developer agent, and work resumes. No user intervention is
+  required.
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
 - **FR-001**: The system MUST launch a complete Scrum team (Scrum
-  Master + Developers) when the user runs `/scrum start`.
+  Master + Developers) when the user runs `/scrum start`. If a
+  project already exists on disk, `/scrum start` MUST resume the
+  existing project from where it was last interrupted.
 
 - **FR-002**: The system MUST conduct a Requirements Sprint where
   a single Developer elicits requirements from the user through
@@ -326,9 +347,11 @@ based on their assigned PBIs.
   command), provide a guided testing flow covering key user
   workflows, and collect the user's feedback at each step.
 
-- **FR-014**: The system MUST provide a TUI dashboard showing
+- **FR-014**: The system MUST provide a TUI dashboard that is
+  persistently visible alongside the conversation, showing
   Product Backlog, Sprint Backlog, sprint progress, and agent
-  activity.
+  activity. The dashboard MUST update in real time as work
+  progresses.
 
 - **FR-015**: All user interactions MUST be in natural language.
   The user MUST NOT be required to write structured items, edit
@@ -358,6 +381,16 @@ based on their assigned PBIs.
   Development Sprints. Design documents MUST be frozen after the
   Sprint in which they are created. Changes MUST follow the Change
   Process (FR-016).
+
+- **FR-021**: The system MUST persist all project state to disk so
+  that the user can close Claude Code at any point and resume the
+  project in a later session. On resume, the project MUST continue
+  from the exact point where it was interrupted.
+
+- **FR-022**: If a Developer agent fails or crashes during
+  implementation, the Scrum Master MUST detect the failure,
+  reassign the PBI to a new Developer agent, and resume work
+  without requiring user intervention.
 
 ### Key Entities
 
@@ -437,6 +470,15 @@ based on their assigned PBIs.
 - **SC-009**: Design documents produced in later Sprints are
   consistent with those from earlier Sprints, as verified during
   the Integration Sprint documentation consistency check.
+
+## Clarifications
+
+### Session 2026-02-21
+
+- Q: Can the user close Claude Code mid-Sprint and resume later? → A: Full resume — all project state is persisted to disk and the project resumes on the next session.
+- Q: What happens if `/scrum start` is run when a project already exists? → A: Auto-resume — `/scrum start` resumes the existing project automatically.
+- Q: How does the user access the TUI dashboard during a Sprint? → A: Always visible — the dashboard is shown persistently alongside the conversation.
+- Q: What happens if a Developer agent fails mid-implementation? → A: Auto-recover — the Scrum Master detects the failure, reassigns the PBI to a new Developer agent, and work resumes.
 
 ## Out of Scope (MVP)
 
