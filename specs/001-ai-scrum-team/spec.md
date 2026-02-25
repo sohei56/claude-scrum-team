@@ -1,40 +1,41 @@
-# Feature Specification: AI-Powered Scrum Team Plugin
+# Feature Specification: AI-Powered Scrum Team
 
 **Feature Branch**: `001-ai-scrum-team`
 **Created**: 2026-02-21
 **Status**: Draft
-**Input**: User description: "Build claude-scrum-team — a Claude Code Plugin that launches an AI-powered Scrum development team."
+**Input**: User description: "Build claude-scrum-team — a shell-script-launched AI-powered Scrum development team for Claude Code."
 
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Launch Scrum Team and Requirements Elicitation (Priority: P1)
 
-The user invokes `/scrum start` and an AI Scrum team is assembled
-automatically. The user is guided through a Requirements Sprint
-where a single Developer asks structured questions to elicit
-product requirements. The user responds in natural language. The
-Sprint concludes when both parties agree on the requirements
-document. After the Requirements Sprint, the Scrum Master creates
-the initial Product Backlog with coarse-grained PBIs.
+The user runs `sh ./claude-scrum-team/scrum-start.sh` from the
+CLI and an AI Scrum team is assembled automatically. The user is
+guided through a Requirements Sprint where a single Developer asks
+structured questions to elicit product requirements. The user
+responds in natural language. The Sprint concludes when both
+parties agree on the requirements document. After the Requirements
+Sprint, the Scrum Master creates the initial Product Backlog with
+coarse-grained PBIs.
 
 **Why this priority**: Without team startup and requirements
 elicitation, no subsequent development activity is possible.
 This is the entry point for the entire product.
 
-**Independent Test**: Invoke `/scrum start`, answer the
-Developer's questions, and confirm the requirements document
-is produced, saved, and the initial Product Backlog is created
-with coarse-grained PBIs.
+**Independent Test**: Run `sh ./claude-scrum-team/scrum-start.sh`,
+answer the Developer's questions, and confirm the requirements
+document is produced, saved, and the initial Product Backlog is
+created with coarse-grained PBIs.
 
 **Acceptance Scenarios**:
 
-1. **Given** the plugin is installed and no project is active,
-   **When** the user runs `/scrum start`,
+1. **Given** the shell script is available and no project is active,
+   **When** the user runs `sh ./claude-scrum-team/scrum-start.sh`,
    **Then** a Scrum Master and one Developer are created, and the
    Developer begins asking requirements questions.
 
 5. **Given** a project already exists on disk,
-   **When** the user runs `/scrum start`,
+   **When** the user runs `sh ./claude-scrum-team/scrum-start.sh`,
    **Then** the system resumes the existing project from the exact
    point where it was last interrupted.
 
@@ -60,15 +61,16 @@ with coarse-grained PBIs.
 ### User Story 2 - Development Sprint Cycle (Priority: P2)
 
 The user experiences iterative Development Sprints. The Scrum
-Master proposes a Sprint Goal targeting a coherent group of
-related functionality. The user approves or adjusts the goal
-in natural language. Coarse-grained PBIs are refined into
+Master proposes a Sprint Goal scoped at a granularity that is
+easy for the PO to review — it does not necessarily need to be
+a coherent bundle of related functionality. The user approves
+or adjusts the goal in natural language. Coarse-grained PBIs are refined into
 implementation-ready PBIs at Sprint Planning. Developers produce
 design documents for their assigned PBIs, then implement and test
 them in parallel. Cross-review occurs within the same Sprint. At
 Sprint Review, the Scrum Master presents the Increment with a
-summary and, when applicable, a live demo. The user inspects
-results and provides feedback. A Sprint Retrospective records
+summary and, only when UX changes are included, a live demo.
+The user inspects results and provides feedback. A Sprint Retrospective records
 improvements.
 
 **Why this priority**: This is the core development loop that
@@ -108,7 +110,8 @@ and Sprint Review presents the Increment to the user.
 5. **Given** all PBIs in the Sprint meet the Definition of Done,
    **When** Sprint Review occurs,
    **Then** the Scrum Master presents a summary of changes and,
-   when applicable, runs a live demo for the user.
+   only when the Increment includes UX changes, runs a live demo
+   for the user.
 
 6. **Given** the Sprint Review is complete,
    **When** the Sprint Retrospective occurs,
@@ -205,8 +208,9 @@ progress indicators, and agent activity in real time.
 
 During Sprint Planning, each Developer self-selects and installs
 appropriate specialist agents from the awesome-claude-code-
-subagents catalog to handle their assigned tasks. This happens
-automatically without user involvement.
+subagents catalog (`https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`)
+to handle their assigned tasks. This happens automatically without
+user involvement.
 
 **Why this priority**: Enhances Developer effectiveness but is
 not required for core functionality. Development Sprints can
@@ -281,9 +285,10 @@ based on their assigned PBIs.
 ### Functional Requirements
 
 - **FR-001**: The system MUST launch a complete Scrum team (Scrum
-  Master + Developers) when the user runs `/scrum start`. If a
-  project already exists on disk, `/scrum start` MUST resume the
-  existing project from where it was last interrupted.
+  Master + Developers) when the user runs the shell script
+  `scrum-start.sh`. If a project already exists on disk, running
+  the script MUST resume the existing project from where it was
+  last interrupted.
 
 - **FR-002**: The system MUST conduct a Requirements Sprint where
   a single Developer elicits requirements from the user through
@@ -301,9 +306,11 @@ based on their assigned PBIs.
   existing design documents from previous Sprints to ensure
   consistency.
 
-- **FR-005**: The Scrum Master MUST propose Sprint Goals targeting
-  coherent groups of related functionality and present them to
-  the user for approval in natural language.
+- **FR-005**: The Scrum Master MUST propose Sprint Goals scoped at
+  a granularity that is easy for the PO to review. Sprint Goals
+  do not need to target coherent groups of related functionality.
+  The Scrum Master MUST present them to the user for approval in
+  natural language.
 
 - **FR-006**: The system MUST assign each PBI to one implementer
   and one reviewer. No Developer reviews their own work.
@@ -324,8 +331,9 @@ based on their assigned PBIs.
   fixed within the Sprint or logged as new PBIs.
 
 - **FR-010**: At Sprint Review, the Scrum Master MUST present the
-  Increment with a change summary and, when applicable, run a
-  live demo for the user.
+  Increment with a change summary. A live demo MUST be performed
+  only when the Increment includes UX changes; otherwise the
+  demo is omitted.
 
 - **FR-011**: The Scrum Master MUST report Product Backlog
   remaining scope and Product Goal achievement progress at every
@@ -369,12 +377,14 @@ based on their assigned PBIs.
   written and pass, existing tests pass (no regressions), code
   passes linter and formatter, and cross-review is completed.
 
-- **FR-018**: The system MUST be distributed as a Claude Code
-  Plugin that is self-contained — no additional tool installation
-  beyond Claude Code itself.
+- **FR-018**: The system MUST be launchable via a shell script
+  (`scrum-start.sh`) that the user runs from the CLI. The only
+  prerequisite is a working Claude Code installation — no
+  additional tool installation is required.
 
 - **FR-019**: Developers MUST self-select and install appropriate
   specialist agents from the awesome-claude-code-subagents catalog
+  (`https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`)
   during Sprint Planning based on their assigned tasks.
 
 - **FR-020**: The requirements document MUST be frozen during
@@ -430,15 +440,18 @@ based on their assigned PBIs.
 - **Product Goal**: The desired future state of the product,
   defined and owned by the user.
 
-- **Sprint Goal**: A coherent objective for a Sprint, proposed by
-  the Scrum Master and approved by the user.
+- **Sprint Goal**: An objective for a Sprint scoped at a granularity
+  that is easy for the PO to review, proposed by the Scrum Master
+  and approved by the user. Does not need to target coherent groups
+  of related functionality.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
 - **SC-001**: The user can go from zero to a running Scrum team
-  with a single command (`/scrum start`) and no additional setup.
+  with a single shell command (`sh ./claude-scrum-team/scrum-start.sh`)
+  and no additional setup.
 
 - **SC-002**: The Requirements Sprint produces a complete
   requirements document through natural language conversation
@@ -460,8 +473,8 @@ based on their assigned PBIs.
   individual Sprint testing missed, as verified by integration,
   end-to-end, and regression test results.
 
-- **SC-007**: The plugin installs and operates as a self-contained
-  Claude Code Plugin with no additional tool dependencies.
+- **SC-007**: The system operates as a self-contained shell-script-
+  launched tool with no dependencies beyond Claude Code itself.
 
 - **SC-008**: Sprint Retrospective improvements demonstrably
   carry forward — improvements logged in Sprint N are reflected
@@ -476,7 +489,7 @@ based on their assigned PBIs.
 ### Session 2026-02-21
 
 - Q: Can the user close Claude Code mid-Sprint and resume later? → A: Full resume — all project state is persisted to disk and the project resumes on the next session.
-- Q: What happens if `/scrum start` is run when a project already exists? → A: Auto-resume — `/scrum start` resumes the existing project automatically.
+- Q: What happens if the shell script is run when a project already exists? → A: Auto-resume — the script resumes the existing project automatically.
 - Q: How does the user access the TUI dashboard during a Sprint? → A: Always visible — the dashboard is shown persistently alongside the conversation.
 - Q: What happens if a Developer agent fails mid-implementation? → A: Auto-recover — the Scrum Master detects the failure, reassigns the PBI to a new Developer agent, and work resumes.
 
@@ -486,17 +499,24 @@ based on their assigned PBIs.
 - Multi-user / multi-PO support
 - Integration with external project management tools
 - Custom agent definitions by users (the awesome-claude-code-
-  subagents catalog is used instead)
+  subagents catalog at `https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`
+  is used instead)
 - Multiple Scrum Teams working on the same product
 
 ## Assumptions
 
-- Claude Code supports the Plugin distribution model and provides
-  the necessary APIs for agent orchestration (Agent Teams).
-- The awesome-claude-code-subagents catalog is publicly accessible
-  and provides installable agent configurations.
+- Claude Code is installed and available on the user's PATH,
+  providing the necessary APIs for agent orchestration (Agent
+  Teams).
+- The awesome-claude-code-subagents catalog
+  (`https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`)
+  is publicly accessible and provides installable agent
+  configurations.
 - The user's environment supports TUI rendering (standard terminal
   emulator with basic ANSI support).
 - Agent Teams can be re-created per Sprint without significant
   setup overhead, as stated in the Claude Code Agent Teams
   documentation.
+- The user clones or downloads the claude-scrum-team repository
+  and runs the shell script from within or alongside their
+  project directory.
