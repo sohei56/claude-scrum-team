@@ -206,31 +206,37 @@ progress indicators, and agent activity in real time.
 
 ### User Story 5 - Dynamic Agent Capabilities (Priority: P5)
 
-During Sprint Planning, each Developer self-selects and installs
-appropriate specialist agents from the awesome-claude-code-
-subagents catalog (`https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`)
-to handle their assigned tasks. This happens automatically without
-user involvement.
+During Sprint Planning, each Developer teammate self-selects and
+installs appropriate specialist sub-agents from the awesome-claude-
+code-subagents catalog (`https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`)
+to handle their assigned tasks. The catalog contains sub-agent
+definition files (`.md` with YAML frontmatter) that are installed
+into the project's `.claude/agents/` directory. Since each
+Developer teammate is a full Claude Code session, it can use
+these sub-agents via the Task tool during implementation. This
+happens automatically without user involvement.
 
 **Why this priority**: Enhances Developer effectiveness but is
 not required for core functionality. Development Sprints can
-operate without specialist agents.
+operate without specialist sub-agents.
 
 **Independent Test**: Observe Sprint Planning and verify each
-Developer selects relevant specialist agents from the catalog
-based on their assigned PBIs.
+Developer teammate selects relevant specialist sub-agents from
+the catalog based on their assigned PBIs, and uses them via the
+Task tool during implementation.
 
 **Acceptance Scenarios**:
 
-1. **Given** Sprint Planning assigns a PBI to a Developer,
+1. **Given** Sprint Planning assigns a PBI to a Developer teammate,
    **When** the Developer prepares for implementation,
    **Then** the Developer selects and installs relevant specialist
-   agents from the awesome-claude-code-subagents catalog.
+   sub-agent definitions from the awesome-claude-code-subagents
+   catalog into `.claude/agents/`.
 
 2. **Given** the catalog is unavailable or has no matching agents,
    **When** the Developer prepares for implementation,
-   **Then** the Developer proceeds without specialist agents and
-   no error is shown to the user.
+   **Then** the Developer proceeds without specialist sub-agents
+   and no error is shown to the user.
 
 ---
 
@@ -274,21 +280,30 @@ based on their assigned PBIs.
   new session, the project resumes from the exact point where it
   was interrupted.
 
-- What happens when a Developer agent fails or crashes
+- What happens when a Developer teammate fails or crashes
   mid-implementation?
   The Scrum Master detects the failure, reassigns the PBI to a
-  new Developer agent, and work resumes. No user intervention is
-  required.
+  new Developer teammate, and work resumes. No user intervention
+  is required.
+
+- What happens when context limits are reached mid-Sprint?
+  Each Sprint starts with a fresh context. The Scrum Master loads
+  state from `.scrum/` JSON files. Developer teammates receive
+  only the artifacts relevant to their assigned PBIs. This
+  prevents context overflow across Sprints.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: The system MUST launch a complete Scrum team (Scrum
-  Master + Developers) when the user runs the shell script
-  `scrum-start.sh`. If a project already exists on disk, running
-  the script MUST resume the existing project from where it was
-  last interrupted.
+- **FR-001**: The system MUST launch a complete Scrum team when the
+  user runs the shell script `scrum-start.sh`. The script launches
+  a Claude Code session as the Agent Teams team lead (Scrum Master
+  role), which spawns Developer teammates via Agent Teams.
+  Teammates are independent Claude Code sessions that coordinate
+  through a shared task list and direct messaging. If a project
+  already exists on disk, running the script MUST resume the
+  existing project from where it was last interrupted.
 
 - **FR-002**: The system MUST conduct a Requirements Sprint where
   a single Developer elicits requirements from the user through
@@ -316,8 +331,10 @@ based on their assigned PBIs.
   and one reviewer. No Developer reviews their own work.
 
 - **FR-007**: The system MUST determine the Developer count per
-  Sprint as number of PBIs x 2, capped at 10. If the count
-  exceeds 10, the Scrum Master MUST narrow the Sprint Goal.
+  Sprint as number of PBIs x 2, capped at 10. Each Developer is
+  a teammate spawned via Agent Teams by the Scrum Master (team
+  lead). If the count exceeds 10, the Scrum Master MUST narrow
+  the Sprint Goal.
 
 - **FR-008**: The Scrum Master MUST avoid placing PBIs with
   dependencies on each other in the same Sprint. When unavoidable,
@@ -382,42 +399,49 @@ based on their assigned PBIs.
   prerequisite is a working Claude Code installation — no
   additional tool installation is required.
 
-- **FR-019**: Developers MUST self-select and install appropriate
-  specialist agents from the awesome-claude-code-subagents catalog
+- **FR-019**: Developer teammates MUST self-select and install
+  appropriate specialist sub-agent definitions from the awesome-
+  claude-code-subagents catalog
   (`https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`)
-  during Sprint Planning based on their assigned tasks.
+  into `.claude/agents/` during Sprint Planning based on their
+  assigned tasks. Teammates use these sub-agents via the Task tool
+  during implementation.
 
 - **FR-020**: The requirements document MUST be frozen during
   Development Sprints. Design documents MUST be frozen after the
   Sprint in which they are created. Changes MUST follow the Change
   Process (FR-016).
 
-- **FR-021**: The system MUST persist all project state to disk so
-  that the user can close Claude Code at any point and resume the
-  project in a later session. On resume, the project MUST continue
-  from the exact point where it was interrupted.
+- **FR-021**: The system MUST persist all project state as JSON
+  files (one file per concern) in the `.scrum/` directory in the
+  project root so that the user can close Claude Code at any point
+  and resume the project in a later session. On resume, the project
+  MUST continue from the exact point where it was interrupted.
 
-- **FR-022**: If a Developer agent fails or crashes during
+- **FR-022**: If a Developer teammate fails or crashes during
   implementation, the Scrum Master MUST detect the failure,
-  reassign the PBI to a new Developer agent, and resume work
+  reassign the PBI to a new Developer teammate, and resume work
   without requiring user intervention.
 
 ### Key Entities
 
 - **Scrum Team**: The complete team consisting of the Product
-  Owner (user), Scrum Master (AI), and Developers (AI agents).
+  Owner (user), Scrum Master (Agent Teams team lead), and
+  Developers (Agent Teams teammates). Each Developer is an
+  independent Claude Code session.
 
 - **Product Backlog**: Ordered list of PBIs representing all work
   needed to achieve the Product Goal. Managed by the Scrum Master.
   PBIs start coarse-grained and are progressively refined.
 
-- **Product Backlog Item (PBI)**: A unit of work that starts
-  coarse-grained (e.g. "User Management") and is refined to
-  implementation-ready granularity (one function, screen, API,
-  or platform component) when selected for a Sprint. Each
-  refined PBI produces three deliverables: design document,
-  implementation, and tests. Design is completed and reviewed
-  before implementation begins.
+- **Product Backlog Item (PBI)**: A unit of work with a 5-state
+  lifecycle: `draft` (coarse-grained, e.g. "User Management") →
+  `refined` (implementation-ready: one function, screen, API, or
+  platform component) → `in_progress` (Developer implementing) →
+  `review` (cross-review by another Developer) → `done` (meets
+  Definition of Done). Each refined PBI produces three
+  deliverables: design document, implementation, and tests.
+  Design is completed and reviewed before implementation begins.
 
 - **Sprint Backlog**: The Sprint Goal plus the set of refined PBIs
   selected for the Sprint, with assigned implementers and
@@ -436,6 +460,10 @@ based on their assigned PBIs.
 
 - **Improvement Log**: Persistent record of retrospective
   improvements that carries across Sprints.
+
+- **Project Directory (`.scrum/`)**: Root directory for all Scrum
+  artifacts, located in the user's project root. Contains
+  subdirectories for backlog, designs, state, and other artifacts.
 
 - **Product Goal**: The desired future state of the product,
   defined and owned by the user.
@@ -486,6 +514,15 @@ based on their assigned PBIs.
 
 ## Clarifications
 
+### Session 2026-02-25
+
+- Q: What is the agent orchestration model? → A: Agent Teams — the shell script launches one Claude Code session as the team lead (Scrum Master), which spawns Developer teammates via Agent Teams. Each teammate is an independent Claude Code session coordinating through a shared task list and direct messaging.
+- Q: Where are project artifacts stored on disk? → A: A `.scrum/` directory in the project root with organized subdirectories (e.g., `backlog/`, `designs/`, `state/`).
+- Q: What serialization format for state files? → A: JSON — one file per concern (e.g., `state.json`, `backlog.json`, `improvements.json`).
+- Q: How are cross-Sprint context limits managed? → A: Fresh context per Sprint — the Scrum Master (team lead) reads state files from disk at Sprint start; Developer teammates receive only their assigned artifacts (PBI, relevant design docs, requirements).
+- Q: What are the explicit PBI lifecycle states? → A: 5 states: `draft` (coarse-grained) → `refined` (implementation-ready) → `in_progress` → `review` → `done`.
+- Q: Can Agent Teams teammates use specialist sub-agents from the catalog? → A: Yes — teammates are full Claude Code sessions that load `.claude/agents/` automatically. They install sub-agent `.md` files from the catalog and use them via the Task tool. This is distinct from Agent Teams itself: teammates coordinate via shared task list and messaging, while sub-agents are ephemeral workers within a teammate's session.
+
 ### Session 2026-02-21
 
 - Q: Can the user close Claude Code mid-Sprint and resume later? → A: Full resume — all project state is persisted to disk and the project resumes on the next session.
@@ -505,9 +542,10 @@ based on their assigned PBIs.
 
 ## Assumptions
 
-- Claude Code is installed and available on the user's PATH,
-  providing the necessary APIs for agent orchestration (Agent
-  Teams).
+- Claude Code is installed and available on the user's PATH with
+  Agent Teams enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
+  in settings or environment). Agent Teams is an experimental
+  feature as of February 2026.
 - The awesome-claude-code-subagents catalog
   (`https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`)
   is publicly accessible and provides installable agent
@@ -516,7 +554,8 @@ based on their assigned PBIs.
   emulator with basic ANSI support).
 - Agent Teams can be re-created per Sprint without significant
   setup overhead, as stated in the Claude Code Agent Teams
-  documentation.
+  documentation. The Scrum Master (team lead) session persists
+  across Sprints; Developer teammates are spawned per Sprint.
 - The user clones or downloads the claude-scrum-team repository
   and runs the shell script from within or alongside their
   project directory.
