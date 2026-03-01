@@ -1,0 +1,439 @@
+# Research: AI-Powered Scrum Team
+
+**Branch**: `001-ai-scrum-team` | **Date**: 2026-02-26 | **Spec**: [spec.md](spec.md)
+
+## R1: Agent Orchestration — Claude Code Agent Teams in Delegate Mode
+
+### Decision
+Use Claude Code's `--agent <name>` flag to launch the Scrum Master as the
+main thread **in Delegate mode**. Delegate mode restricts the team lead to
+coordination-only operations — it cannot write code, run tests, or perform
+implementation work. It can only manage tasks, communicate with teammates,
+and review their output. The Scrum Master spawns Developer teammates via
+Agent Teams using the `spawn-teammates` Skill (R6) for reproducibility.
+
+### Rationale
+- `--agent scrum-master` promotes `agents/scrum-master.md` as the main
+  session, replacing the default system prompt.
+- **Delegate mode** enforces separation of concerns: the Scrum Master
+  orchestrates only, never implements. The `scrum-master.md` agent
+  definition MUST include an explicit delegate mode instruction.
+  Also toggleable at runtime via **Shift+Tab**.
+- Teammate creation uses the `spawn-teammates` Skill (R6) for
+  reproducibility across Sprints.
+- Each teammate is an independent Claude Code session with its own
+  context window, coordinating via shared task list and messaging.
+- Agent definitions are copied to project-local `.claude/agents/` only.
+  Global `~/.claude/agents/` is NEVER modified.
+
+### Alternatives Considered
+- **`--agents '{json}'`**: Rejected — definitions are complex Markdown
+  that doesn't serialize well to CLI JSON.
+- **Headless mode (`claude -p`)**: Rejected as primary — Scrum requires
+  interactive dialogue. Useful for automated testing.
+- **Sub-agents only (no Agent Teams)**: Rejected — sub-agents are
+  ephemeral and lack the coordination layer for parallel development.
+- **No delegate mode**: Rejected — violates the facilitator principle;
+  leads to the Scrum Master doing work instead of delegating.
+
+### Key Technical Details
+- Agent definition format: Markdown with YAML frontmatter.
+- Agent Teams display: **in-process** (cycle with Shift+Down) or
+  **split panes** (tmux/iTerm2).
+- Requires: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`.
+- Team lead persists across Sprints; teammates are per-Sprint.
+
+---
+
+## R2: TUI Dashboard — Textual App with Hook-Driven Data
+
+### Decision
+Use **Textual** (Python TUI framework) as the primary dashboard with
+**watchdog** for filesystem monitoring. The dashboard runs as a separate
+process in a **tmux** pane alongside Claude Code. Hooks feed real-time
+events to `.scrum/` JSON files that the dashboard watches.
+
+Reference: [sinjorjob/claude-code-agent-teams-dashboard](https://github.com/sinjorjob/claude-code-agent-teams-dashboard)
+(Python `rich` + `watchdog`). Our architecture uses `textual` (built on
+`rich`) for a richer interactive TUI with scrollable panels.
+
+### Rationale
+- FR-014 requires four panels needing more screen space than a status line.
+- **Textual** provides `DataTable` (sortable, scrollable) and `RichLog`
+  (streaming) widgets, plus keyboard navigation and CSS layout.
+- **watchdog** enables filesystem-event-driven updates (not polling).
+- Hooks feed event data to `.scrum/` JSON; Textual watches via watchdog.
+
+### Alternatives Considered
+- **Rich + Rich Live**: Lacks scrolling and keyboard navigation.
+- **Pure shell TUI**: Insufficient for four-panel scrollable layout.
+- **Web dashboard** (Bun + Vue 3): Heavy deps; out of scope per spec.
+- **Urwid / curses**: Dated or high dev effort for the same result.
+- **Status line only**: Too limited; retained as supplementary view.
+
+### Key Technical Details
+- `scrum-start.sh` launches tmux with two panes: Claude Code (main) +
+  `python dashboard/app.py` (side). Falls back to status line only.
+- Four panels (FR-014): Sprint Overview, PBI Progress Board,
+  Communication Log, File Change Log. See agent-interfaces.md for
+  widget details and source files.
+- Status line (`scripts/statusline.sh`): compact 3-line supplementary
+  view, always active.
+- Data flow: Hooks → `.scrum/*.json` → watchdog → Textual panels.
+- Dependencies: Python 3.9+, `textual`, `watchdog`, tmux (optional).
+- Exit codes: `0` normal, `1` CLI missing, `2` Agent Teams off,
+  `3` Python/TUI missing.
+
+---
+
+## R3: Testing Strategy — bats-core + jq + yq (Developer-Only)
+
+### Decision
+Use **bats-core** for shell script testing, **jq** for JSON validation, and
+**yq** for YAML frontmatter validation. These are **developer-only
+dependencies** — end users need only Claude Code. Two setup scripts are
+provided: one for end users, one for contributors.
+
+### Rationale
+- bats-core, jq, yq are industry-standard tools for Bash/JSON/YAML.
+- End users need only Python 3.9+ with `textual` and `watchdog`.
+- Contributors install dev dependencies via `setup-dev.sh`.
+
+### Key Technical Details
+- Developer dependencies: bats-core, bats-support + bats-assert (git
+  submodules), jq, yq, ShellCheck.
+- Two setup scripts:
+  - `scripts/setup-user.sh` — validates Claude Code + Agent Teams, copies
+    agent definitions, configures status line. No dev deps.
+  - `scripts/setup-dev.sh` — installs bats-core, jq, yq, ShellCheck,
+    initializes git submodules.
+- Test structure:
+  ```
+  tests/
+  ├── unit/                    # Shell script function tests
+  ├── lint/                    # Agent definition YAML validation
+  ├── integration/             # Script-to-script composition
+  │   └── agent-smoke.bats    # claude -p end-to-end (manual)
+  ├── fixtures/                # Test data
+  └── test_helper/             # bats-support, bats-assert
+  ```
+
+---
+
+## R4: State Persistence — JSON in `.scrum/`
+
+### Decision
+All project state persists as JSON files (one file per concern) in a
+`.scrum/` directory in the user's project root.
+
+### Rationale
+- JSON is human-readable, parsed by jq and Claude Code agents natively.
+- One file per concern prevents lock contention with multiple agents.
+- `.scrum/` is gitignored (runtime state, not committed).
+
+### Key Technical Details
+- State files: `state.json`, `backlog.json`, `sprint.json`,
+  `improvements.json`, `communications.json`, `dashboard.json`,
+  `requirements.md`
+- Subdirectories: `.scrum/reviews/` (cross-review results)
+- Design documents: `.design/specs/{category}/` (governed by `.design/catalog.md`)
+- The Scrum Master reads state at Sprint start (fresh context per Sprint).
+- Developer teammates receive only their assigned artifacts.
+
+---
+
+## R5: Shell Script Entry Point
+
+### Decision
+`scrum-start.sh` is the single entry point. It detects existing state,
+installs agent definitions to the project-local `.claude/agents/` only,
+configures the status line, and launches Claude Code with the Scrum Master
+agent.
+
+### Rationale
+- Single command startup (FR-018, SC-001). Handles new and resume.
+- Agent definitions copied to project-local `.claude/agents/` only.
+
+### Key Technical Details
+- Script flow:
+  1. Validate Claude Code is installed and Agent Teams is enabled.
+  2. Validate Python 3.9+ and TUI packages (`textual`, `watchdog`).
+  3. Determine user's project root (current directory).
+  4. Check for existing `.scrum/` directory (resume vs. new project).
+  5. Copy agent definitions to `<project>/.claude/agents/` (local only).
+  6. Configure status line in `<project>/.claude/settings.json` (merge).
+  7. If tmux available: create tmux session with two panes —
+     main pane for Claude Code, side pane for
+     `python "$SCRIPT_DIR/dashboard/app.py"` (resolved relative to
+     `scrum-start.sh`'s own location, not the user's working directory).
+  8. Launch: `claude --agent scrum-master` (in main/only pane).
+  9. On resume: append system prompt includes current state summary.
+- All stderr messages MUST be actionable: clearly state what went wrong
+  and what to do next.
+- Exit codes: `0` (normal), `1` (Claude Code not found), `2` (Agent Teams
+  not enabled), `3` (Python 3.9+ or TUI packages not found). See R2 for
+  full exit code table.
+
+**Python / pip Guidance** (`setup-user.sh`):
+- MUST check for `pip`/`pip3`. If missing, print actionable guidance
+  (ensurepip, system package manager, venv example).
+- MUST NOT create venvs automatically — only provide guidance.
+- See agent-interfaces.md § setup-user.sh for full error message spec.
+
+---
+
+## R6: Claude Code Skills for Scrum Ceremonies
+
+### Decision
+Extract routine Scrum ceremonies and phase workflows into **Claude Code
+Skills** under `.claude/skills/`. Each Skill encapsulates a ceremony's
+steps and requires only variables (Sprint number, PBI list, etc.) to
+execute.
+
+### Rationale
+- Skills are Markdown files with YAML frontmatter in
+  `.claude/skills/<name>/SKILL.md`. Support variable substitution,
+  dynamic context injection, and `allowed-tools` restriction.
+- Preloaded via `skills:` field in agent definitions. Use
+  `disable-model-invocation: true` to fire only on explicit invocation.
+
+### Key Technical Details
+- Skill directory structure:
+  ```
+  .claude/skills/
+    sprint-planning/SKILL.md       # Sprint Planning ceremony
+    spawn-teammates/SKILL.md       # Teammate creation (reproducible)
+    install-subagents/SKILL.md     # Sub-agent selection from catalog (reproducible)
+    design-phase/SKILL.md          # Design phase orchestration
+    implementation-phase/SKILL.md  # Implementation phase orchestration
+    cross-review/SKILL.md          # Cross-review process
+    sprint-review/SKILL.md         # Sprint Review ceremony
+    retrospective/SKILL.md         # Retrospective ceremony
+    requirements-sprint/SKILL.md   # Requirements Sprint ceremony
+    integration-sprint/SKILL.md    # Integration Sprint ceremony
+    backlog-refinement/SKILL.md    # PBI refinement process
+    change-process/SKILL.md        # FR-016 Change Process
+    scaffold-design-spec/SKILL.md  # Template stub creation on catalog enable
+  ```
+
+- **Mandatory Inputs/Outputs section**: Every Skill MUST declare, at the
+  top of the SKILL.md body (immediately after the YAML frontmatter),
+  an `## Inputs` and `## Outputs` section. This makes each Skill's
+  data dependencies and side effects explicit and testable.
+  ```markdown
+  ## Inputs (required state)
+  - `state.json` → `phase` (must be `sprint_planning`)
+  - `backlog.json` → `items[]` (PBIs with `status: refined`)
+  - `sprint.json` → `id`, `goal`, `pbi_ids`
+
+  ## Outputs (files/keys updated)
+  - `sprint.json` → `developers[]` (populated with spawned teammates)
+  - `state.json` → `phase` (transitions to `design`)
+  - `backlog.json` → `items[].implementer_id`, `items[].reviewer_id` (round-robin)
+  ```
+
+- Each Skill declares Inputs, Outputs, preconditions, steps, exit
+  criteria, and variables. See agent-interfaces.md § Skill Inputs/Outputs
+  Reference for the full I/O table.
+
+- **`spawn-teammates`**: Reproducible teammate creation during Sprint
+  Planning. Developer count = min(refined PBIs, 6). Reads `sprint.json`
+  + `backlog.json`, spawns teammates with consistent naming (`Dev-001`,
+  ...). Each Developer implements their assigned PBI; reviewers are
+  assigned round-robin (no self-review). In a single-PBI Sprint,
+  the Scrum Master performs the review.
+
+- **`install-subagents`**: Reproducible sub-agent selection from the
+  awesome-claude-code-subagents catalog (FR-019). Developers invoke
+  after receiving PBI assignments. Graceful degradation if catalog
+  unavailable.
+
+- The Scrum Master preloads all 13 Skills via `skills:` frontmatter.
+  `install-subagents` is also loaded by the Developer agent definition.
+
+### Alternatives Considered
+- **Prompt-only control**: Rejected — enormous prompt, not reproducible.
+- **Hardcoded scripts**: Rejected — loses interactive dialogue for
+  user-facing ceremonies.
+
+---
+
+## R7: Sprint Cycle Control — Hooks + State Gates + Phase Skills
+
+### Decision
+Use a three-layer architecture for Sprint cycle control that goes beyond
+prompt-only management:
+
+1. **State file** (`.scrum/state.json`) as the single source of truth
+2. **Hooks** for enforcement (gating tool use, blocking premature
+   completion)
+3. **Skills** for ceremony execution (reproducible, variable-driven)
+
+### Rationale
+- Hooks enforce rules without relying on Claude "remembering" them.
+- Skills extract ceremony logic into reusable, testable units.
+- Phase-specific agents further restrict tool availability per phase.
+
+### Key Technical Details
+
+**Layer 1 — State File**:
+- `.scrum/state.json` contains the `phase` field with valid transitions:
+  ```
+  new → requirements_sprint → backlog_created → sprint_planning
+    → design → implementation → review → sprint_review
+    → retrospective → sprint_planning (next Sprint)
+    → integration_sprint → complete
+  ```
+- Phase transitions are performed by the Scrum Master via Skill execution
+  (not arbitrary writes).
+
+**Layer 2 — Hooks**:
+- `SessionStart`: injects phase context via `additionalContext`.
+- `PreToolUse`: gates tool usage by phase (e.g., deny `Edit` in design).
+- `Stop`: verifies exit criteria before allowing completion.
+- `TaskCompleted`: enforces quality gates (tests, lint) before done.
+- Defined in project-local `.claude/settings.json`.
+
+**Layer 3 — Skills**:
+- Each ceremony is a Skill that follows a deterministic sequence.
+- Skills update `.scrum/state.json` phase field as part of their execution.
+- Skills declare `allowed-tools` to scope what tools are available during
+  the ceremony.
+
+**Optional Layer 4 — Phase-Specific Subagents**:
+- Scrum Master can delegate to specialized subagents with restricted
+  tool sets via `tools`, `disallowedTools`, `permissionMode` fields.
+
+### Alternatives Considered
+- **MCP server**: Clean but adds process dependency. Deferred post-MVP.
+- **Prompt-only control**: Rejected — Claude forgets rules over long
+  conversations.
+
+---
+
+## R8: Design Documents — `.design/catalog.md` Governance
+
+### Decision
+Design documents are governed by `.design/catalog.md`. No design
+document may be created unless its spec type is listed and enabled in
+the catalog. Design files live at `.design/specs/{category}/{id}-{slug}.md`
+following the catalog's existing governance rules.
+
+The catalog provides a richer taxonomy than a simple hierarchy:
+
+| Category | Catalog Entries | Maps to R8 hierarchy |
+|----------|----------------|---------------------|
+| System-Wide | S-001 System Architecture, S-002 Application Overview | Architecture |
+| Data | S-010 Data Model / Entity Design | Component |
+| Interface | S-020 API Specification | Component |
+| UI | S-030 Screen / Page Design, S-031 UI Component Design | UI |
+| Logic | S-040 Business Rule / Domain Logic | Component |
+| Quality | S-050 Test Strategy | Cross-cutting |
+| Decision Records | D-001 Architecture Decision Record | Cross-cutting |
+| Operations | S-060 Migration / Upgrade | Cross-cutting |
+
+### Rationale
+- Per-PBI documents are too granular — related PBIs share a design spec.
+- **Catalog-first governance** prevents ad-hoc document proliferation.
+  The Scrum Master enables catalog entries; Developers create only what
+  the catalog allows.
+- Reuses the existing `.design/catalog.md` governance rules (enabled/
+  disabled status, catalog-first workflow, no undocumented specs).
+- PBIs reference design documents via `design_doc_paths: string[]`.
+
+### Key Technical Details
+
+**Catalog** (`.design/catalog.md`):
+- Already exists with governance rules, categories, and entries.
+- Scrum Master enables entries during Sprint Planning.
+- Six governance rules apply: catalog-first, enabled = file required,
+  disabled = file prohibited, no undocumented specs, category directories,
+  immediate stub creation on enable.
+
+**Workflow**:
+1. Sprint Planning: Scrum Master reviews PBIs, determines which catalog
+   entries need to be enabled.
+2. Scrum Master updates `.design/catalog.md` — flips entries to `enabled`
+   or adds new entries (default `disabled`, then flip).
+3. Scrum Master invokes `scaffold-design-spec` Skill — creates template
+   stub files for all newly enabled entries (required frontmatter +
+   placeholder sections).
+4. Design phase: Developers populate the stub files at
+   `.design/specs/{category}/{id}-{slug}.md` for enabled entries.
+5. Hook enforcement: `PreToolUse` hook denies `Write`/`Edit` under
+   `.design/specs/` if the target file has no enabled catalog entry.
+
+**Directory structure**:
+```
+.design/
+  catalog.md                                        # Single source of truth
+  specs/
+    system-wide/S-001-system-architecture.md        # Enabled
+    data/S-010-data-model.md                        # Enabled
+    ui/S-030-login-screen.md                        # Enabled
+```
+
+**Design document frontmatter**:
+```yaml
+---
+catalog_id: S-001
+created_sprint: sprint-001
+last_updated_sprint: sprint-003
+related_pbis: [pbi-001, pbi-005, pbi-012]
+frozen: true
+revision_history:
+  - sprint: sprint-001
+    author: dev-001
+    date: "2026-03-01T10:00:00Z"
+    summary: "Initial architecture design"
+    pbis: [pbi-001, pbi-005]
+  - sprint: sprint-003
+    author: dev-004
+    date: "2026-03-05T14:30:00Z"
+    summary: "Added caching layer per PBI-012"
+    pbis: [pbi-012]
+    change_process: true
+---
+```
+- `catalog_id` links the document to its `.design/catalog.md` entry.
+- `revision_history` is mandatory. Each entry records sprint, author,
+  date, summary, `pbis`, and optionally `change_process: true`.
+- Updates follow FR-020 freeze/Change Process and append to
+  `revision_history`.
+
+### Alternatives Considered
+- **Separate `.scrum/designs/catalog.md`**: Rejected — duplicates
+  governance that `.design/catalog.md` already provides.
+- **No catalog (ad-hoc creation)**: Leads to document proliferation.
+- **One doc per PBI**: Too granular; redundant for related PBIs.
+- **Single monolithic doc**: Unwieldy as the project grows.
+
+---
+
+## R9: Specialist Sub-Agents — Keep `.claude/agents/` (Not `.claude/skills/`)
+
+### Decision
+Install specialist sub-agents from the awesome-claude-code-subagents
+catalog into `.claude/agents/`, NOT `.claude/skills/`. The catalog format
+is inherently a subagent format, and the use case requires subagent
+capabilities (context isolation, model routing, tool sandboxing).
+
+### Rationale
+Catalog entries use subagent-specific frontmatter (`tools`, `model`) with
+4-11 KB system prompts designed for isolated sessions. Converting to
+Skills would cause context pollution, lose model routing and tool
+sandboxing, and require incompatible format restructuring.
+
+Developers need context-isolated task delegation — specialists work in
+their own context window and return a summary. This is what
+`.claude/agents/` subagents provide via the Task tool.
+
+### Alternatives Considered
+- **Skills with `context: fork`**: Roundabout; loses native `tools` field.
+- **Pre-install all entries**: 127+ entries would clutter `.claude/agents/`.
+
+### Key Technical Details
+- Installed via `install-subagents` Skill (R6) for reproducibility.
+- Invocation: Task tool auto-delegates based on `description` matching.
+- Runtime tracking: `sub_agents` records only actually used agents.
+- Catalog: `https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`

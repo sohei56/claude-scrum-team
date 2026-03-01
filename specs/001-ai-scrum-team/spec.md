@@ -34,11 +34,6 @@ created with coarse-grained PBIs.
    **Then** a Scrum Master and one Developer are created, and the
    Developer begins asking requirements questions.
 
-5. **Given** a project already exists on disk,
-   **When** the user runs `sh ./claude-scrum-team/scrum-start.sh`,
-   **Then** the system resumes the existing project from the exact
-   point where it was last interrupted.
-
 2. **Given** the Requirements Sprint is in progress,
    **When** the user answers all questions and confirms the
    requirements,
@@ -55,6 +50,11 @@ created with coarse-grained PBIs.
    **Then** the Scrum Master creates the initial Product Backlog
    with coarse-grained PBIs (e.g. "User Management", "Payment
    Processing", "CI/CD Setup").
+
+5. **Given** a project already exists on disk,
+   **When** the user runs `sh ./claude-scrum-team/scrum-start.sh`,
+   **Then** the system resumes the existing project from the exact
+   point where it was last interrupted.
 
 ---
 
@@ -93,8 +93,8 @@ and Sprint Review presents the Increment to the user.
    **When** Sprint Planning occurs,
    **Then** the Scrum Master refines coarse-grained PBIs into
    implementation-ready PBIs (one per function, screen, API, or
-   platform component) and assigns each to one implementer and
-   one reviewer.
+   platform component), assigns each to one implementer, and
+   assigns reviewers round-robin (no self-review).
 
 3. **Given** Sprint Planning is complete,
    **When** the Design phase begins,
@@ -175,9 +175,10 @@ and confirm the user can declare the product release-ready.
 ### User Story 4 - TUI Dashboard (Priority: P4)
 
 The user can view project progress through a rich terminal UI
-dashboard. The dashboard shows the Product Backlog, Sprint
-Backlog, sprint progress, and agent activity. The user never
-needs to inspect raw files or logs to understand project status.
+dashboard. The dashboard shows four panels: Sprint Overview,
+real-time PBI Progress Board, Communication Log, and File
+Change Log. The user never needs to inspect raw files or logs
+to understand project status.
 
 **Why this priority**: The dashboard is the primary interface
 for the user to monitor progress. While development can proceed
@@ -185,22 +186,33 @@ without it (via Sprint Review summaries), it significantly
 improves the user experience.
 
 **Independent Test**: Launch the dashboard during a Development
-Sprint and verify it displays Product Backlog, Sprint Backlog,
-progress indicators, and agent activity in real time.
+Sprint and verify it displays Sprint Overview, PBI Progress
+Board, Communication Log, and File Change Log, all updating
+in real time.
 
 **Acceptance Scenarios**:
 
 1. **Given** a Development Sprint is in progress,
    **When** the dashboard is displayed,
-   **Then** the Product Backlog, Sprint Backlog, sprint progress,
-   and agent activity are persistently visible alongside the
-   conversation.
+   **Then** the Sprint Overview (goal, PBIs, developers),
+   PBI Progress Board, Communication Log, and File Change Log
+   are persistently visible alongside the conversation.
 
 2. **Given** a Developer completes a PBI,
    **When** the dashboard updates,
-   **Then** the sprint progress reflects the completed PBI in
-   real time without the user needing to refresh or invoke a
+   **Then** the PBI Progress Board reflects the completed PBI
+   in real time without the user needing to refresh or invoke a
    command.
+
+3. **Given** agents exchange messages during a Sprint,
+   **When** the Communication Log updates,
+   **Then** the messages are displayed with sender, recipient,
+   and timestamp.
+
+4. **Given** a Developer modifies files during implementation,
+   **When** the File Change Log updates,
+   **Then** the file path and change type (created, modified,
+   deleted) are displayed in real time.
 
 ---
 
@@ -250,9 +262,14 @@ Task tool during implementation.
   The assigned implementers agree on the interface contract between
   their components before implementation begins.
 
-- What happens when the Developer count exceeds 10?
+- What happens when the Developer count exceeds 6?
   The Scrum Master narrows the Sprint Goal to reduce the number of
-  PBIs until the Developer count is within the 1-10 range.
+  PBIs until the Developer count is within the 1-6 range.
+
+- What happens when a Sprint has only one PBI?
+  The single Developer implements the PBI. Since round-robin review
+  requires at least two Developers, the Scrum Master performs the
+  cross-review.
 
 - What happens when cross-review finds issues that cannot be fixed
   within the Sprint?
@@ -313,7 +330,9 @@ Task tool during implementation.
 - **FR-003**: The Scrum Master MUST create the initial Product
   Backlog after the Requirements Sprint with coarse-grained PBIs.
   PBIs MUST be progressively refined into implementation-ready
-  granularity when selected for a Sprint.
+  granularity when selected for a Sprint. The number of `refined`
+  PBIs SHOULD be limited to 1-2 Sprints of capacity (6-12 PBIs)
+  to avoid over-refinement of items that may change.
 
 - **FR-004**: Each Development Sprint MUST include a Design phase
   where Developers produce design documents for their assigned
@@ -327,13 +346,15 @@ Task tool during implementation.
   The Scrum Master MUST present them to the user for approval in
   natural language.
 
-- **FR-006**: The system MUST assign each PBI to one implementer
-  and one reviewer. No Developer reviews their own work.
+- **FR-006**: The system MUST assign each PBI to one implementer.
+  Reviewers MUST be assigned round-robin across Developers so that
+  no Developer reviews their own work. In a single-PBI Sprint (one
+  Developer), the Scrum Master MUST perform the review.
 
 - **FR-007**: The system MUST determine the Developer count per
-  Sprint as number of PBIs x 2, capped at 10. Each Developer is
+  Sprint as min(number of refined PBIs, 6). Each Developer is
   a teammate spawned via Agent Teams by the Scrum Master (team
-  lead). If the count exceeds 10, the Scrum Master MUST narrow
+  lead). If the count exceeds 6, the Scrum Master MUST narrow
   the Sprint Goal.
 
 - **FR-008**: The Scrum Master MUST avoid placing PBIs with
@@ -344,8 +365,9 @@ Task tool during implementation.
 - **FR-009**: Cross-review MUST occur within the same Sprint,
   after all implementers complete their work. Reviewers MUST read
   the requirements document and relevant design documents (both
-  current and previous Sprints). Review issues MUST be either
-  fixed within the Sprint or logged as new PBIs.
+  current and previous Sprints). In a single-PBI Sprint, the Scrum
+  Master performs the review. Review issues MUST be either fixed
+  within the Sprint or logged as new PBIs.
 
 - **FR-010**: At Sprint Review, the Scrum Master MUST present the
   Increment with a change summary. A live demo MUST be performed
@@ -372,11 +394,18 @@ Task tool during implementation.
   command), provide a guided testing flow covering key user
   workflows, and collect the user's feedback at each step.
 
-- **FR-014**: The system MUST provide a TUI dashboard that is
-  persistently visible alongside the conversation, showing
-  Product Backlog, Sprint Backlog, sprint progress, and agent
-  activity. The dashboard MUST update in real time as work
-  progresses.
+- **FR-014**: The system MUST provide a TUI dashboard that runs
+  alongside the conversation and displays the following panels:
+  (a) **Sprint Overview** — Sprint Goal, selected PBIs, assigned
+  Developers, and current phase;
+  (b) **Real-time PBI Progress Board** — each PBI's status
+  (`draft` → `refined` → `in_progress` → `review` → `done`)
+  updated as Developers work;
+  (c) **Communication Log** — messages exchanged between agents
+  (Scrum Master ↔ Developers, Developer ↔ Developer);
+  (d) **File Change Log** — files created, modified, or deleted
+  by agents during implementation.
+  The dashboard MUST update in real time as work progresses.
 
 - **FR-015**: All user interactions MUST be in natural language.
   The user MUST NOT be required to write structured items, edit
@@ -395,9 +424,12 @@ Task tool during implementation.
   passes linter and formatter, and cross-review is completed.
 
 - **FR-018**: The system MUST be launchable via a shell script
-  (`scrum-start.sh`) that the user runs from the CLI. The only
-  prerequisite is a working Claude Code installation — no
-  additional tool installation is required.
+  (`scrum-start.sh`) that the user runs from the CLI. The
+  prerequisites are a working Claude Code installation and
+  Python 3.9+ with the TUI dependencies (`textual`, `watchdog`)
+  installed via pip. The shell script MUST check for these
+  prerequisites and provide actionable error messages if any
+  are missing.
 
 - **FR-019**: Developer teammates MUST self-select and install
   appropriate specialist sub-agent definitions from the awesome-
@@ -461,9 +493,10 @@ Task tool during implementation.
 - **Improvement Log**: Persistent record of retrospective
   improvements that carries across Sprints.
 
-- **Project Directory (`.scrum/`)**: Root directory for all Scrum
-  artifacts, located in the user's project root. Contains
-  subdirectories for backlog, designs, state, and other artifacts.
+- **Project Directory (`.scrum/`)**: Root directory for Scrum runtime
+  state (JSON files) and cross-review results, located in the user's
+  project root. Design documents are governed separately by
+  `.design/catalog.md`.
 
 - **Product Goal**: The desired future state of the product,
   defined and owned by the user.
@@ -479,7 +512,9 @@ Task tool during implementation.
 
 - **SC-001**: The user can go from zero to a running Scrum team
   with a single shell command (`sh ./claude-scrum-team/scrum-start.sh`)
-  and no additional setup.
+  after installing prerequisites (Claude Code, Python 3.9+, TUI
+  packages). The script checks prerequisites and provides actionable
+  error messages if any are missing.
 
 - **SC-002**: The Requirements Sprint produces a complete
   requirements document through natural language conversation
@@ -501,8 +536,9 @@ Task tool during implementation.
   individual Sprint testing missed, as verified by integration,
   end-to-end, and regression test results.
 
-- **SC-007**: The system operates as a self-contained shell-script-
-  launched tool with no dependencies beyond Claude Code itself.
+- **SC-007**: The system operates as a shell-script-launched tool
+  with minimal dependencies: Claude Code and Python 3.9+ with
+  TUI packages (`textual`, `watchdog`) installed via pip.
 
 - **SC-008**: Sprint Retrospective improvements demonstrably
   carry forward — improvements logged in Sprint N are reflected
@@ -514,10 +550,15 @@ Task tool during implementation.
 
 ## Clarifications
 
+### Session 2026-02-26
+
+- Q: Should external dependencies be allowed for the TUI dashboard? → A: Yes — Python 3.9+ with `textual` and `watchdog` packages are allowed as TUI dependencies. FR-018 revised to permit this. The dashboard must display four panels: Sprint Overview, PBI Progress Board, Communication Log, and File Change Log.
+- Q: Should the awesome-claude-code-subagents catalog be installed into `.claude/skills/` instead of `.claude/agents/`? → A: No — catalog entries are subagent definition files (`.md` with subagent YAML frontmatter: `tools`, `model`), not Skill format. They require context isolation, model routing, and tool sandboxing that only subagents provide. Keep `.claude/agents/` as the installation target.
+
 ### Session 2026-02-25
 
 - Q: What is the agent orchestration model? → A: Agent Teams — the shell script launches one Claude Code session as the team lead (Scrum Master), which spawns Developer teammates via Agent Teams. Each teammate is an independent Claude Code session coordinating through a shared task list and direct messaging.
-- Q: Where are project artifacts stored on disk? → A: A `.scrum/` directory in the project root with organized subdirectories (e.g., `backlog/`, `designs/`, `state/`).
+- Q: Where are project artifacts stored on disk? → A: A `.scrum/` directory in the project root with flat JSON files (one file per concern: `state.json`, `backlog.json`, `sprint.json`, etc.) and a `reviews/` subdirectory. Design documents live separately under `.design/specs/{category}/`, governed by `.design/catalog.md`.
 - Q: What serialization format for state files? → A: JSON — one file per concern (e.g., `state.json`, `backlog.json`, `improvements.json`).
 - Q: How are cross-Sprint context limits managed? → A: Fresh context per Sprint — the Scrum Master (team lead) reads state files from disk at Sprint start; Developer teammates receive only their assigned artifacts (PBI, relevant design docs, requirements).
 - Q: What are the explicit PBI lifecycle states? → A: 5 states: `draft` (coarse-grained) → `refined` (implementation-ready) → `in_progress` → `review` → `done`.
@@ -552,6 +593,9 @@ Task tool during implementation.
   configurations.
 - The user's environment supports TUI rendering (standard terminal
   emulator with basic ANSI support).
+- Python 3.9+ is installed and available on the user's PATH.
+  The TUI dashboard depends on `textual` and `watchdog` Python
+  packages, installable via `pip install textual watchdog`.
 - Agent Teams can be re-created per Sprint without significant
   setup overhead, as stated in the Claude Code Agent Teams
   documentation. The Scrum Master (team lead) session persists
