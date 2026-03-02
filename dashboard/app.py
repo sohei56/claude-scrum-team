@@ -13,6 +13,8 @@ Panels:
 
 from __future__ import annotations
 
+import re
+
 import json
 import sys
 from datetime import datetime, timezone
@@ -180,17 +182,22 @@ class SprintOverview(Static):
 
             if sprints_list:
                 hist_parts = []
-                for s in sprints_list:
+                for i, s in enumerate(sprints_list, 1):
                     if not isinstance(s, dict):
                         continue
-                    sid = s.get("id") or s.get("sprint_number") or "?"
+                    # Extract sprint number from id like "sprint-1" or sprint_number field
+                    sid = s.get("sprint_number") or s.get("id") or ""
+                    sid_str = str(sid)
+                    # Pull out just the number if present
+                    num_match = re.search(r"(\d+)", sid_str)
+                    num = num_match.group(1) if num_match else str(i)
                     completed = s.get("pbis_completed", 0)
                     if isinstance(completed, list):
                         done = len(completed)
                     else:
                         done = completed
                     total = s.get("pbis_total") or done
-                    hist_parts.append(f"S{sid}: {done}/{total}")
+                    hist_parts.append(f"Sprint-{num}: {done}/{total}")
                 if hist_parts:
                     lines.append(f"[bold]History:[/bold] {' | '.join(hist_parts)}")
 
