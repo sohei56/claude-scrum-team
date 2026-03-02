@@ -65,6 +65,21 @@ if [ ${#missing_packages[@]} -gt 0 ]; then
 fi
 
 echo "Prerequisites OK: Claude Code, Python $python_version, textual, watchdog"
+
+# Try to install tmux if missing (optional — dashboard degrades to status line without it)
+if ! command -v tmux >/dev/null 2>&1; then
+  echo ""
+  echo "tmux not found — attempting to install (recommended for TUI dashboard)..."
+  if command -v brew >/dev/null 2>&1; then
+    brew install tmux && echo "  tmux installed successfully." || echo "  Warning: tmux install failed. The status line fallback will be used." >&2
+  elif command -v apt-get >/dev/null 2>&1; then
+    sudo apt-get install -y tmux && echo "  tmux installed successfully." || echo "  Warning: tmux install failed. The status line fallback will be used." >&2
+  else
+    echo "  Could not install tmux automatically (no brew or apt-get found)." >&2
+    echo "  Install manually for the full TUI dashboard, or continue without it." >&2
+  fi
+fi
+
 echo ""
 
 # --- Copy agent definitions ---
@@ -106,7 +121,19 @@ fi
 
 cat > "$settings_file" << 'SETTINGS_EOF'
 {
-  "permissions": {},
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write",
+      "Edit",
+      "Bash(*)",
+      "Glob",
+      "Grep",
+      "Agent",
+      "WebFetch",
+      "WebSearch"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {

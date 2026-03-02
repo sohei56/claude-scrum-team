@@ -83,7 +83,10 @@ echo ""
 
 if command -v tmux >/dev/null 2>&1; then
   # tmux available — create split layout
-  session_name="scrum-team-$$"
+  session_name="scrum-team"
+
+  # Kill any stale scrum-team session from a previous run
+  tmux kill-session -t "$session_name" 2>/dev/null || true
 
   echo "Launching Scrum team with tmux dashboard..."
   echo "  Main pane: Claude Code (Scrum Master)"
@@ -93,8 +96,12 @@ if command -v tmux >/dev/null 2>&1; then
   tmux new-session -d -s "$session_name" -x "$(tput cols)" -y "$(tput lines)"
 
   # Main pane: Claude Code with Scrum Master agent (Agent Teams enabled process-scoped)
-  # Positional argument starts interactive session with initial prompt (unlike -p which exits)
-  tmux send-keys -t "$session_name" "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --agent scrum-master '${initial_prompt}'" C-m
+  # TMUX= hides tmux from Claude Code so Agent Teams uses in-process mode for
+  # teammates (Shift+Down to cycle) instead of creating split panes that would
+  # overwrite the dashboard pane. The positional argument starts an interactive
+  # session with an initial prompt (unlike -p which exits).
+  # When Claude exits, the tmux session is killed automatically.
+  tmux send-keys -t "$session_name" "TMUX= CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --agent scrum-master '${initial_prompt}'; tmux kill-session -t ${session_name}" C-m
 
   # Side pane: Textual TUI dashboard
   tmux split-window -h -t "$session_name" \

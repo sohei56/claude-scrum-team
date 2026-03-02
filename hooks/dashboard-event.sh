@@ -128,7 +128,8 @@ determine_change_type() {
 hook_event="$(cat)"
 
 # Extract common fields
-hook_type="$(echo "$hook_event" | jq -r '.hook_type // .type // "unknown"')"
+# Claude Code uses "hook_event_name" as the event type field
+hook_type="$(echo "$hook_event" | jq -r '.hook_event_name // .hook_type // .type // "unknown"')"
 agent_id="$(echo "$hook_event" | jq -r '.agent_id // .session_id // "unknown"')"
 timestamp="$(get_timestamp)"
 
@@ -232,13 +233,66 @@ case "$hook_type" in
     append_dashboard_event "$event_json"
     ;;
 
-  *)
-    # Unknown hook type — record as generic event
-    detail="$(echo "$hook_event" | jq -r '.detail // .message // "Unknown event"' | head -c 500)"
+  Stop|stop)
+    # Session or teammate stopping
+    reason="$(echo "$hook_event" | jq -r '.reason // "completed"')"
+    detail="Session stopped: ${reason}"
 
     event_json="$(jq -n \
       --arg ts "$timestamp" \
-      --arg type "file_changed" \
+      --arg agent "$agent_id" \
+      --arg detail "$detail" \
+      '{
+        "timestamp": $ts,
+        "type": "session_event",
+        "agent_id": $agent,
+        "file_path": null,
+        "change_type": null,
+        "detail": $detail
+      }')"
+
+    append_dashboard_event "$event_json"
+    ;;
+
+  SubagentStop|subagent_stop)
+    # Teammate finished its work
+    detail="Teammate finished"
+
+    event_json="$(jq -n \
+      --arg ts "$timestamp" \
+      --arg agent "$agent_id" \
+      --arg detail "$detail" \
+      '{
+        "timestamp": $ts,
+        "type": "session_event",
+        "agent_id": $agent,
+        "file_path": null,
+        "change_type": null,
+        "detail": $detail
+      }')"
+
+    append_dashboard_event "$event_json"
+    ;;
+
+  *)
+    # Other hook types — build a descriptive summary
+    tool_name="$(echo "$hook_event" | jq -r '.tool_name // empty')"
+    reason="$(echo "$hook_event" | jq -r '.reason // empty')"
+    user_prompt="$(echo "$hook_event" | jq -r '.user_prompt // empty' | head -c 100)"
+
+    if [ -n "$tool_name" ]; then
+      detail="Tool: ${tool_name}"
+    elif [ -n "$user_prompt" ]; then
+      detail="User: ${user_prompt}"
+    elif [ -n "$reason" ]; then
+      detail="Event (${hook_type}): ${reason}"
+    else
+      detail="Event: ${hook_type}"
+    fi
+
+    event_json="$(jq -n \
+      --arg ts "$timestamp" \
+      --arg type "session_event" \
       --arg agent "$agent_id" \
       --arg detail "$detail" \
       '{

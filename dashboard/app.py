@@ -37,6 +37,41 @@ STATUS_COLORS = {
     "done": "green",
 }
 
+# Ordered phase flow for "you are here" display
+PHASE_FLOW = [
+    ("new", "New"),
+    ("requirements_sprint", "Requirements"),
+    ("backlog_created", "Backlog Created"),
+    ("sprint_planning", "Sprint Planning"),
+    ("design", "Design"),
+    ("implementation", "Implementation"),
+    ("review", "Review"),
+    ("sprint_review", "Sprint Review"),
+    ("retrospective", "Retrospective"),
+    ("integration_sprint", "Integration"),
+    ("complete", "Complete"),
+]
+
+
+def format_phase_flow(current_phase: str) -> str:
+    """Render the phase flow with the current phase highlighted."""
+    parts = []
+    found = False
+    for phase_key, phase_label in PHASE_FLOW:
+        if phase_key == current_phase:
+            parts.append(f"[bold white on blue] {phase_label} [/]")
+            found = True
+        elif not found:
+            # Already passed
+            parts.append(f"[dim]{phase_label}[/dim]")
+        else:
+            # Not yet reached
+            parts.append(f"{phase_label}")
+    if not found:
+        # Unknown phase — show raw value highlighted
+        parts.append(f"[bold white on red] {current_phase} [/]")
+    return " → ".join(parts)
+
 
 def read_json(path: Path) -> dict | list | None:
     """Read a JSON file, returning None if missing or invalid."""
@@ -63,6 +98,7 @@ class SprintOverview(Static):
     def update_content(self) -> None:
         state = read_json(SCRUM_DIR / "state.json")
         sprint = read_json(SCRUM_DIR / "sprint.json")
+        backlog = read_json(SCRUM_DIR / "backlog.json")
 
         if not state:
             self.update("[bold]No project state[/bold]\nRun scrum-start.sh to begin.")
@@ -72,18 +108,31 @@ class SprintOverview(Static):
         product_goal = state.get("product_goal", "Not defined")
 
         lines = [f"[bold]Product Goal:[/bold] {product_goal}"]
-        lines.append(f"[bold]Phase:[/bold] {phase}")
+        lines.append(format_phase_flow(phase))
 
         if sprint:
             sprint_id = sprint.get("id", "?")
             goal = sprint.get("goal", "No goal")
             sprint_type = sprint.get("type", "?")
-            pbi_count = len(sprint.get("pbi_ids", []))
+            pbi_ids = sprint.get("pbi_ids", [])
+            pbi_count = len(pbi_ids)
             dev_count = sprint.get("developer_count", 0)
 
-            lines.append(f"[bold]Sprint:[/bold] {sprint_id} ({sprint_type})")
-            lines.append(f"[bold]Goal:[/bold] {goal}")
-            lines.append(f"[bold]PBIs:[/bold] {pbi_count} | [bold]Developers:[/bold] {dev_count}")
+            # Count done PBIs from backlog if available
+            done_count = 0
+            if backlog and pbi_ids:
+                for item in backlog.get("items", []):
+                    if item.get("id") in pbi_ids and item.get("status") == "done":
+                        done_count += 1
+
+            lines.append(
+                f"[bold]Sprint:[/bold] {sprint_id} ({sprint_type})"
+                f" | [bold]Goal:[/bold] {goal}"
+            )
+            lines.append(
+                f"[bold]PBIs:[/bold] {done_count}/{pbi_count} done"
+                f" | [bold]Developers:[/bold] {dev_count}"
+            )
 
             devs = sprint.get("developers", [])
             if devs:
@@ -94,6 +143,8 @@ class SprintOverview(Static):
                     impl = d.get("assigned_work", {}).get("implement", [])
                     dev_parts.append(f"{did}:{status}({','.join(impl)})")
                 lines.append(f"[bold]Agents:[/bold] {' | '.join(dev_parts)}")
+        else:
+            lines.append("[dim]No active Sprint[/dim]")
 
         self.update("\n".join(lines))
 
@@ -225,8 +276,14 @@ class FileChangeLog(RichLog):
                 )
                 change_str = f"[{color}]{change}[/{color}]" if color else change
                 self.write(f"[dim]{ts_short}[/dim] {change_str} {file_path} ({agent})")
+            elif evt_type == "teammate_idle":
+                self.write(f"[dim]{ts_short}[/dim] [cyan]idle[/cyan] {detail} ({agent})")
+            elif evt_type == "session_event":
+                self.write(f"[dim]{ts_short}[/dim] [magenta]event[/magenta] {detail}")
+            elif detail:
+                self.write(f"[dim]{ts_short}[/dim] {detail} ({agent})")
             else:
-                self.write(f"[dim]{ts_short}[/dim] [{evt_type}] {detail} ({agent})")
+                self.write(f"[dim]{ts_short}[/dim] {evt_type} ({agent})")
 
 
 class ScrumFileHandler(FileSystemEventHandler):
