@@ -1,4 +1,35 @@
-# claude-scrum-team
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/sohei56/claude-scrum-team/main/.github/banner-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/sohei56/claude-scrum-team/main/.github/banner-light.svg">
+    <img alt="claude-scrum-team" src="https://raw.githubusercontent.com/sohei56/claude-scrum-team/main/.github/banner-light.svg" width="700">
+  </picture>
+</p>
+
+<h1 align="center">claude-scrum-team</h1>
+
+<p align="center">
+  <strong>AI-powered Scrum team for Claude Code</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/sohei56/claude-scrum-team/actions"><img src="https://img.shields.io/github/actions/workflow/status/sohei56/claude-scrum-team/ci.yml?branch=main&style=flat-square&logo=github&label=CI" alt="CI"></a>
+  <a href="https://github.com/sohei56/claude-scrum-team/blob/main/LICENSE"><img src="https://img.shields.io/github/license/sohei56/claude-scrum-team?style=flat-square&color=blue" alt="License"></a>
+  <a href="https://github.com/sohei56/claude-scrum-team/releases"><img src="https://img.shields.io/github/v/release/sohei56/claude-scrum-team?style=flat-square&color=green&label=release" alt="Release"></a>
+  <img src="https://img.shields.io/badge/python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.9+">
+  <img src="https://img.shields.io/badge/bash-3.2%2B-4EAA25?style=flat-square&logo=gnubash&logoColor=white" alt="Bash 3.2+">
+  <img src="https://img.shields.io/badge/Claude_Code-Agent_Teams-D97706?style=flat-square&logo=anthropic&logoColor=white" alt="Claude Code Agent Teams">
+  <img src="https://img.shields.io/badge/TUI-Textual-7C3AED?style=flat-square" alt="Textual TUI">
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quick Start</a> &bull;
+  <a href="#architecture">Architecture</a> &bull;
+  <a href="#development">Development</a> &bull;
+  <a href="specs/001-ai-scrum-team/quickstart.md">Full Docs</a>
+</p>
+
+---
 
 An AI-powered Scrum development team for [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview). Launch a complete Scrum workflow — Requirements Sprint, Development Sprints with design/implementation/cross-review, Sprint Reviews, Retrospectives, and Integration Sprints — all orchestrated by AI agents.
 
