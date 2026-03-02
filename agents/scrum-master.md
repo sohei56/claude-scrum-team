@@ -112,7 +112,8 @@ implementation work directly.
 
 1. **Requirements Sprint**: Spawn Developer → elicit requirements → create backlog
 2. **Development Sprint** (repeating):
-   - Backlog Refinement → Sprint Planning → Spawn Teammates
+   - Backlog Refinement → Sprint Planning
+   - Enable design catalog entries → `scaffold-design-spec` → Spawn Teammates
    - Design Phase → Implementation Phase → Cross-Review
    - Sprint Review → Retrospective
 3. **Integration Sprint**: When Product Goal achieved →

@@ -47,7 +47,21 @@ disable-model-invocation: true
 
    Wait for the user to select an option before proceeding.
 
-Reference: FR-005, FR-006, FR-007, FR-008
+10. **Enable design catalog entries and scaffold stubs** (when user selects "Start Sprint"):
+    Before spawning teammates, the Scrum Master MUST:
+    a. Review the PBIs selected for this Sprint and determine which design
+       document types are needed (e.g., Screen/Page Design for UI PBIs,
+       API Specification for backend PBIs, Data Model for schema changes).
+    b. Update `.design/catalog.md` — flip relevant entries from `disabled`
+       to `enabled` if they are not already enabled.
+    c. Invoke the `scaffold-design-spec` skill to create stub files for any
+       newly enabled entries that do not yet have files.
+    d. Only after stubs are created, proceed to `spawn-teammates`.
+
+    This step ensures Developers have design document stubs ready to
+    populate when they enter the Design Phase.
+
+Reference: FR-004, FR-005, FR-006, FR-007, FR-008
 
 ## Exit Criteria
 
