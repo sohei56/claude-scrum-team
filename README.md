@@ -1,9 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/sohei56/claude-scrum-team/main/.github/banner-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/sohei56/claude-scrum-team/main/.github/banner-light.svg">
-    <img alt="claude-scrum-team" src="https://raw.githubusercontent.com/sohei56/claude-scrum-team/main/.github/banner-light.svg" width="700">
-  </picture>
+  <img alt="claude-scrum-team" src="images/claude-scrum-team.png" width="700">
 </p>
 
 <h1 align="center">claude-scrum-team</h1>
