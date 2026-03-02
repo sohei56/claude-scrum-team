@@ -119,7 +119,9 @@ if [ ! -f "$STATE_FILE" ]; then
   allow
 fi
 
-phase="$(jq -r '.phase // "unknown"' "$STATE_FILE")"
+# Read phase from state file — allow if file is unreadable (race condition
+# with concurrent writes, or file is being created for the first time)
+phase="$(jq -r '.phase // "unknown"' "$STATE_FILE" 2>/dev/null)" || allow
 
 # Get the target file path (if determinable)
 target_path="$(get_target_path "$tool_name" "$tool_input")"

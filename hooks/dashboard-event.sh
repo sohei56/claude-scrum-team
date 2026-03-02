@@ -194,9 +194,10 @@ case "$hook_type" in
 
   TeammateIdle|teammate_idle)
     # Agent communication: progress update
-    sender_id="$(echo "$hook_event" | jq -r '.teammate_id // .agent_id // "unknown"')"
-    sender_role="$(echo "$hook_event" | jq -r '.teammate_role // "developer"')"
-    content="$(echo "$hook_event" | jq -r '.message // .content // "Teammate idle"')"
+    # Claude Code provides teammate_name and team_name in TeammateIdle payloads
+    sender_id="$(echo "$hook_event" | jq -r '.teammate_name // .session_id // "teammate"')"
+    sender_role="teammate"
+    content="$(echo "$hook_event" | jq -r '.last_assistant_message // "Idle"' | head -c 300)"
 
     # Append to communications log
     message_json="$(jq -n \

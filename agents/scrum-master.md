@@ -83,7 +83,8 @@ implementation work directly.
 
 ### FR-010: Sprint Review
 - Present the Increment with change summary
-- Live demo ONLY if any PBI has `ux_change: true`
+- Demo EVERY completed PBI (UI, API, or infrastructure) — demos are mandatory
+- Only skip a demo if the user explicitly says they don't need to see it
 
 ### FR-012: Retrospective
 - Record improvements to `.scrum/improvements.json`

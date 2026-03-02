@@ -45,6 +45,7 @@ PHASE_FLOW = [
     ("sprint_planning", "Sprint Planning"),
     ("design", "Design"),
     ("implementation", "Implementation"),
+    ("sprint_execution", "Sprint Execution"),
     ("review", "Review"),
     ("sprint_review", "Sprint Review"),
     ("retrospective", "Retrospective"),
@@ -53,24 +54,12 @@ PHASE_FLOW = [
 ]
 
 
-def format_phase_flow(current_phase: str) -> str:
-    """Render the phase flow with the current phase highlighted."""
-    parts = []
-    found = False
+def format_phase(current_phase: str) -> str:
+    """Render the current phase as a compact highlighted label."""
     for phase_key, phase_label in PHASE_FLOW:
         if phase_key == current_phase:
-            parts.append(f"[bold white on blue] {phase_label} [/]")
-            found = True
-        elif not found:
-            # Already passed
-            parts.append(f"[dim]{phase_label}[/dim]")
-        else:
-            # Not yet reached
-            parts.append(f"{phase_label}")
-    if not found:
-        # Unknown phase — show raw value highlighted
-        parts.append(f"[bold white on red] {current_phase} [/]")
-    return " → ".join(parts)
+            return f"[bold]Phase:[/bold] [bold white on blue] {phase_label} [/]"
+    return f"[bold]Phase:[/bold] [bold white on red] {current_phase} [/]"
 
 
 def read_json(path: Path) -> dict | list | None:
@@ -99,6 +88,8 @@ class SprintOverview(Static):
         state = read_json(SCRUM_DIR / "state.json")
         sprint = read_json(SCRUM_DIR / "sprint.json")
         backlog = read_json(SCRUM_DIR / "backlog.json")
+        history = read_json(SCRUM_DIR / "sprint-history.json")
+        improvements = read_json(SCRUM_DIR / "improvements.json")
 
         if not state:
             self.update("[bold]No project state[/bold]\nRun scrum-start.sh to begin.")
@@ -108,33 +99,57 @@ class SprintOverview(Static):
         product_goal = state.get("product_goal", "Not defined")
 
         lines = [f"[bold]Product Goal:[/bold] {product_goal}"]
-        lines.append(format_phase_flow(phase))
+        lines.append(format_phase(phase))
 
-        if sprint:
-            sprint_id = sprint.get("id", "?")
-            goal = sprint.get("goal", "No goal")
-            sprint_type = sprint.get("type", "?")
-            pbi_ids = sprint.get("pbi_ids", [])
+        if sprint and isinstance(sprint, dict):
+            # Handle both data-model field names and agent-produced field names
+            sprint_id = sprint.get("id") or sprint.get("sprint_number") or "?"
+            goal = sprint.get("goal") or sprint.get("sprint_goal") or "No goal"
+            sprint_type = sprint.get("type") or "dev"
+            sprint_status = sprint.get("status") or "?"
+
+            # PBI IDs: from pbi_ids[] (spec) or pbis[] objects (agent)
+            pbi_ids = sprint.get("pbi_ids") or []
+            sprint_pbis = sprint.get("pbis") or []
+            if not pbi_ids and sprint_pbis:
+                pbi_ids = [p.get("id", "?") for p in sprint_pbis if isinstance(p, dict)]
             pbi_count = len(pbi_ids)
-            dev_count = sprint.get("developer_count", 0)
 
-            # Count done PBIs from backlog if available
+            # Count done PBIs: from backlog (spec) or inline pbis (agent)
             done_count = 0
-            if backlog and pbi_ids:
+            if sprint_pbis:
+                for p in sprint_pbis:
+                    if isinstance(p, dict) and p.get("status") == "done":
+                        done_count += 1
+            elif backlog and pbi_ids:
                 for item in backlog.get("items", []):
                     if item.get("id") in pbi_ids and item.get("status") == "done":
                         done_count += 1
 
+            # Developer count: from developer_count (spec) or derive from pbis (agent)
+            dev_count = sprint.get("developer_count") or 0
+            if not dev_count and sprint_pbis:
+                devs_set = set()
+                for p in sprint_pbis:
+                    if isinstance(p, dict):
+                        assigned = p.get("assigned_to")
+                        if assigned:
+                            devs_set.add(assigned)
+                dev_count = len(devs_set)
+
             lines.append(
-                f"[bold]Sprint:[/bold] {sprint_id} ({sprint_type})"
+                f"[bold]Sprint:[/bold] {sprint_id}"
+                f" | [bold]Status:[/bold] {sprint_status}"
                 f" | [bold]Goal:[/bold] {goal}"
             )
+
             lines.append(
                 f"[bold]PBIs:[/bold] {done_count}/{pbi_count} done"
                 f" | [bold]Developers:[/bold] {dev_count}"
             )
 
-            devs = sprint.get("developers", [])
+            # Agent assignments: from developers[] (spec) or pbis[] (agent)
+            devs = sprint.get("developers") or []
             if devs:
                 dev_parts = []
                 for d in devs:
@@ -143,8 +158,67 @@ class SprintOverview(Static):
                     impl = d.get("assigned_work", {}).get("implement", [])
                     dev_parts.append(f"{did}:{status}({','.join(impl)})")
                 lines.append(f"[bold]Agents:[/bold] {' | '.join(dev_parts)}")
+            elif sprint_pbis:
+                dev_parts = []
+                for p in sprint_pbis:
+                    if isinstance(p, dict):
+                        assigned = p.get("assigned_to") or "?"
+                        pid = p.get("id") or "?"
+                        pstatus = p.get("status") or "?"
+                        dev_parts.append(f"{assigned}→{pid}({pstatus})")
+                lines.append(f"[bold]Agents:[/bold] {' | '.join(dev_parts)}")
         else:
-            lines.append("[dim]No active Sprint[/dim]")
+            lines.append("[dim]No active Sprint — waiting for Sprint Planning[/dim]")
+
+        # Sprint History: handle {sprints: [...]} (spec) or raw [...] (agent)
+        if history:
+            sprints_list = []
+            if isinstance(history, list):
+                sprints_list = history
+            elif isinstance(history, dict):
+                sprints_list = history.get("sprints", [])
+
+            if sprints_list:
+                hist_parts = []
+                for s in sprints_list:
+                    if not isinstance(s, dict):
+                        continue
+                    sid = s.get("id") or s.get("sprint_number") or "?"
+                    completed = s.get("pbis_completed", 0)
+                    if isinstance(completed, list):
+                        done = len(completed)
+                    else:
+                        done = completed
+                    total = s.get("pbis_total") or done
+                    hist_parts.append(f"S{sid}: {done}/{total}")
+                if hist_parts:
+                    lines.append(f"[bold]History:[/bold] {' | '.join(hist_parts)}")
+
+        # Active Improvements: handle {entries: [...]} (spec) or {sprint_N: {action_items}} (agent)
+        if improvements and isinstance(improvements, dict):
+            imp_items = []
+            entries = improvements.get("entries")
+            if isinstance(entries, list):
+                # Spec format
+                imp_items = [
+                    e.get("description", "?")
+                    for e in entries
+                    if isinstance(e, dict) and e.get("status") == "active"
+                ]
+            else:
+                # Agent format: collect action_items from the latest sprint
+                for key in sorted(improvements.keys(), reverse=True):
+                    val = improvements.get(key)
+                    if isinstance(val, dict) and "action_items" in val:
+                        imp_items = val.get("action_items", [])
+                        break
+            if imp_items:
+                display = imp_items[:3]
+                label = "[bold]Improvements:[/bold] "
+                label += " · ".join(str(i) for i in display)
+                if len(imp_items) > 3:
+                    label += f" [dim](+{len(imp_items) - 3} more)[/dim]"
+                lines.append(label)
 
         self.update("\n".join(lines))
 
@@ -166,18 +240,24 @@ class PBIProgressBoard(DataTable):
 
     def update_content(self) -> None:
         backlog = read_json(SCRUM_DIR / "backlog.json")
+        sprint = read_json(SCRUM_DIR / "sprint.json")
         self.clear()
 
-        if not backlog:
-            return
+        # Collect PBI items from backlog (spec format) or sprint.pbis (agent format)
+        items = []
+        if backlog and isinstance(backlog, dict):
+            items = backlog.get("items", [])
+        if not items and sprint and isinstance(sprint, dict):
+            items = sprint.get("pbis", [])
 
-        items = backlog.get("items", [])
         for item in items:
+            if not isinstance(item, dict):
+                continue
             pbi_id = item.get("id", "?")
             title = item.get("title", "Untitled")[:35]
             status = item.get("status", "?")
-            impl = item.get("implementer_id") or "-"
-            reviewer = item.get("reviewer_id") or "-"
+            impl = item.get("implementer_id") or item.get("assigned_to") or "-"
+            reviewer = item.get("reviewer_id") or item.get("reviewer") or "-"
 
             color = STATUS_COLORS.get(status, "")
             if color:
@@ -226,10 +306,12 @@ class CommunicationLog(RichLog):
             except (ValueError, AttributeError):
                 ts_short = ts[:8]
 
+            role_str = f" ({role})" if role else ""
+            recipient_str = f" → {recipient}" if recipient != "all" else ""
             self.write(
                 f"[dim]{ts_short}[/dim] "
-                f"[bold]{sender}[/bold]({role}) → {recipient} "
-                f"[{msg_type}] {content}"
+                f"[bold]{sender}[/bold]{role_str}{recipient_str} "
+                f"{content}"
             )
 
 
@@ -304,6 +386,11 @@ class ScrumFileHandler(FileSystemEventHandler):
             return
         self._schedule_update()
 
+    def on_moved(self, event) -> None:
+        if event.is_directory:
+            return
+        self._schedule_update()
+
     def _schedule_update(self) -> None:
         with self._lock:
             self.app.call_from_thread(self.app.refresh_panels)
@@ -357,16 +444,21 @@ class ScrumDashboard(App):
     def on_mount(self) -> None:
         self.refresh_panels()
         self._start_watcher()
+        # Periodic fallback: refresh every 3 seconds in case watchdog misses events
+        self.set_interval(3, self.refresh_panels)
 
     def _start_watcher(self) -> None:
         """Start watchdog observer for .scrum/ directory."""
         if not SCRUM_DIR.exists():
             SCRUM_DIR.mkdir(parents=True, exist_ok=True)
 
+        # Use absolute path to avoid working directory issues
+        watch_path = str(SCRUM_DIR.resolve())
+
         self._observer = Observer()
         self._observer.schedule(
             ScrumFileHandler(self),
-            str(SCRUM_DIR),
+            watch_path,
             recursive=True,
         )
         self._observer.daemon = True

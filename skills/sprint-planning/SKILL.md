@@ -35,6 +35,17 @@ disable-model-invocation: true
 6. Create `sprint.json` with fields: `id`, `goal`, `type: development`, `status: planning`, `pbi_ids`, `developer_count`.
 7. Update `backlog.json`: set `sprint_id`, `implementer_id`, and `reviewer_id` on each selected PBI.
 8. Update `state.json` to `phase: sprint_planning`.
+9. **Present Sprint summary and options**: After completing the Sprint
+   Planning, present a clear summary of the Sprint plan to the user,
+   then offer these options:
+   - **1. Start Sprint** — Proceed to the design/implementation phase
+   - **2. Adjust Sprint Goal** — Modify the Sprint Goal
+   - **3. Change PBI selection** — Add or remove PBIs from this Sprint
+   - **4. Re-assign developers** — Change PBI assignments
+   - **5. View backlog** — Show the full Product Backlog with priorities
+   - **6. Other** — Free-form input
+
+   Wait for the user to select an option before proceeding.
 
 Reference: FR-005, FR-006, FR-007, FR-008
 
