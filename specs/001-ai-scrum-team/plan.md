@@ -23,7 +23,7 @@ Skill.
 ## Technical Context
 
 **Language/Version**: Bash 3.2+ (shell scripts, hooks), Python 3.9+ (TUI dashboard), Markdown with YAML frontmatter (agent/skill definitions)
-**Primary Dependencies**: Claude Code CLI with Agent Teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`), Textual 8.x (TUI framework), watchdog (filesystem monitoring)
+**Primary Dependencies**: Claude Code CLI with Agent Teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` set process-scoped by `scrum-start.sh`), Textual 8.x (TUI framework), watchdog (filesystem monitoring)
 **Storage**: JSON files in `.scrum/` directory (one file per concern), Markdown for requirements and design documents (governed by `.design/catalog.md`)
 **Testing**: bats-core + jq + yq + ShellCheck (developer-only dependencies)
 **Target Platform**: macOS / Linux terminal (Bash 3.2+ default)

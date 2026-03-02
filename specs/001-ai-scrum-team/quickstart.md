@@ -7,8 +7,6 @@
 ### Prerequisites
 
 - **Claude Code CLI** installed and on PATH
-- **Agent Teams** enabled: set `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
-  in your environment or Claude Code settings
 - **Python 3.9+** installed and on PATH
 - **TUI dependencies**: `pip install textual watchdog`
 - **tmux** (recommended) for side-by-side dashboard layout

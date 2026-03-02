@@ -40,7 +40,7 @@ Agent Teams using the `spawn-teammates` Skill (R6) for reproducibility.
 - Agent definition format: Markdown with YAML frontmatter.
 - Agent Teams display: **in-process** (cycle with Shift+Down) or
   **split panes** (tmux/iTerm2).
-- Requires: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`.
+- Requires: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` (set process-scoped by `scrum-start.sh`; no global export needed).
 - Team lead persists across Sprints; teammates are per-Sprint.
 
 ---

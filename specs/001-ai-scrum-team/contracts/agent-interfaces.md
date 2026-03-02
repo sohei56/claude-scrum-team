@@ -188,7 +188,7 @@ body. Below is the reference for all 13 Skills:
 
 ### Inputs
 - Working directory (user's project root)
-- Environment: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` flag
+- Environment: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` (set process-scoped by `scrum-start.sh`; users do NOT set this globally)
 
 ### Outputs
 - Copies `agents/*.md` to `<project>/.claude/agents/` (local only, NEVER `~/.claude/agents/`)
@@ -212,7 +212,7 @@ to do next.
 | Exit Code | stderr Message |
 |-----------|----------------|
 | `1` | `Error: Claude Code CLI not found on PATH. Install it: https://docs.anthropic.com/en/docs/claude-code/overview` |
-| `2` | `Error: Agent Teams not enabled. Run: export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` |
+| `2` | (reserved — Agent Teams flag is now set process-scoped by `scrum-start.sh`) |
 | `3` | (see pip/venv guidance below) |
 
 **Exit Code 3 — detailed pip/venv guidance** (printed to stderr):

@@ -583,10 +583,11 @@ Task tool during implementation.
 
 ## Assumptions
 
-- Claude Code is installed and available on the user's PATH with
-  Agent Teams enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
-  in settings or environment). Agent Teams is an experimental
-  feature as of February 2026.
+- Claude Code is installed and available on the user's PATH.
+  Agent Teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`) is set
+  process-scoped by `scrum-start.sh` — users do NOT need to export
+  it globally. Agent Teams is an experimental feature as of
+  February 2026.
 - The awesome-claude-code-subagents catalog
   (`https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`)
   is publicly accessible and provides installable agent

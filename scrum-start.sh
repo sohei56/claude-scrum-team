@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+# scrum-start.sh — Entry point for the AI-Powered Scrum Team
+# Usage: sh scrum-start.sh
+#
+# Prerequisites:
+#   - Claude Code CLI on PATH
+#   - Python 3.9+ with textual and watchdog packages
+#
+# Exit codes:
+#   0 — Claude Code session ended normally
+#   1 — Claude Code CLI not found
+#   2 — (reserved)
+#   3 — Python 3.9+ or TUI dependencies not found
+#
+# Note: CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 is set process-scoped
+# when launching claude. Users do NOT need to export it globally.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# --- Validate prerequisites ---
+
+# Check Claude Code CLI
+if ! command -v claude >/dev/null 2>&1; then
+  echo "Error: Claude Code CLI not found on PATH." >&2
+  echo "Install it: https://docs.anthropic.com/en/docs/claude-code/overview" >&2
+  exit 1
+fi
+
+# Check Python 3.9+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "Error: Python 3.9+ not found on PATH." >&2
+  echo "Install Python: https://www.python.org/downloads/" >&2
+  exit 3
+fi
+
+python_version="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+python_major="$(echo "$python_version" | cut -d. -f1)"
+python_minor="$(echo "$python_version" | cut -d. -f2)"
+if [ "$python_major" -lt 3 ] || { [ "$python_major" -eq 3 ] && [ "$python_minor" -lt 9 ]; }; then
+  echo "Error: Python 3.9+ required, found Python $python_version." >&2
+  exit 3
+fi
+
+# Check TUI packages
+if ! python3 -c "import textual" 2>/dev/null || ! python3 -c "import watchdog" 2>/dev/null; then
+  echo "Error: Python TUI packages 'textual' and 'watchdog' are required." >&2
+  echo "" >&2
+  echo "Recommended: install in a virtual environment:" >&2
+  echo "  python3 -m venv .venv" >&2
+  echo "  source .venv/bin/activate   # On Windows: .venv\\Scripts\\activate" >&2
+  echo "  pip install textual watchdog" >&2
+  echo "" >&2
+  echo "Or install directly:" >&2
+  echo "  pip install textual watchdog" >&2
+  echo "" >&2
+  echo "If pip is not available:" >&2
+  echo "  python3 -m ensurepip --upgrade   # Install pip itself" >&2
+  echo "  # Or: apt install python3-pip    # Debian/Ubuntu" >&2
+  echo "  # Or: brew install python3       # macOS (includes pip)" >&2
+  exit 3
+fi
+
+# --- Run setup (copies agents, skills, hooks, configures settings) ---
+sh "$SCRIPT_DIR/scripts/setup-user.sh"
+
+# --- Detect new vs resume ---
+if [ -f ".scrum/state.json" ]; then
+  echo ""
+  echo "Existing project detected — resuming from saved state."
+  phase="$(jq -r '.phase // "unknown"' .scrum/state.json)"
+  echo "  Current phase: $phase"
+else
+  echo ""
+  echo "New project — starting fresh."
+  mkdir -p .scrum/reviews
+fi
+
+# --- Launch ---
+echo ""
+
+if command -v tmux >/dev/null 2>&1; then
+  # tmux available — create split layout
+  session_name="scrum-team-$$"
+
+  echo "Launching Scrum team with tmux dashboard..."
+  echo "  Main pane: Claude Code (Scrum Master)"
+  echo "  Side pane: TUI Dashboard"
+  echo ""
+
+  tmux new-session -d -s "$session_name" -x "$(tput cols)" -y "$(tput lines)"
+
+  # Main pane: Claude Code with Scrum Master agent (Agent Teams enabled process-scoped)
+  tmux send-keys -t "$session_name" "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --agent scrum-master" C-m
+
+  # Side pane: Textual TUI dashboard
+  tmux split-window -h -t "$session_name" \
+    "python3 \"$SCRIPT_DIR/dashboard/app.py\"; read -r"
+
+  # Focus main pane
+  tmux select-pane -t "$session_name":0.0
+
+  # Attach to session
+  tmux attach-session -t "$session_name"
+else
+  # No tmux — use status line only
+  echo "Info: tmux not found — using compact status line dashboard." >&2
+  echo "Install tmux for a richer view." >&2
+  echo ""
+  echo "Launching Claude Code with Scrum Master agent..."
+  CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --agent scrum-master
+fi
