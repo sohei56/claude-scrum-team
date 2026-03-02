@@ -9,9 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/sohei56/claude-scrum-team/actions"><img src="https://img.shields.io/github/actions/workflow/status/sohei56/claude-scrum-team/ci.yml?branch=main&style=flat-square&logo=github&label=CI" alt="CI"></a>
   <a href="https://github.com/sohei56/claude-scrum-team/blob/main/LICENSE"><img src="https://img.shields.io/github/license/sohei56/claude-scrum-team?style=flat-square&color=blue" alt="License"></a>
-  <a href="https://github.com/sohei56/claude-scrum-team/releases"><img src="https://img.shields.io/github/v/release/sohei56/claude-scrum-team?style=flat-square&color=green&label=release" alt="Release"></a>
   <img src="https://img.shields.io/badge/python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.9+">
   <img src="https://img.shields.io/badge/bash-3.2%2B-4EAA25?style=flat-square&logo=gnubash&logoColor=white" alt="Bash 3.2+">
   <img src="https://img.shields.io/badge/Claude_Code-Agent_Teams-D97706?style=flat-square&logo=anthropic&logoColor=white" alt="Claude Code Agent Teams">
