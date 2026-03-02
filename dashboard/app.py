@@ -268,6 +268,68 @@ class PBIProgressBoard(DataTable):
             self.add_row(pbi_id, title, status_display, impl, reviewer, key=pbi_id)
 
 
+class TestResultsPanel(Static):
+    """Panel: Test results from Integration Sprint smoke-test."""
+
+    DEFAULT_CSS = """
+    TestResultsPanel {
+        height: auto;
+        min-height: 3;
+        border: solid $accent;
+        padding: 0 1;
+    }
+    """
+
+    STATUS_STYLES = {
+        "passed": "[bold green]PASSED[/bold green]",
+        "failed": "[bold red]FAILED[/bold red]",
+        "running": "[bold yellow]RUNNING[/bold yellow]",
+        "pending": "[bold dim]PENDING[/bold dim]",
+        "skipped": "[dim]SKIPPED[/dim]",
+    }
+
+    def update_content(self) -> None:
+        results = read_json(SCRUM_DIR / "test-results.json")
+        if not results:
+            self.display = False
+            return
+
+        self.display = True
+        overall = results.get("overall_status", "unknown")
+        overall_styled = self.STATUS_STYLES.get(overall, f"[bold]{overall}[/bold]")
+
+        lines = [f"[bold]Test Results:[/bold] {overall_styled}"]
+
+        for cat in results.get("categories", []):
+            name = cat.get("name", "?")
+            status = cat.get("status", "?")
+            total = cat.get("total", 0)
+            passed = cat.get("passed", 0)
+            failed = cat.get("failed", 0)
+
+            if status == "passed":
+                line = f"  [green]{name}: {passed}/{total} passed[/green]"
+            elif status == "failed":
+                line = f"  [red]{name}: {passed}/{total} passed ({failed} failed)[/red]"
+            elif status == "skipped":
+                line = f"  [dim]{name}: skipped[/dim]"
+            else:
+                line = f"  [yellow]{name}: {status}[/yellow]"
+            lines.append(line)
+
+            # Show first 3 errors for failed categories
+            if status == "failed":
+                errors = cat.get("errors", [])
+                for err in errors[:3]:
+                    test_name = err.get("test_name", "?")
+                    message = err.get("message", "?")
+                    lines.append(f"    [red]- {test_name}: {message}[/red]")
+                if len(errors) > 3:
+                    lines.append(f"    [dim]  (+{len(errors) - 3} more errors)[/dim]")
+
+        self.update("\n".join(lines))
+
+
 class CommunicationLog(RichLog):
     """Panel (c): Scrollable agent message log."""
 
@@ -434,6 +496,7 @@ class ScrumDashboard(App):
             PBIProgressBoard(id="pbi-board"),
         )
         yield Vertical(
+            TestResultsPanel(id="test-results"),
             Static("[bold]Communication Log[/bold]", id="comm-title"),
             CommunicationLog(id="comm-log"),
             Static("[bold]File Change Log[/bold]", id="file-title"),
@@ -471,6 +534,9 @@ class ScrumDashboard(App):
 
         pbi_board = self.query_one("#pbi-board", PBIProgressBoard)
         pbi_board.update_content()
+
+        test_results = self.query_one("#test-results", TestResultsPanel)
+        test_results.update_content()
 
         comm_log = self.query_one("#comm-log", CommunicationLog)
         comm_log.update_content()

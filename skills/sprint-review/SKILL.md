@@ -28,22 +28,36 @@ disable-model-invocation: true
 2. **Present change summary**: Present to the user what was accomplished
    during the Sprint, including: the Sprint Goal, which PBIs were completed
    (`status: "done"`), and which PBIs remain incomplete (if any).
-3. **Demo completed work**: For EVERY completed PBI, demonstrate what was
-   built. This is mandatory — demos are the core of Sprint Review.
-   - **UI/frontend PBIs**: Run the application and show the user the new
-     screens, interactions, or visual changes. Walk through the user flow.
-   - **API/backend PBIs**: Show example API calls and responses, demonstrate
-     new endpoints, or run key tests to show the feature working.
-   - **Infrastructure/config PBIs**: Show the configuration changes, run
-     relevant commands to demonstrate the setup, or show logs/output proving
-     the feature works.
-   - **Always narrate**: Explain what each demo shows and how it relates to
-     the PBI's acceptance criteria.
+3. **Launch the application**: This is mandatory — you MUST launch the app
+   locally before presenting any PBI demos. Do NOT skip this step.
+   a. Detect the start command: check `package.json` scripts (`dev`,
+      `start`), `Makefile`, `docker-compose.yml`, `manage.py runserver`,
+      `cargo run`, or similar. If unsure, read the project README.
+   b. Run the start command and confirm the app is running (e.g., server
+      listening on a port, UI accessible at a URL, CLI producing output).
+   c. If the app fails to start, troubleshoot the error, fix it, and
+      retry. Do NOT skip the demo because of a startup failure.
+   d. Tell the user the app is running and where to access it (URL, port,
+      or command).
+4. **Demo each completed PBI**: For EVERY completed PBI, demonstrate what
+   was built. This is mandatory — demos are the core of Sprint Review.
+   For each PBI:
+   a. **State the PBI**: "Now demonstrating PBI-XXX: <title>".
+   b. **Show it working**: Perform the concrete action that proves the PBI
+      is done — navigate to a page, call an endpoint, run a command, or
+      trigger the feature.
+   c. **Point out what to verify**: Tell the user exactly what behavior
+      they should see. Be specific:
+      - "You should see a login form with email and password fields"
+      - "The API should return a 200 with a JSON array of items"
+      - "The config file should now include the new database section"
+   d. **Ask the user to confirm**: "Can you confirm this is working as
+      expected?" — wait for their response before moving to the next PBI.
    - Skip the demo for a PBI ONLY if the user explicitly says they don't
      need to see it.
-4. **Report scope**: Report the remaining backlog scope and progress toward
+5. **Report scope**: Report the remaining backlog scope and progress toward
    the Product Goal.
-5. **Append SprintSummary**: Append a SprintSummary entry to
+6. **Append SprintSummary**: Append a SprintSummary entry to
    `sprint-history.json` → `sprints[]` with:
    - `id`: Sprint identifier from `sprint.json`
    - `goal`: Sprint Goal
@@ -52,9 +66,9 @@ disable-model-invocation: true
    - `pbis_total`: total count of PBIs in the Sprint
    - `started_at`: Sprint start timestamp from `sprint.json`
    - `completed_at`: current timestamp
-6. **Get user feedback**: Solicit feedback from the user on the Increment
+7. **Get user feedback**: Solicit feedback from the user on the Increment
    and any adjustments needed for upcoming work.
-7. **Commit Sprint deliverables**: Once the user approves the Sprint
+8. **Commit Sprint deliverables**: Once the user approves the Sprint
    Review, commit all Sprint deliverables to Git:
    - Run `git status` to see all changed/new files.
    - Stage all relevant files (source code, tests, config, design docs,

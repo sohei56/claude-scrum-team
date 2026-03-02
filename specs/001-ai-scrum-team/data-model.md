@@ -357,6 +357,52 @@ Stores timestamped agent activity events written by Claude Code hooks
 
 ---
 
+## Entity: TestResults
+
+**File**: `.scrum/test-results.json`
+**Owner**: Developer teammates (write during Integration Sprint)
+**Readers**: Scrum Master (quality gate), completion-gate.sh, Textual dashboard app
+
+Tracks automated test execution results during the Integration Sprint.
+Written by Developer teammates running the `smoke-test` skill.
+The Scrum Master blocks UAT until `overall_status` is `"passed"`.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `categories` | TestCategory[] | Results per test category |
+| `overall_status` | enum | `"pending"`, `"running"`, `"passed"`, `"failed"` |
+| `started_at` | ISO 8601 string | When testing began |
+| `updated_at` | ISO 8601 string | Last update timestamp |
+
+### Embedded: TestCategory
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | enum | `"unit"`, `"integration"`, `"e2e"`, `"smoke"`, `"regression"`, `"browser"` |
+| `status` | enum | `"pending"`, `"running"`, `"passed"`, `"failed"`, `"skipped"` |
+| `total` | integer | Total number of tests |
+| `passed` | integer | Tests that passed |
+| `failed` | integer | Tests that failed |
+| `skipped` | integer | Tests that were skipped |
+| `errors` | TestError[] | Details for failed tests |
+| `runner_command` | string | Command used to run the tests |
+| `executed_at` | ISO 8601 string | When this category was executed |
+
+### Embedded: TestError
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `test_name` | string | Name or identifier of the failed test |
+| `message` | string | Error message or failure reason |
+
+### Rules
+- Created by Developer teammates during the Integration Sprint via `smoke-test` skill.
+- The `completion-gate.sh` hook blocks session stop during `integration_sprint` phase unless `overall_status` is `"passed"`.
+- The Scrum Master reads this file to decide whether to proceed to UAT.
+- Categories with `status: "skipped"` do not block the overall status.
+
+---
+
 ## Entity: ReviewResult
 
 **File**: `.scrum/reviews/<pbi-id>-review.md`
@@ -398,4 +444,7 @@ communications.json
 dashboard.json
   └── events[].agent_id → sprint.json.developers[].id
   └── events[].pbi_id → backlog.json.items[].id
+
+test-results.json
+  (standalone — no foreign key references; read by completion-gate.sh and dashboard)
 ```

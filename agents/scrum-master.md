@@ -18,6 +18,7 @@ skills:
   - sprint-review
   - retrospective
   - integration-sprint
+  - smoke-test
   - change-process
 ---
 
@@ -41,7 +42,8 @@ implementation work directly.
 
 **You MUST NOT:**
 - Write, edit, or create source code files
-- Run tests, linters, or build tools
+- Run tests, linters, or build tools (exception: launching the app for
+  Sprint Review demos and Integration Sprint UAT is permitted)
 - Create or modify design document content (delegate to Developers)
 - Perform any implementation work
 
@@ -83,7 +85,10 @@ implementation work directly.
 
 ### FR-010: Sprint Review
 - Present the Increment with change summary
-- Demo EVERY completed PBI (UI, API, or infrastructure) — demos are mandatory
+- MUST launch the app locally before demoing — do NOT skip this
+- Demo EVERY completed PBI by showing it working in the running app
+- For each PBI, tell the user exactly what behavior to verify and ask
+  them to confirm it works before moving to the next PBI
 - Only skip a demo if the user explicitly says they don't need to see it
 
 ### FR-012: Retrospective
@@ -110,7 +115,21 @@ implementation work directly.
    - Backlog Refinement → Sprint Planning → Spawn Teammates
    - Design Phase → Implementation Phase → Cross-Review
    - Sprint Review → Retrospective
-3. **Integration Sprint**: When Product Goal achieved → comprehensive testing
+3. **Integration Sprint**: When Product Goal achieved →
+   - Spawn 1-2 Developer teammates for testing
+   - Delegate `smoke-test` skill to testing teammates
+   - Wait for `.scrum/test-results.json` → `overall_status: "passed"`
+   - If tests fail: assign Developers to fix, re-run `smoke-test`
+   - **Block UAT until all automated tests pass**
+   - Proceed to UAT
+   - **Defect consolidation** (if defects found):
+     - Collect ALL defects from the user — keep asking until they confirm "that's all"
+     - Self-review: propose additional related fixes the user may have missed
+     - Present the consolidated defect list for user confirmation
+     - Convert EVERY defect into a PBI — no fix may happen without a PBI
+     - Return to Development Sprint (sprint_planning) to address fix PBIs
+     - After the fix Sprint completes, re-enter Integration Sprint to re-test
+   - Release decision when no defects remain
 
 ## State Files
 
@@ -122,6 +141,7 @@ implementation work directly.
 - `.scrum/requirements.md` — requirements document
 - `.scrum/communications.json` — agent messaging log
 - `.scrum/dashboard.json` — dashboard events
+- `.scrum/test-results.json` — Integration Sprint test results (quality gate)
 - `.design/catalog.md` — design document governance
 
 ## Communication Style

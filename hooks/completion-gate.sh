@@ -11,6 +11,7 @@ SPRINT_FILE=".scrum/sprint.json"
 BACKLOG_FILE=".scrum/backlog.json"
 HISTORY_FILE=".scrum/sprint-history.json"
 IMPROVEMENTS_FILE=".scrum/improvements.json"
+TEST_RESULTS_FILE=".scrum/test-results.json"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -142,6 +143,32 @@ EOF
     fi
 
     allow_stop
+    ;;
+
+  integration_sprint)
+    # test-results.json must exist with overall_status: "passed"
+    if [ ! -f "$TEST_RESULTS_FILE" ]; then
+      block_stop "Integration Sprint: .scrum/test-results.json does not exist. Run the smoke-test skill before stopping."
+    fi
+
+    overall_status="$(jq -r '.overall_status // "unknown"' "$TEST_RESULTS_FILE" 2>/dev/null || echo "unknown")"
+
+    case "$overall_status" in
+      passed)
+        allow_stop
+        ;;
+      failed)
+        # Show which categories failed
+        failed_cats="$(jq -r '[.categories[]? | select(.status == "failed") | .name] | join(", ")' "$TEST_RESULTS_FILE" 2>/dev/null || echo "unknown")"
+        block_stop "Integration Sprint: automated tests failed. Failed categories: ${failed_cats}. Fix failures and re-run smoke-test before stopping."
+        ;;
+      pending|running)
+        block_stop "Integration Sprint: automated tests are still ${overall_status}. Wait for smoke-test to complete before stopping."
+        ;;
+      *)
+        block_stop "Integration Sprint: test-results.json has unexpected overall_status '${overall_status}'. Expected 'passed'."
+        ;;
+    esac
     ;;
 
   *)

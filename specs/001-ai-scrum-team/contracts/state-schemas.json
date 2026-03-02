@@ -260,6 +260,60 @@
         "max_events": { "type": "integer", "minimum": 1, "default": 100 }
       },
       "additionalProperties": false
+    },
+
+    "TestError": {
+      "type": "object",
+      "required": ["test_name", "message"],
+      "properties": {
+        "test_name": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+
+    "TestCategory": {
+      "type": "object",
+      "required": ["name", "status", "total", "passed", "failed", "skipped", "errors", "runner_command", "executed_at"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "enum": ["unit", "integration", "e2e", "smoke", "regression", "browser"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "running", "passed", "failed", "skipped"]
+        },
+        "total": { "type": "integer", "minimum": 0 },
+        "passed": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 },
+        "errors": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/TestError" }
+        },
+        "runner_command": { "type": "string" },
+        "executed_at": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+
+    "TestResults": {
+      "type": "object",
+      "required": ["categories", "overall_status", "started_at", "updated_at"],
+      "properties": {
+        "categories": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/TestCategory" }
+        },
+        "overall_status": {
+          "type": "string",
+          "enum": ["pending", "running", "passed", "failed"]
+        },
+        "started_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
     }
   }
 }

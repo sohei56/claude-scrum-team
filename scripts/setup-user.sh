@@ -201,6 +201,66 @@ cat > "$settings_file" << 'SETTINGS_EOF'
 SETTINGS_EOF
 echo "  Written settings.json with hook configuration."
 
+# --- Configure Playwright MCP for web projects ---
+# Detect if this is a web project and add Playwright MCP for browser E2E testing
+is_web_project=false
+
+if [ -f "$TARGET_DIR/package.json" ]; then
+  # Check for start/dev scripts indicating a web app
+  if grep -qE '"(start|dev|serve)"' "$TARGET_DIR/package.json" 2>/dev/null; then
+    is_web_project=true
+  fi
+fi
+
+# Check for other web framework indicators
+if [ "$is_web_project" = false ]; then
+  if [ -f "$TARGET_DIR/manage.py" ] || \
+     [ -f "$TARGET_DIR/next.config.js" ] || \
+     [ -f "$TARGET_DIR/next.config.mjs" ] || \
+     [ -f "$TARGET_DIR/next.config.ts" ] || \
+     [ -f "$TARGET_DIR/nuxt.config.ts" ] || \
+     [ -f "$TARGET_DIR/nuxt.config.js" ] || \
+     [ -d "$TARGET_DIR/pages" ] || \
+     [ -d "$TARGET_DIR/app" ]; then
+    is_web_project=true
+  fi
+fi
+
+if [ "$is_web_project" = true ]; then
+  echo ""
+  echo "Web project detected — configuring Playwright MCP for browser E2E testing..."
+  mcp_file="$TARGET_DIR/.mcp.json"
+
+  if [ -f "$mcp_file" ]; then
+    # Merge playwright entry into existing .mcp.json if not already present
+    if ! grep -q "playwright" "$mcp_file" 2>/dev/null; then
+      # Add playwright server to existing mcpServers
+      tmp_mcp="$(mktemp)"
+      jq '.mcpServers.playwright = {"type": "stdio", "command": "npx", "args": ["@anthropic-ai/mcp-playwright"]}' "$mcp_file" > "$tmp_mcp" 2>/dev/null && mv "$tmp_mcp" "$mcp_file"
+      echo "  Added Playwright MCP to existing .mcp.json"
+    else
+      echo "  Playwright MCP already configured in .mcp.json"
+    fi
+  else
+    # Create new .mcp.json with playwright
+    cat > "$mcp_file" << 'MCP_EOF'
+{
+  "mcpServers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@anthropic-ai/mcp-playwright"]
+    }
+  }
+}
+MCP_EOF
+    echo "  Created .mcp.json with Playwright MCP"
+  fi
+else
+  echo ""
+  echo "Non-web project detected — skipping Playwright MCP configuration."
+fi
+
 # --- Configure status line ---
 # Status line config goes in settings.json or .claude/settings.local.json
 # The statusline.sh script is referenced by path
