@@ -64,16 +64,18 @@ fi
 # --- Run setup (copies agents, skills, hooks, configures settings) ---
 sh "$SCRIPT_DIR/scripts/setup-user.sh"
 
-# --- Detect new vs resume ---
+# --- Detect new vs resume and set initial prompt ---
 if [ -f ".scrum/state.json" ]; then
   echo ""
   echo "Existing project detected — resuming from saved state."
   phase="$(jq -r '.phase // "unknown"' .scrum/state.json)"
   echo "  Current phase: $phase"
+  initial_prompt="Resuming session. Review the current project state and report where we left off. Then continue the workflow from the current phase."
 else
   echo ""
   echo "New project — starting fresh."
   mkdir -p .scrum/reviews
+  initial_prompt="Introduce yourself and begin the Requirements Sprint. Greet the user, explain the Scrum workflow briefly, then start eliciting requirements."
 fi
 
 # --- Launch ---
@@ -91,7 +93,8 @@ if command -v tmux >/dev/null 2>&1; then
   tmux new-session -d -s "$session_name" -x "$(tput cols)" -y "$(tput lines)"
 
   # Main pane: Claude Code with Scrum Master agent (Agent Teams enabled process-scoped)
-  tmux send-keys -t "$session_name" "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --agent scrum-master" C-m
+  # Positional argument starts interactive session with initial prompt (unlike -p which exits)
+  tmux send-keys -t "$session_name" "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --agent scrum-master '${initial_prompt}'" C-m
 
   # Side pane: Textual TUI dashboard
   tmux split-window -h -t "$session_name" \
@@ -108,5 +111,5 @@ else
   echo "Install tmux for a richer view." >&2
   echo ""
   echo "Launching Claude Code with Scrum Master agent..."
-  CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --agent scrum-master
+  CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --agent scrum-master "$initial_prompt"
 fi

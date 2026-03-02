@@ -97,9 +97,14 @@ echo "Configuring $TARGET_DIR/.claude/settings.json..."
 
 settings_file="$TARGET_DIR/.claude/settings.json"
 
-# Create settings if not exists, or merge into existing
-if [ ! -f "$settings_file" ]; then
-  cat > "$settings_file" << 'SETTINGS_EOF'
+# Always write settings.json with current hook configuration.
+# If the file already exists, back it up so user customizations aren't lost.
+if [ -f "$settings_file" ]; then
+  cp "$settings_file" "${settings_file}.bak"
+  echo "  Backed up existing settings.json to settings.json.bak"
+fi
+
+cat > "$settings_file" << 'SETTINGS_EOF'
 {
   "permissions": {},
   "hooks": {
@@ -125,9 +130,7 @@ if [ ! -f "$settings_file" ]; then
     ],
     "PostToolUse": [
       {
-        "matcher": {
-          "tool_name": "Write|Edit"
-        },
+        "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",
@@ -169,10 +172,7 @@ if [ ! -f "$settings_file" ]; then
   }
 }
 SETTINGS_EOF
-  echo "  Created new settings.json with hook configuration."
-else
-  echo "  settings.json already exists — skipping (manual merge may be needed)."
-fi
+echo "  Written settings.json with hook configuration."
 
 # --- Configure status line ---
 # Status line config goes in settings.json or .claude/settings.local.json
