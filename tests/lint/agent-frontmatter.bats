@@ -34,10 +34,10 @@ extract_frontmatter() {
   refute_output ""
 }
 
-@test "scrum-master.md has skills field with 13 entries" {
+@test "scrum-master.md has skills field with 14 entries" {
   run bash -c "sed -n '1{/^---$/!q}; 1,/^---$/{/^---$/d; p}' '${PROJECT_ROOT}/agents/scrum-master.md' | yq '.skills | length'"
   assert_success
-  assert_output "13"
+  assert_output "14"
 }
 
 @test "scrum-master.md mentions Delegate mode" {

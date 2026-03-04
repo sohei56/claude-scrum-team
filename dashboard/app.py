@@ -14,8 +14,7 @@ Panels:
 from __future__ import annotations
 
 import json
-import sys
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from threading import Lock
 
@@ -271,10 +270,7 @@ class PBIProgressBoard(DataTable):
             )
 
             color = STATUS_COLORS.get(status, "")
-            if color:
-                status_display = f"[{color}]{status}[/{color}]"
-            else:
-                status_display = status
+            status_display = f"[{color}]{status}[/{color}]" if color else status
 
             self.add_row(pbi_id, title, status_display, impl, reviewer, key=pbi_id)
 
@@ -375,7 +371,6 @@ class CommunicationLog(RichLog):
             sender = msg.get("sender_id", "?")
             role = msg.get("sender_role", "")
             recipient = msg.get("recipient_id") or "all"
-            msg_type = msg.get("type", "?")
             content = msg.get("content", "")
 
             # Format timestamp to HH:MM:SS

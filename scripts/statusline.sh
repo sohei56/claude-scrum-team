@@ -7,8 +7,10 @@ set -euo pipefail
 # Read stdin (session JSON from Claude Code) — currently unused but available
 # for future session-aware rendering
 if [ -t 0 ]; then
+  # shellcheck disable=SC2034 # reserved for future session-aware rendering
   session_json=""
 else
+  # shellcheck disable=SC2034
   session_json="$(cat)"
 fi
 
@@ -26,7 +28,7 @@ else
 fi
 
 if [ -f "$SPRINT_FILE" ] && [ -n "$sprint_id" ] && [ "$sprint_id" != "null" ]; then
-  sprint_num="$(echo "$sprint_id" | sed 's/sprint-//')"
+  sprint_num="${sprint_id#sprint-}"
   sprint_goal="$(jq -r '.goal // "No goal"' "$SPRINT_FILE" | cut -c1-40)"
 
   # Count completed PBIs
@@ -72,12 +74,12 @@ if [ -f "$SPRINT_FILE" ]; then
     for i in $(seq 0 $((dev_count - 1))); do
       dev_id="$(jq -r ".developers[$i].id" "$SPRINT_FILE")"
       dev_status="$(jq -r ".developers[$i].status" "$SPRINT_FILE")"
-      dev_num="$(echo "$dev_id" | sed 's/dev-/Dev/')"
+      dev_num="Dev${dev_id#dev-}"
 
       # Get first implementation PBI for context
       impl_pbi="$(jq -r ".developers[$i].assigned_work.implement[0] // empty" "$SPRINT_FILE")"
       if [ -n "$impl_pbi" ] && [ "$dev_status" = "active" ]; then
-        pbi_short="$(echo "$impl_pbi" | sed 's/pbi-/PBI-/')"
+        pbi_short="PBI-${impl_pbi#pbi-}"
         agent_parts="$agent_parts $dev_num:$dev_status($pbi_short)"
       else
         agent_parts="$agent_parts $dev_num:$dev_status"

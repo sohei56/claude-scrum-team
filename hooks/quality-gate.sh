@@ -7,7 +7,6 @@
 set -euo pipefail
 
 BACKLOG_FILE=".scrum/backlog.json"
-SPRINT_FILE=".scrum/sprint.json"
 
 # ---------------------------------------------------------------------------
 # Helpers

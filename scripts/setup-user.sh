@@ -51,7 +51,7 @@ if [ ${#missing_packages[@]} -gt 0 ]; then
   echo "" >&2
   echo "Recommended: install in a virtual environment:" >&2
   echo "  python3 -m venv .venv" >&2
-  echo "  source .venv/bin/activate   # On Windows: .venv\\Scripts\\activate" >&2
+  printf '  source .venv/bin/activate   # On Windows: .venv\\Scripts\\activate\n' >&2
   echo "  pip install textual watchdog" >&2
   echo "" >&2
   echo "Or install directly:" >&2

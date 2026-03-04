@@ -24,6 +24,7 @@ deny() {
   exit 0
 }
 
+# shellcheck disable=SC2317,SC2329 # called indirectly by future phase rules
 ask() {
   jq -n '{"decision": "ask"}'
   exit 0
@@ -37,8 +38,7 @@ is_source_file() {
   case "$path" in
     .scrum/*|.design/*|specs/*|agents/*|skills/*|hooks/*|scripts/*|dashboard/*|tests/*) return 1 ;;
     .git/*|.claude/*|.specify/*|.github/*) return 1 ;;
-    *.md|*.json|*.yaml|*.yml|*.toml|*.cfg|*.ini|*.editorconfig) return 1 ;;
-    CLAUDE.md|README.md|LICENSE*|.gitignore|.gitmodules|.shellcheckrc|.editorconfig) return 1 ;;
+    *.md|*.json|*.yaml|*.yml|*.toml|*.cfg|*.ini|*.editorconfig|LICENSE*|.gitignore|.gitmodules|.shellcheckrc) return 1 ;;
     *) return 0 ;;
   esac
 }
@@ -131,7 +131,7 @@ if [ -n "$target_path" ]; then
   target_path="${target_path#./}"
   # Strip absolute path prefix if it matches the working directory
   local_cwd="$(pwd)"
-  target_path="${target_path#${local_cwd}/}"
+  target_path="${target_path#"${local_cwd}"/}"
 fi
 
 # ---------------------------------------------------------------------------
