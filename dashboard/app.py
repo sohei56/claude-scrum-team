@@ -383,9 +383,7 @@ class CommunicationLog(RichLog):
             role_str = f" ({role})" if role else ""
             recipient_str = f" → {recipient}" if recipient != "all" else ""
             self.write(
-                f"[dim]{ts_short}[/dim] "
-                f"[bold]{sender}[/bold]{role_str}{recipient_str} "
-                f"{content}"
+                f"[dim]{ts_short}[/dim] [bold]{sender}[/bold]{role_str}{recipient_str} {content}"
             )
 
 
@@ -427,9 +425,7 @@ class FileChangeLog(RichLog):
                 ts_short = ts[:8]
 
             if evt_type == "file_changed" and file_path:
-                color = {"created": "green", "modified": "yellow", "deleted": "red"}.get(
-                    change, ""
-                )
+                color = {"created": "green", "modified": "yellow", "deleted": "red"}.get(change, "")
                 change_str = f"[{color}]{change}[/{color}]" if color else change
                 self.write(f"[dim]{ts_short}[/dim] {change_str} {file_path} ({agent})")
             elif evt_type == "teammate_idle":

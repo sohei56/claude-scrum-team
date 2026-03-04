@@ -326,7 +326,7 @@ Line 3: Agents: SM:active Dev1:impl(PBI-7) Dev2:review(PBI-5)
 ```json
 {
   "hooks": {
-    "PostToolUse": [{"matcher": {"tool_name": "Write|Edit"}, "hooks": [{"type": "command", "command": "hooks/dashboard-event.sh"}]}],
+    "PostToolUse": [{"matcher": {"tool_name": "Write|Edit|Bash|Agent"}, "hooks": [{"type": "command", "command": "hooks/dashboard-event.sh"}]}],
     "TaskCompleted": [{"hooks": [{"type": "command", "command": "hooks/dashboard-event.sh"}]}],
     "TeammateIdle": [{"hooks": [{"type": "command", "command": "hooks/dashboard-event.sh"}]}],
     "SubagentStart": [{"hooks": [{"type": "command", "command": "hooks/dashboard-event.sh"}]}],

@@ -196,6 +196,16 @@ cat > "$settings_file" << 'SETTINGS_EOF'
         ]
       }
     ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/dashboard-event.sh"
+          }
+        ]
+      }
+    ],
     "SubagentStop": [
       {
         "hooks": [
