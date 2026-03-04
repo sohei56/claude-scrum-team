@@ -239,7 +239,7 @@ execute.
 
 - **`spawn-teammates`**: Reproducible teammate creation during Sprint
   Planning. Developer count = min(refined PBIs, 6). Reads `sprint.json`
-  + `backlog.json`, spawns teammates with consistent naming (`Dev-001`,
+  + `backlog.json`, spawns teammates with consistent naming (`dev-001-s{N}`,
   ...). Each Developer implements their assigned PBI; reviewers are
   assigned round-robin (no self-review). In a single-PBI Sprint,
   the Scrum Master performs the review.
@@ -385,12 +385,12 @@ related_pbis: [pbi-001, pbi-005, pbi-012]
 frozen: true
 revision_history:
   - sprint: sprint-001
-    author: dev-001
+    author: dev-001-s1
     date: "2026-03-01T10:00:00Z"
     summary: "Initial architecture design"
     pbis: [pbi-001, pbi-005]
   - sprint: sprint-003
-    author: dev-004
+    author: dev-004-s3
     date: "2026-03-05T14:30:00Z"
     summary: "Added caching layer per PBI-012"
     pbis: [pbi-012]

@@ -24,9 +24,10 @@ setup() {
 }
 
 # Helper: extract YAML frontmatter (lines between the two --- markers)
+# Uses awk for macOS/Linux portability (BSD sed doesn't support this syntax)
 extract_frontmatter() {
   local file="$1"
-  sed -n '1{/^---$/!q}; 1,/^---$/{/^---$/d; p}' "$file"
+  awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' "$file"
 }
 
 @test "all 14 skill directories contain SKILL.md" {
