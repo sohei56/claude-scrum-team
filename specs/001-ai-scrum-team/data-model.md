@@ -70,7 +70,7 @@ Valid phases:
 | `id` | string | Unique identifier (e.g., `"pbi-001"`) |
 | `title` | string | Short description (e.g., "User Management") |
 | `description` | string | Full description; coarse-grained when `draft`, detailed when `refined` |
-| `acceptance_criteria` | string | Testable conditions that define when the PBI is complete. Empty when `draft`, filled during refinement to `refined` |
+| `acceptance_criteria` | string[] | Testable conditions that define when the PBI is complete. Empty array when `draft`, non-empty when `refined` |
 | `status` | enum | Lifecycle state (see below) |
 | `priority` | integer | Order in backlog (1 = highest) |
 | `sprint_id` | string \| null | Sprint this PBI is assigned to, null if in backlog |
@@ -310,7 +310,7 @@ messages with sender, recipient, and timestamp.
 | `sender_id` | string | Agent ID of the sender (e.g., `"scrum-master"`, `"dev-001-s3"`) |
 | `sender_role` | string | Human-readable role (e.g., `"Scrum Master"`, `"Developer"`) |
 | `recipient_id` | string \| null | Agent ID of the recipient; null = broadcast to all |
-| `type` | enum | Message type: `"task_assignment"`, `"progress_update"`, `"review_request"`, `"review_result"`, `"phase_notification"`, `"change_request"` |
+| `type` | enum | Message type: `"task_assignment"`, `"progress_update"`, `"review_request"`, `"review_result"`, `"phase_notification"`, `"change_request"`, `"file_change"`, `"agent_spawn"`, `"status_change"`, `"session_event"` |
 | `content` | string | Human-readable message summary |
 
 ### Rules

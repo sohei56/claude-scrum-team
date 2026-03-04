@@ -157,7 +157,7 @@ cat > "$settings_file" << 'SETTINGS_EOF'
     ],
     "PostToolUse": [
       {
-        "matcher": "Write|Edit",
+        "matcher": "Write|Edit|Bash|Agent",
         "hooks": [
           {
             "type": "command",
@@ -187,6 +187,16 @@ cat > "$settings_file" << 'SETTINGS_EOF'
       }
     ],
     "TeammateIdle": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/dashboard-event.sh"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
       {
         "hooks": [
           {

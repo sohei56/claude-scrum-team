@@ -24,6 +24,9 @@ fi
 if ! command -v shellcheck >/dev/null 2>&1; then
   missing+=("shellcheck")
 fi
+if ! command -v ruff >/dev/null 2>&1; then
+  missing+=("ruff")
+fi
 
 if [ ${#missing[@]} -gt 0 ]; then
   echo "Installing missing dev dependencies: ${missing[*]}"
@@ -36,6 +39,7 @@ if [ ${#missing[@]} -gt 0 ]; then
     echo "On Debian/Ubuntu:" >&2
     echo "  sudo apt install bats jq shellcheck" >&2
     echo "  # yq: see https://github.com/mikefarah/yq#install" >&2
+    echo "  # ruff: pip install ruff  (or see https://docs.astral.sh/ruff/installation/)" >&2
     exit 1
   fi
 else
@@ -59,3 +63,4 @@ echo ""
 echo "Verify with:"
 echo "  bats tests/unit/ tests/lint/"
 echo "  shellcheck scrum-start.sh scripts/*.sh hooks/*.sh"
+echo "  ruff check dashboard/"

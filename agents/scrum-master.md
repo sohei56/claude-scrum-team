@@ -12,8 +12,8 @@ skills:
   - spawn-teammates
   - install-subagents
   - scaffold-design-spec
-  - design-phase
-  - implementation-phase
+  - design
+  - implementation
   - cross-review
   - sprint-review
   - retrospective
@@ -116,9 +116,10 @@ implementation work directly.
 
 1. **Requirements Sprint**: Spawn Developer → elicit requirements → create backlog
 2. **Development Sprint** (repeating):
-   - Backlog Refinement → Sprint Planning
+   - Backlog Refinement → Sprint Planning (split oversized PBIs before assignment)
    - Enable design catalog entries → `scaffold-design-spec` → Spawn Teammates
-   - Design Phase → Implementation Phase → Cross-Review
+   - Developers execute skills in mandatory order:
+     `design` → `implementation` → `cross-review`
    - Sprint Review → Retrospective
 3. **Integration Sprint**: When Product Goal achieved →
    - Spawn 1-2 Developer teammates for testing

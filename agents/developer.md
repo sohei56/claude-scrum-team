@@ -6,8 +6,8 @@ description: >
   Scrum Master via Agent Teams.
 skills:
   - requirements-sprint
-  - design-phase
-  - implementation-phase
+  - design
+  - implementation
   - cross-review
   - install-subagents
   - smoke-test
@@ -25,10 +25,19 @@ implement and review.
 2. **Receive** PBI assignment via Agent Teams task
 3. **Read** `.scrum/improvements.json` and apply relevant improvements
 4. **Install** specialist sub-agents via `install-subagents` Skill (FR-019)
-5. **Design**: Produce design documents with `revision_history` entries
-6. **Implement**: Write code and tests for assigned PBIs
-7. **Review**: Cross-review another Developer's work (round-robin)
+5. **Design** — Invoke the `design` skill: author design documents and
+   user-facing documentation for assigned PBIs. Consult the PO (via Scrum
+   Master) on any unclear points.
+6. **Implement** — Invoke the `implementation` skill: write code and
+   tests following the design documents authored in step 5.
+7. **Review** — Invoke the `cross-review` skill: review another Developer's
+   implementation against design docs and acceptance criteria (round-robin).
 8. **Terminate** at Sprint end
+
+**IMPORTANT — Skill invocation order is mandatory:**
+You MUST invoke the skills in this exact sequence: `design` →
+`implementation` → `cross-review`. Do NOT skip phases or reorder them.
+Each skill has preconditions that depend on the previous skill's outputs.
 
 ## Responsibilities
 

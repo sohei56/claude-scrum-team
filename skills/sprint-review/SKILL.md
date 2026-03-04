@@ -57,9 +57,23 @@ disable-model-invocation: true
       expected?" — wait for their response before moving to the next PBI.
    - Skip the demo for a PBI ONLY if the user explicitly says they don't
      need to see it.
-5. **Report scope**: Report the remaining backlog scope and progress toward
+5. **Check documentation–implementation consistency**: For EVERY completed
+   PBI, verify that the documentation matches the implementation:
+   a. Identify all documentation produced for the PBI: README sections,
+      API/usage docs, inline docstrings, design documents.
+   b. Compare the documented behavior, parameters, endpoints, and examples
+      against the actual source code.
+   c. Flag any inconsistencies: missing docs for implemented features,
+      outdated docs that describe removed or changed behavior, incorrect
+      parameter names or return values, wrong examples.
+   d. For EACH inconsistency found, create a new PBI in `backlog.json`
+      with `status: "draft"`, a clear title (e.g.,
+      "Fix docs: <description of mismatch>"), and a description explaining
+      what is inconsistent and what the correct state should be.
+   e. Report all consistency findings to the user before proceeding.
+6. **Report scope**: Report the remaining backlog scope and progress toward
    the Product Goal.
-6. **Append SprintSummary**: Append a SprintSummary entry to
+7. **Append SprintSummary**: Append a SprintSummary entry to
    `sprint-history.json` → `sprints[]` with:
    - `id`: Sprint identifier from `sprint.json`
    - `goal`: Sprint Goal
@@ -68,9 +82,9 @@ disable-model-invocation: true
    - `pbis_total`: total count of PBIs in the Sprint
    - `started_at`: Sprint start timestamp from `sprint.json`
    - `completed_at`: current timestamp
-7. **Get user feedback**: Solicit feedback from the user on the Increment
+8. **Get user feedback**: Solicit feedback from the user on the Increment
    and any adjustments needed for upcoming work.
-8. **Handle defects and feedback**: If the user reports bugs, defects,
+9. **Handle defects and feedback**: If the user reports bugs, defects,
    or requests changes:
    a. **Do NOT fix anything directly** — the Scrum Master operates in
       Delegate mode and must never write code or make implementation
@@ -83,8 +97,8 @@ disable-model-invocation: true
       feedback, proceed to the next step.
    e. These new PBIs will be addressed in the next Sprint through the
       normal Backlog Refinement → Sprint Planning workflow.
-9. **Commit Sprint deliverables**: Once the user approves the Sprint
-   Review, commit all Sprint deliverables to Git:
+10. **Commit Sprint deliverables**: Once the user approves the Sprint
+    Review, commit all Sprint deliverables to Git:
    - Run `git status` to see all changed/new files.
    - Stage all relevant files (source code, tests, config, design docs,
      `.scrum/` state files). Exclude temporary files, build artifacts,
@@ -108,6 +122,8 @@ Reference: FR-010, FR-011
 
 - SprintSummary has been appended to `sprint-history.json` → `sprints[]`
 - User has reviewed the Increment and provided feedback
+- Documentation–implementation consistency has been checked for all completed PBIs
+- Any inconsistencies found have been created as draft PBIs in `backlog.json`
 - Any reported defects/changes have been created as new PBIs in `backlog.json` (NOT fixed directly)
 - Sprint deliverables have been committed to Git
 - `state.json` → `phase: "sprint_review"`

@@ -100,8 +100,8 @@ claude-scrum-team/
 │   ├── sprint-planning/      # Sprint Planning ceremony
 │   ├── spawn-teammates/      # Reproducible teammate creation
 │   ├── install-subagents/    # Reproducible sub-agent selection from catalog
-│   ├── design-phase/         # Design phase orchestration
-│   ├── implementation-phase/ # Implementation phase orchestration
+│   ├── design/         # Design phase orchestration
+│   ├── implementation/ # Implementation phase orchestration
 │   ├── cross-review/         # Cross-review process
 │   ├── sprint-review/        # Sprint Review ceremony
 │   ├── retrospective/        # Retrospective ceremony
@@ -109,7 +109,8 @@ claude-scrum-team/
 │   ├── integration-sprint/   # Integration Sprint ceremony
 │   ├── backlog-refinement/   # PBI refinement process
 │   ├── change-process/       # FR-016 Change Process
-│   └── scaffold-design-spec/ # Template stub creation on catalog enable
+│   ├── scaffold-design-spec/ # Template stub creation on catalog enable
+│   └── smoke-test/           # Automated test execution and HTTP smoke testing
 ├── hooks/
 │   ├── phase-gate.sh        # PreToolUse: gates tools by phase
 │   ├── session-context.sh   # SessionStart: injects phase context
@@ -171,7 +172,7 @@ bats tests/lint/skill-frontmatter.bats
 
 ### Agents
 - `agents/scrum-master.md` — Team lead in **Delegate mode** (coordination
-  only). Preloads all 13 ceremony Skills.
+  only). Preloads all 14 ceremony Skills.
 - `agents/developer.md` — Teammate template, spawned per Sprint.
 
 ### Skills
@@ -229,7 +230,7 @@ sh /path/to/claude-scrum-team/scrum-start.sh
 # Interact with the Scrum team, then verify:
 # - .scrum/ directory exists with state files
 # - .claude/agents/ contains scrum-master.md and developer.md
-# - .claude/skills/ contains all 13 ceremony skills
+# - .claude/skills/ contains all 14 ceremony skills
 # - Status line displays at bottom of terminal
 # - Textual dashboard appears in tmux side pane (if tmux available)
 # - Hooks are configured in .claude/settings.json

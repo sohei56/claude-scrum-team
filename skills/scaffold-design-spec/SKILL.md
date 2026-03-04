@@ -1,6 +1,6 @@
 ---
 name: scaffold-design-spec
-description: Create template stub files for newly enabled catalog entries
+description: Create template stub files for newly enabled catalog entries, including user-facing documentation
 disable-model-invocation: true
 ---
 
@@ -21,6 +21,8 @@ disable-model-invocation: true
   - `frozen: false`
   - `revision_history` with an initial entry (sprint, author, date, summary: "Initial stub created", pbis)
 - Placeholder sections in the body
+- Documentation stubs (category `docs/`) use documentation-oriented placeholder
+  sections: Overview, Usage, API Reference, Examples
 
 ## Preconditions
 
@@ -46,6 +48,12 @@ disable-model-invocation: true
       - `## Design Details`
       - `## Constraints`
       - `## References`
+   d. For entries with category `docs/`, use documentation-oriented
+      placeholder sections instead:
+      - `## Overview`
+      - `## Usage`
+      - `## API Reference`
+      - `## Examples`
 3. Skip any enabled entries that already have an existing stub file (idempotent behavior).
 4. Report summary: number of stubs created, paths of new files.
 
@@ -57,3 +65,5 @@ Reference: FR-004
 - Each stub file has valid YAML frontmatter with all required fields (`catalog_id`, `created_sprint`, `last_updated_sprint`, `related_pbis`, `frozen`, `revision_history`)
 - Each stub file contains placeholder sections: Overview, Design Details, Constraints, References
 - No duplicate stubs are created for entries that already have files
+- Documentation stubs (category `docs/`) have documentation-oriented
+  placeholder sections (Overview, Usage, API Reference, Examples)

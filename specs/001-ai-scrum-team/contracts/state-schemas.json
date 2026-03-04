@@ -36,7 +36,11 @@
         "id": { "type": "string", "pattern": "^pbi-\\d+$" },
         "title": { "type": "string", "minLength": 1 },
         "description": { "type": "string" },
-        "acceptance_criteria": { "type": "string" },
+        "acceptance_criteria": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Testable conditions that define when the PBI is complete. Empty array when draft, non-empty when refined"
+        },
         "status": {
           "type": "string",
           "enum": ["draft", "refined", "in_progress", "review", "done"]
@@ -80,7 +84,7 @@
       "type": "object",
       "required": ["id", "assigned_work", "status"],
       "properties": {
-        "id": { "type": "string", "pattern": "^dev-\\d+$" },
+        "id": { "type": "string", "pattern": "^dev-\\d+-s\\d+$" },
         "assigned_work": {
           "type": "object",
           "required": ["implement", "review"],
@@ -123,7 +127,7 @@
         },
         "status": {
           "type": "string",
-          "enum": ["planning", "active", "review", "retrospective", "complete"]
+          "enum": ["planning", "active", "cross_review", "sprint_review", "complete"]
         },
         "pbi_ids": {
           "type": "array",
@@ -207,7 +211,7 @@
         "recipient_id": { "type": ["string", "null"] },
         "type": {
           "type": "string",
-          "enum": ["task_assignment", "progress_update", "review_request", "review_result", "phase_notification", "change_request"]
+          "enum": ["task_assignment", "progress_update", "review_request", "review_result", "phase_notification", "change_request", "file_change", "agent_spawn", "status_change", "session_event"]
         },
         "content": { "type": "string", "minLength": 1 }
       },

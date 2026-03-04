@@ -156,7 +156,7 @@ agent.
 
 ### Key Technical Details
 - Script flow:
-  1. Validate Claude Code is installed and Agent Teams is enabled.
+  1. Validate Claude Code is installed. Set `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` process-scoped (no user action needed; exit code 2 is reserved but not triggered).
   2. Validate Python 3.9+ and TUI packages (`textual`, `watchdog`).
   3. Determine user's project root (current directory).
   4. Check for existing `.scrum/` directory (resume vs. new project).
@@ -170,9 +170,9 @@ agent.
   9. On resume: append system prompt includes current state summary.
 - All stderr messages MUST be actionable: clearly state what went wrong
   and what to do next.
-- Exit codes: `0` (normal), `1` (Claude Code not found), `2` (Agent Teams
-  not enabled), `3` (Python 3.9+ or TUI packages not found). See R2 for
-  full exit code table.
+- Exit codes: `0` (normal), `1` (Claude Code not found), `2` (reserved —
+  Agent Teams is set process-scoped by `scrum-start.sh`), `3` (Python 3.9+
+  or TUI packages not found). See R2 for full exit code table.
 
 **Python / pip Guidance** (`setup-user.sh`):
 - MUST check for `pip`/`pip3`. If missing, print actionable guidance
@@ -204,8 +204,8 @@ execute.
     sprint-planning/SKILL.md       # Sprint Planning ceremony
     spawn-teammates/SKILL.md       # Teammate creation (reproducible)
     install-subagents/SKILL.md     # Sub-agent selection from catalog (reproducible)
-    design-phase/SKILL.md          # Design phase orchestration
-    implementation-phase/SKILL.md  # Implementation phase orchestration
+    design/SKILL.md          # Design phase orchestration
+    implementation/SKILL.md  # Implementation phase orchestration
     cross-review/SKILL.md          # Cross-review process
     sprint-review/SKILL.md         # Sprint Review ceremony
     retrospective/SKILL.md         # Retrospective ceremony
@@ -214,6 +214,7 @@ execute.
     backlog-refinement/SKILL.md    # PBI refinement process
     change-process/SKILL.md        # FR-016 Change Process
     scaffold-design-spec/SKILL.md  # Template stub creation on catalog enable
+    smoke-test/SKILL.md            # Automated test execution and HTTP smoke testing
   ```
 
 - **Mandatory Inputs/Outputs section**: Every Skill MUST declare, at the
@@ -248,8 +249,9 @@ execute.
   after receiving PBI assignments. Graceful degradation if catalog
   unavailable.
 
-- The Scrum Master preloads all 13 Skills via `skills:` frontmatter.
-  `install-subagents` is also loaded by the Developer agent definition.
+- The Scrum Master preloads all 14 Skills via `skills:` frontmatter.
+  The Developer agent loads 6 Skills: `requirements-sprint`, `design`,
+  `implementation`, `cross-review`, `install-subagents`, and `smoke-test`.
 
 ### Alternatives Considered
 - **Prompt-only control**: Rejected — enormous prompt, not reproducible.

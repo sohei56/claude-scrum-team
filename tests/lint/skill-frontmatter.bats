@@ -9,8 +9,8 @@ setup() {
     sprint-planning
     spawn-teammates
     install-subagents
-    design-phase
-    implementation-phase
+    design
+    implementation
     cross-review
     sprint-review
     retrospective
@@ -19,6 +19,7 @@ setup() {
     backlog-refinement
     change-process
     scaffold-design-spec
+    smoke-test
   )
 }
 
@@ -28,7 +29,7 @@ extract_frontmatter() {
   sed -n '1{/^---$/!q}; 1,/^---$/{/^---$/d; p}' "$file"
 }
 
-@test "all 13 skill directories contain SKILL.md" {
+@test "all 14 skill directories contain SKILL.md" {
   for skill in "${SKILL_NAMES[@]}"; do
     local skill_file="${PROJECT_ROOT}/skills/${skill}/SKILL.md"
     [ -f "$skill_file" ] || {

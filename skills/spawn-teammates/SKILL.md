@@ -62,7 +62,16 @@ disable-model-invocation: true
 6. Spawn Agent Teams teammates using `agents/developer.md` template:
    - Each teammate receives their PBI assignment via task list.
    - Teammates are named consistently with Sprint suffix (`Dev-001-S3`, `Dev-002-S3`, ...).
-7. Verify all teammates are active and have received their assignments.
+   - The task assignment MUST include explicit skill invocation instructions:
+     ```
+     Execute these skills in order for your assigned PBIs:
+     1. Invoke the `design` skill — author design docs and user-facing documentation
+     2. Invoke the `implementation` skill — implement code and tests per design
+     3. Invoke the `cross-review` skill — review your assigned peer's work
+     Do NOT skip or reorder these steps.
+     ```
+7. Verify all teammates are active and have received their assignments
+   including the skill invocation sequence.
 8. Update `sprint.json` → `status: "active"` to mark the Sprint as in progress.
 
 ## Exit Criteria

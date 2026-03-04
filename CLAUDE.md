@@ -9,7 +9,7 @@ agents/                  # Scrum Master + Developer agent definitions
   developer.md           # Developer teammate
 skills/                  # Ceremony Skills (YAML frontmatter + Markdown)
   backlog-refinement/    change-process/      cross-review/
-  design-phase/          implementation-phase/ install-subagents/
+  design/          implementation/ install-subagents/
   integration-sprint/    requirements-sprint/  retrospective/
   scaffold-design-spec/  smoke-test/          spawn-teammates/
   sprint-planning/       sprint-review/

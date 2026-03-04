@@ -73,8 +73,8 @@ claude-scrum-team/
 │   ├── sprint-planning/SKILL.md
 │   ├── spawn-teammates/SKILL.md       # Reproducible teammate creation
 │   ├── install-subagents/SKILL.md     # Reproducible sub-agent selection
-│   ├── design-phase/SKILL.md
-│   ├── implementation-phase/SKILL.md
+│   ├── design/SKILL.md
+│   ├── implementation/SKILL.md
 │   ├── cross-review/SKILL.md
 │   ├── sprint-review/SKILL.md
 │   ├── retrospective/SKILL.md
@@ -82,7 +82,8 @@ claude-scrum-team/
 │   ├── integration-sprint/SKILL.md
 │   ├── backlog-refinement/SKILL.md
 │   ├── change-process/SKILL.md
-│   └── scaffold-design-spec/SKILL.md  # Template stub creation on catalog enable
+│   ├── scaffold-design-spec/SKILL.md  # Template stub creation on catalog enable
+│   └── smoke-test/SKILL.md           # Automated test execution and HTTP smoke testing
 ├── hooks/
 │   ├── phase-gate.sh            # PreToolUse: gates tools by phase + catalog enforcement
 │   ├── session-context.sh       # SessionStart: injects phase context
@@ -108,7 +109,7 @@ claude-scrum-team/
 ```
 
 **Structure Decision**: Single project layout. Shell scripts in `hooks/` and
-`scripts/`, agent definitions in `agents/`, skills in `skills/` (13 total,
+`scripts/`, agent definitions in `agents/`, skills in `skills/` (14 total,
 each with mandatory Inputs/Outputs), Python TUI in `dashboard/`. Design
 documents governed by `.design/catalog.md` at `.design/specs/{category}/`.
 

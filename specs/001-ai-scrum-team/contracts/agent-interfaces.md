@@ -17,7 +17,7 @@ responsibilities (what it owns).
   implementation work; can only manage tasks, communicate with teammates,
   and review output). Enforced via agent definition instruction +
   Shift+Tab toggle at runtime.
-**Skills**: All 13 ceremony Skills preloaded via `skills:` field
+**Skills**: All 14 ceremony Skills preloaded via `skills:` field
 
 ### Inputs
 - User natural language (direct conversation)
@@ -75,35 +75,37 @@ responsibilities (what it owns).
 | `sprint-planning` | Sprint Planning | FR-005, FR-006, FR-007, FR-008 |
 | `spawn-teammates` | Teammate creation (reproducible) | FR-001, FR-007 |
 | `install-subagents` | Sub-agent selection from catalog | FR-019 |
-| `design-phase` | Design phase orchestration | FR-004 |
-| `implementation-phase` | Implementation phase orchestration | FR-017 |
+| `design` | Design phase orchestration | FR-004 |
+| `implementation` | Implementation phase orchestration | FR-017 |
 | `cross-review` | Cross-review process | FR-009 |
 | `sprint-review` | Sprint Review | FR-010, FR-011 |
 | `retrospective` | Retrospective | FR-012 |
 | `integration-sprint` | Integration Sprint | FR-013 |
 | `change-process` | Change Process | FR-016 |
 | `scaffold-design-spec` | Design stub creation on catalog enable | FR-004 |
+| `smoke-test` | Automated test execution and HTTP smoke testing | FR-013, FR-017 |
 
 ### Skill Inputs/Outputs Reference
 
 Every Skill MUST declare `## Inputs` and `## Outputs` at the top of its
-body. Below is the reference for all 13 Skills:
+body. Below is the reference for all 14 Skills:
 
 | Skill | Inputs (required state) | Outputs (files/keys updated) |
 |-------|------------------------|------------------------------|
 | `requirements-sprint` | `state.json` → `phase: new` | `requirements.md` (created); `state.json` → `phase: requirements_sprint → backlog_created` |
 | `backlog-refinement` | `backlog.json` → `items[]` with `status: draft`; `requirements.md`; count of existing `refined` PBIs (WIP check) | `backlog.json` → `items[].status: refined`, `acceptance_criteria`, `ux_change`, `design_doc_paths` (refined WIP capped at 6-12) |
-| `sprint-planning` | `state.json` → `phase: backlog_created \| retrospective`; `backlog.json` → refined PBIs | `sprint.json` (created); `backlog.json` → `items[].sprint_id`, `implementer_id`, `reviewer_id` (round-robin); `state.json` → `phase: sprint_planning` |
-| `spawn-teammates` | `sprint.json` → `pbi_ids`, `developer_count`; `backlog.json` → assigned PBIs | `sprint.json` → `developers[]` (populated, `assigned_work.implement` + `assigned_work.review`); Agent Teams teammates spawned |
+| `sprint-planning` | `state.json` → `phase: backlog_created \| retrospective`; `backlog.json` → refined PBIs | `sprint.json` (created); `backlog.json` → `items[].sprint_id`, `implementer_id`, `reviewer_id` (round-robin); oversized PBIs split into child PBIs with `parent_pbi_id` set; `state.json` → `phase: sprint_planning` |
+| `spawn-teammates` | `sprint.json` → `pbi_ids`, `developer_count`; `backlog.json` → assigned PBIs | `sprint.json` → `developers[]` (populated, `assigned_work.implement` + `assigned_work.review`), `status: "active"`; Agent Teams teammates spawned |
 | `install-subagents` | PBI assignment (task context); catalog URL | `.claude/agents/*.md` (installed); `sprint.json` → `developers[].sub_agents` (at runtime) |
-| `design-phase` | `state.json` → `phase: sprint_planning`; `sprint.json` → `developers[]`; `.design/catalog.md`; existing `.design/specs/**/*.md` (stubs already created by `scaffold-design-spec`) | `.design/specs/{category}/*.md` (populated with design content, `revision_history` incl. `pbis`); `backlog.json` → `items[].design_doc_paths`; `state.json` → `phase: design` |
-| `implementation-phase` | `state.json` → `phase: design`; `sprint.json`; `.design/specs/**/*.md`; `requirements.md` | Source code; test files; `backlog.json` → `items[].status: in_progress`; `state.json` → `phase: implementation` |
-| `cross-review` | `state.json` → `phase: implementation`; all PBIs `status: in_progress` complete | `reviews/<pbi-id>-review.md` (created); `backlog.json` → `items[].status: review → done`, `reviewer_id` = `"scrum-master"` if single-PBI Sprint; `state.json` → `phase: review` |
-| `sprint-review` | `state.json` → `phase: review`; `sprint.json`; `backlog.json` | `sprint-history.json` → `sprints[]` (appended); `state.json` → `phase: sprint_review` |
-| `retrospective` | `state.json` → `phase: sprint_review` | `improvements.json` → `entries[]` (appended); `state.json` → `phase: retrospective` |
-| `integration-sprint` | `state.json` → `phase: retrospective`; user confirmation | Test results; `state.json` → `phase: integration_sprint → complete` |
+| `design` | `state.json` → `phase: sprint_planning`; `sprint.json` → `developers[]`; `.design/catalog.md`; existing `.design/specs/**/*.md` (stubs already created by `scaffold-design-spec`); `requirements.md` (source requirements for reference) | `.design/specs/{category}/*.md` (populated with design content, `revision_history` incl. `pbis`); `backlog.json` → `items[].design_doc_paths`; `state.json` → `phase: design` |
+| `implementation` | `state.json` → `phase: design`; `sprint.json`; `.design/specs/**/*.md`; `requirements.md` | Source code; test files; `backlog.json` → `items[].status: in_progress`; `state.json` → `phase: implementation` |
+| `cross-review` | `state.json` → `phase: implementation`; `backlog.json` → all PBIs in current Sprint with `status: in_progress` complete; `requirements.md`; relevant `.design/specs/**/*.md` for each PBI | `sprint.json` → `status: "cross_review"`; `backlog.json` → `items[].status: in_progress → review → done`, `items[].review_doc_path` set; `reviews/<pbi-id>-review.md` (created); `reviewer_id` = `"scrum-master"` if single-PBI Sprint; `state.json` → `phase: review` |
+| `sprint-review` | `state.json` → `phase: review`; `sprint.json`; `backlog.json` | `sprint.json` → `status: "sprint_review"`; `sprint-history.json` → `sprints[]` (appended); `state.json` → `phase: sprint_review` |
+| `retrospective` | `state.json` → `phase: sprint_review`; `improvements.json` (existing improvements and `last_consolidation_sprint`); `sprint.json` → `id` (for consolidation check) | `improvements.json` → `entries[]` (appended), stale entries archived every 3 Sprints (`status: archived`, `archived_at` set, `last_consolidation_sprint` updated); `sprint.json` → `status: "complete"`; `state.json` → `phase: retrospective` |
+| `integration-sprint` | `state.json` → `phase: retrospective`; user confirmation | `.scrum/test-results.json` (structured test results from automated testing); `state.json` → `phase: integration_sprint → complete` |
 | `change-process` | Frozen document path; proposed change description; user approval | Updated document with new `revision_history` entry (incl. `pbis`); `backlog.json` updates if needed |
 | `scaffold-design-spec` | `.design/catalog.md` (newly enabled entries); `sprint.json` → `id` (current Sprint); `backlog.json` → PBI IDs for `related_pbis` | `.design/specs/{category}/{id}-{slug}.md` (stub files with frontmatter + placeholders) |
+| `smoke-test` | `state.json` → `phase: "integration_sprint"`; `requirements.md` (endpoint/workflow discovery); project source code with existing tests | Test execution results; `.scrum/test-results.json` (populated with test category results) |
 
 ### Lifecycle
 1. On new project: create `state.json` with `phase: "new"`, start Requirements Sprint

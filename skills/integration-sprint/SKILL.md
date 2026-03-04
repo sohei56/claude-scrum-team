@@ -15,7 +15,6 @@ disable-model-invocation: true
 ## Outputs (files/keys updated)
 
 - `.scrum/test-results.json` — structured test results from automated testing
-- Documentation consistency checks
 - `state.json` → `phase: "integration_sprint"` → `"complete"` when user
   confirms release-ready
 
@@ -51,24 +50,18 @@ disable-model-invocation: true
      - Present the full list of automated test failures to the user
      - Ask the user if they see additional related issues
      - Create a PBI in `backlog.json` for EACH confirmed failure
-     - Transition to a Development Sprint (step 9) to fix all PBIs
+     - Transition to a Development Sprint (step 8) to fix all PBIs
      - After the fix Sprint, return to step 1 to re-run Integration Sprint
    - **BLOCK UAT until all automated tests pass.** Do NOT skip this gate.
    - **No Developer may fix code without an assigned PBI.** Do NOT
      directly assign ad-hoc fixes to teammates.
 
-5. **Documentation Consistency**: Verify design documents match the
-   implemented code. Check for stale or contradictory documentation.
-
-6. **User Acceptance Testing**: This is mandatory — you MUST launch the app
+5. **User Acceptance Testing**: This is mandatory — you MUST launch the app
    and walk the user through verification. Do NOT skip this step.
-   a. **Launch the application locally**:
-      - Detect the start command (check `package.json` scripts, `Makefile`,
-        `docker-compose.yml`, `manage.py runserver`, `cargo run`, or
-        similar). If unsure, read the project README.
-      - Run the start command and confirm the app is running.
-      - If it fails to start, troubleshoot and fix before proceeding.
-      - Tell the user the app is running and where to access it.
+   a. **Verify the application is running**: The app should already be
+      running from automated testing (smoke-test). If it was shut down,
+      re-launch it using the start command identified during smoke testing.
+      Confirm the app is accessible and tell the user where to find it.
    b. **Build a verification checklist**: For each key user workflow from
       `requirements.md`, create a numbered checklist of specific behaviors
       the user should verify. Be concrete:
@@ -82,9 +75,9 @@ disable-model-invocation: true
       time. After each item, ask the user: "Does this work as expected?"
       Wait for their response before moving to the next item.
    d. **Record results**: Note which items pass and which have issues.
-      Issues become defects for step 7.
+      Issues become defects for step 6.
 
-7. **Defect Collection** (do NOT fix anything yet):
+6. **Defect Collection** (do NOT fix anything yet):
    Collect ALL defects before any implementation work begins.
 
    a. **Gather user-reported defects**: Present every UAT failure to the user
@@ -98,7 +91,7 @@ disable-model-invocation: true
       Scrum-Master-proposed defects into a single numbered list. Present the
       consolidated list to the user and get confirmation that it is complete.
 
-8. **Defect-to-PBI Conversion**:
+7. **Defect-to-PBI Conversion**:
    For EACH confirmed defect, create a new PBI in `backlog.json`:
    - Set `status: "draft"`, then immediately refine to `status: "refined"`
    - Write clear `acceptance_criteria` describing the expected vs. actual behavior
@@ -108,7 +101,7 @@ disable-model-invocation: true
    This is non-negotiable — ad-hoc fixes outside the PBI workflow are
    strictly forbidden.
 
-9. **Return to Development Sprint**: Transition `state.json` →
+8. **Return to Development Sprint**: Transition `state.json` →
    `phase: "backlog_created"`. Run the normal Development Sprint cycle
    (Backlog Refinement → Sprint Planning → Design → Implementation →
    Cross-Review → Sprint Review → Retrospective) to address the fix
@@ -116,7 +109,7 @@ disable-model-invocation: true
    re-evaluate the Product Goal — if all PBIs are done, the workflow
    naturally re-enters Integration Sprint for re-testing.
 
-10. **Release Decision**: Ask the user if the product is release-ready.
+9. **Release Decision**: Ask the user if the product is release-ready.
     - If yes: Update `state.json` → `phase: "complete"`.
     - If no: Identify remaining work, return to Development Sprint cycle.
 
@@ -124,7 +117,6 @@ disable-model-invocation: true
 
 - `.scrum/test-results.json` exists with `overall_status: "passed"`
 - All detectable test categories executed or explicitly skipped
-- Documentation consistency verified
 - User acceptance testing completed with feedback collected
 - User has confirmed release-ready OR new PBIs created for remaining work
 - `state.json` → `phase: "complete"` (if release-ready)
