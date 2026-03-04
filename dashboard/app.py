@@ -13,8 +13,6 @@ Panels:
 
 from __future__ import annotations
 
-import re
-
 import json
 import sys
 from datetime import datetime, timezone
@@ -34,9 +32,27 @@ SCRUM_DIR = Path(".scrum")
 STATUS_COLORS = {
     "draft": "dim",
     "refined": "cyan",
+    "ready": "cyan",
+    "planned": "cyan",
     "in_progress": "yellow",
+    "in-progress": "yellow",
+    "in progress": "yellow",
     "review": "magenta",
+    "in_review": "magenta",
     "done": "green",
+    "completed": "green",
+    "complete": "green",
+}
+
+# Normalize status values to canonical forms
+STATUS_NORMALIZE = {
+    "ready": "refined",
+    "planned": "refined",
+    "in-progress": "in_progress",
+    "in progress": "in_progress",
+    "in_review": "review",
+    "completed": "done",
+    "complete": "done",
 }
 
 # Ordered phase flow for "you are here" display
@@ -47,7 +63,6 @@ PHASE_FLOW = [
     ("sprint_planning", "Sprint Planning"),
     ("design", "Design"),
     ("implementation", "Implementation"),
-    ("sprint_execution", "Sprint Execution"),
     ("review", "Review"),
     ("sprint_review", "Sprint Review"),
     ("retrospective", "Retrospective"),
@@ -90,8 +105,6 @@ class SprintOverview(Static):
         state = read_json(SCRUM_DIR / "state.json")
         sprint = read_json(SCRUM_DIR / "sprint.json")
         backlog = read_json(SCRUM_DIR / "backlog.json")
-        history = read_json(SCRUM_DIR / "sprint-history.json")
-        improvements = read_json(SCRUM_DIR / "improvements.json")
 
         if not state:
             self.update("[bold]No project state[/bold]\nRun scrum-start.sh to begin.")
@@ -107,7 +120,6 @@ class SprintOverview(Static):
             # Handle both data-model field names and agent-produced field names
             sprint_id = sprint.get("id") or sprint.get("sprint_number") or "?"
             goal = sprint.get("goal") or sprint.get("sprint_goal") or "No goal"
-            sprint_type = sprint.get("type") or "dev"
             sprint_status = sprint.get("status") or "?"
 
             # PBI IDs: from pbi_ids[] (spec) or pbis[] objects (agent)
@@ -172,61 +184,6 @@ class SprintOverview(Static):
         else:
             lines.append("[dim]No active Sprint — waiting for Sprint Planning[/dim]")
 
-        # Sprint History: handle {sprints: [...]} (spec) or raw [...] (agent)
-        if history:
-            sprints_list = []
-            if isinstance(history, list):
-                sprints_list = history
-            elif isinstance(history, dict):
-                sprints_list = history.get("sprints", [])
-
-            if sprints_list:
-                hist_parts = []
-                for i, s in enumerate(sprints_list, 1):
-                    if not isinstance(s, dict):
-                        continue
-                    # Extract sprint number from id like "sprint-1" or sprint_number field
-                    sid = s.get("sprint_number") or s.get("id") or ""
-                    sid_str = str(sid)
-                    # Pull out just the number if present
-                    num_match = re.search(r"(\d+)", sid_str)
-                    num = num_match.group(1) if num_match else str(i)
-                    completed = s.get("pbis_completed", 0)
-                    if isinstance(completed, list):
-                        done = len(completed)
-                    else:
-                        done = completed
-                    total = s.get("pbis_total") or done
-                    hist_parts.append(f"Sprint-{num}: {done}/{total}")
-                if hist_parts:
-                    lines.append(f"[bold]History:[/bold] {' | '.join(hist_parts)}")
-
-        # Active Improvements: handle {entries: [...]} (spec) or {sprint_N: {action_items}} (agent)
-        if improvements and isinstance(improvements, dict):
-            imp_items = []
-            entries = improvements.get("entries")
-            if isinstance(entries, list):
-                # Spec format
-                imp_items = [
-                    e.get("description", "?")
-                    for e in entries
-                    if isinstance(e, dict) and e.get("status") == "active"
-                ]
-            else:
-                # Agent format: collect action_items from the latest sprint
-                for key in sorted(improvements.keys(), reverse=True):
-                    val = improvements.get(key)
-                    if isinstance(val, dict) and "action_items" in val:
-                        imp_items = val.get("action_items", [])
-                        break
-            if imp_items:
-                display = imp_items[:3]
-                label = "[bold]Improvements:[/bold] "
-                label += " · ".join(str(i) for i in display)
-                if len(imp_items) > 3:
-                    label += f" [dim](+{len(imp_items) - 3} more)[/dim]"
-                lines.append(label)
-
         self.update("\n".join(lines))
 
 
@@ -250,6 +207,34 @@ class PBIProgressBoard(DataTable):
         sprint = read_json(SCRUM_DIR / "sprint.json")
         self.clear()
 
+        # Build PBI→developer lookup from sprint.json developers[]
+        # Use lowercase keys for case-insensitive matching
+        pbi_impl_map: dict[str, str] = {}
+        pbi_review_map: dict[str, str] = {}
+        if sprint and isinstance(sprint, dict):
+            for dev in sprint.get("developers") or []:
+                if not isinstance(dev, dict):
+                    continue
+                did = dev.get("id") or dev.get("name") or "?"
+                assigned = dev.get("assigned_work") or {}
+                if not isinstance(assigned, dict):
+                    continue
+                for pbi_id in assigned.get("implement") or []:
+                    pbi_impl_map[str(pbi_id).lower()] = did
+                for pbi_id in assigned.get("review") or []:
+                    pbi_review_map[str(pbi_id).lower()] = did
+
+            # Also check sprint.pbis[] for inline assignments
+            for p in sprint.get("pbis") or []:
+                if not isinstance(p, dict):
+                    continue
+                pid = str(p.get("id", "")).lower()
+                if pid:
+                    if p.get("assigned_to") and pid not in pbi_impl_map:
+                        pbi_impl_map[pid] = p["assigned_to"]
+                    if p.get("reviewer") and pid not in pbi_review_map:
+                        pbi_review_map[pid] = p["reviewer"]
+
         # Collect PBI items from backlog (spec format) or sprint.pbis (agent format)
         items = []
         if backlog and isinstance(backlog, dict):
@@ -262,9 +247,28 @@ class PBIProgressBoard(DataTable):
                 continue
             pbi_id = item.get("id", "?")
             title = item.get("title", "Untitled")[:35]
-            status = item.get("status", "?")
-            impl = item.get("implementer_id") or item.get("assigned_to") or "-"
-            reviewer = item.get("reviewer_id") or item.get("reviewer") or "-"
+            raw_status = item.get("status", "?")
+            # Normalize status to canonical form
+            status = STATUS_NORMALIZE.get(raw_status, raw_status)
+            # Resolve implementer from multiple possible field names,
+            # then fall back to sprint developer assignments (case-insensitive)
+            pbi_key = str(pbi_id).lower()
+            impl = (
+                item.get("implementer_id")
+                or item.get("implementer")
+                or item.get("assigned_to")
+                or item.get("developer")
+                or item.get("developer_id")
+                or pbi_impl_map.get(pbi_key)
+                or "-"
+            )
+            reviewer = (
+                item.get("reviewer_id")
+                or item.get("reviewer")
+                or item.get("assigned_reviewer")
+                or pbi_review_map.get(pbi_key)
+                or "-"
+            )
 
             color = STATUS_COLORS.get(status, "")
             if color:
@@ -273,6 +277,10 @@ class PBIProgressBoard(DataTable):
                 status_display = status
 
             self.add_row(pbi_id, title, status_display, impl, reviewer, key=pbi_id)
+
+        # Scroll to the last row so the latest PBI is visible
+        if self.row_count:
+            self.move_cursor(row=self.row_count - 1)
 
 
 class TestResultsPanel(Static):
@@ -308,6 +316,8 @@ class TestResultsPanel(Static):
         lines = [f"[bold]Test Results:[/bold] {overall_styled}"]
 
         for cat in results.get("categories", []):
+            if not isinstance(cat, dict):
+                continue
             name = cat.get("name", "?")
             status = cat.get("status", "?")
             total = cat.get("total", 0)
@@ -472,14 +482,12 @@ class ScrumDashboard(App):
     CSS = """
     Screen {
         layout: grid;
-        grid-size: 2 3;
+        grid-size: 1 3;
         grid-rows: auto 1fr 1fr;
     }
-    #overview {
-        column-span: 2;
-    }
-    #pbi-board {
-        row-span: 2;
+    #logs-row {
+        layout: grid;
+        grid-size: 2 1;
     }
     #comm-title, #file-title {
         height: 1;
@@ -499,16 +507,19 @@ class ScrumDashboard(App):
         yield Header()
         yield SprintOverview(id="overview")
         yield Vertical(
+            TestResultsPanel(id="test-results"),
             Static("[bold]PBI Progress Board[/bold]", id="pbi-title"),
             PBIProgressBoard(id="pbi-board"),
         )
-        yield Vertical(
-            TestResultsPanel(id="test-results"),
-            Static("[bold]Communication Log[/bold]", id="comm-title"),
-            CommunicationLog(id="comm-log"),
-            Static("[bold]File Change Log[/bold]", id="file-title"),
-            FileChangeLog(id="file-log"),
-        )
+        with Horizontal(id="logs-row"):
+            yield Vertical(
+                Static("[bold]Communication Log[/bold]", id="comm-title"),
+                CommunicationLog(id="comm-log"),
+            )
+            yield Vertical(
+                Static("[bold]File Change Log[/bold]", id="file-title"),
+                FileChangeLog(id="file-log"),
+            )
         yield Footer()
 
     def on_mount(self) -> None:

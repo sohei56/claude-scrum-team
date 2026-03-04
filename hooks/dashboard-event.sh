@@ -130,8 +130,19 @@ hook_event="$(cat)"
 # Extract common fields
 # Claude Code uses "hook_event_name" as the event type field
 hook_type="$(echo "$hook_event" | jq -r '.hook_event_name // .hook_type // .type // "unknown"')"
-agent_id="$(echo "$hook_event" | jq -r '.agent_id // .session_id // "unknown"')"
+raw_agent_id="$(echo "$hook_event" | jq -r '.agent_id // .session_id // "unknown"')"
 timestamp="$(get_timestamp)"
+
+# Shorten UUID-style agent IDs to first 8 chars for readability
+shorten_id() {
+  local id="$1"
+  if echo "$id" | grep -qE '^[0-9a-f]{8}-[0-9a-f]{4}-'; then
+    echo "${id%%-*}"
+  else
+    echo "$id"
+  fi
+}
+agent_id="$(shorten_id "$raw_agent_id")"
 
 case "$hook_type" in
   PostToolUse|post_tool_use)
@@ -139,7 +150,7 @@ case "$hook_type" in
     tool_name="$(echo "$hook_event" | jq -r '.tool_name // empty')"
     tool_input="$(echo "$hook_event" | jq -c '.tool_input // {}')"
 
-    # Only process file-modifying tools
+    # Build a communication message for meaningful tool uses
     case "$tool_name" in
       Write|Edit)
         file_path="$(echo "$tool_input" | jq -r '.file_path // empty')"
@@ -189,6 +200,27 @@ case "$hook_type" in
           append_dashboard_event "$event_json"
         fi
         ;;
+      Agent)
+        # Agent tool use — spawning subagents
+        description="$(echo "$tool_input" | jq -r '.description // empty' | head -c 100)"
+        if [ -n "$description" ]; then
+          message_json="$(jq -n \
+            --arg ts "$timestamp" \
+            --arg sid "$agent_id" \
+            --arg role "Dev" \
+            --arg type "agent_spawn" \
+            --arg content "spawned agent: ${description}" \
+            '{
+              "timestamp": $ts,
+              "sender_id": $sid,
+              "sender_role": $role,
+              "recipient_id": null,
+              "type": $type,
+              "content": $content
+            }')"
+          append_comms_message "$message_json"
+        fi
+        ;;
     esac
     ;;
 
@@ -197,7 +229,11 @@ case "$hook_type" in
     # Claude Code provides teammate_name and team_name in TeammateIdle payloads
     sender_id="$(echo "$hook_event" | jq -r '.teammate_name // .session_id // "teammate"')"
     sender_role="teammate"
-    content="$(echo "$hook_event" | jq -r '.last_assistant_message // "Idle"' | head -c 300)"
+    # Try multiple fields for content: last_message, last_assistant_message, reason, or fallback
+    content="$(echo "$hook_event" | jq -r '
+      (.last_message // .last_assistant_message // .reason // null)
+      | if . == null or . == "" then "waiting for task" else . end
+    ' | head -c 300)"
 
     # Append to communications log
     message_json="$(jq -n \
@@ -245,7 +281,7 @@ case "$hook_type" in
       --arg detail "$detail" \
       '{
         "timestamp": $ts,
-        "type": "session_event",
+        "type": "phase_transition",
         "agent_id": $agent,
         "file_path": null,
         "change_type": null,
@@ -265,7 +301,7 @@ case "$hook_type" in
       --arg detail "$detail" \
       '{
         "timestamp": $ts,
-        "type": "session_event",
+        "type": "subagent_stop",
         "agent_id": $agent,
         "file_path": null,
         "change_type": null,

@@ -83,7 +83,7 @@ Follow the task-based commit strategy (Constitution IV):
 ```
 scrum-start.sh           # Entry point
 agents/                  # Agent definitions (scrum-master, developer)
-skills/                  # 13 ceremony Skills
+skills/                  # ceremony Skills
 hooks/                   # Sprint cycle enforcement hooks
 dashboard/               # Textual TUI dashboard
 scripts/                 # Setup and utility scripts
@@ -99,7 +99,7 @@ specs/                   # Feature specifications
 
 ## Key Files
 
-- `agents/scrum-master.md` — Team lead (Delegate mode, 13 Skills)
+- `agents/scrum-master.md` — Team lead (Delegate mode)
 - `agents/developer.md` — Teammate template (spawned per Sprint)
 - `.design/catalog.md` — Design document governance
 - `specs/001-ai-scrum-team/` — Feature specification and design docs

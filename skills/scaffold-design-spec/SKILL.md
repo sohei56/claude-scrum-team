@@ -19,11 +19,12 @@ disable-model-invocation: true
   - `last_updated_sprint` (same as `created_sprint` initially)
   - `related_pbis` (from `backlog.json`)
   - `frozen: false`
-  - `revision_history` with an initial entry (sprint, date, summary: "Initial stub created")
+  - `revision_history` with an initial entry (sprint, author, date, summary: "Initial stub created", pbis)
 - Placeholder sections in the body
 
 ## Preconditions
 
+- `state.json` exists with `phase: "sprint_planning"`
 - `.design/catalog.md` exists and contains at least one entry marked as enabled
 - `sprint.json` exists with a valid `id`
 - `backlog.json` exists with PBIs that can be linked as `related_pbis`
@@ -39,7 +40,7 @@ disable-model-invocation: true
       - `last_updated_sprint`: same as `created_sprint`
       - `related_pbis`: array of relevant PBI IDs from `backlog.json`
       - `frozen: false`
-      - `revision_history`: array with one entry containing `sprint`, `date` (today), and `summary: "Initial stub created"`
+      - `revision_history`: array with one entry containing `sprint`, `author: "scrum-master"`, `date` (today), `summary: "Initial stub created"`, and `pbis` (array of related PBI IDs from the catalog entry's `related_pbis`)
    c. Add placeholder sections in the document body:
       - `## Overview`
       - `## Design Details`

@@ -17,6 +17,7 @@ disable-model-invocation: true
 - `improvements.json` → stale entries archived every 3 Sprints (status:
   archived, archived_at), `last_consolidation_sprint` updated
 - `state.json` → `phase: retrospective`
+- `sprint.json` → `status: "complete"`
 
 ## Preconditions
 
@@ -44,6 +45,7 @@ disable-model-invocation: true
    - Update `last_consolidation_sprint` to current Sprint id
 5. **Share report**: Present a brief retrospective report to the user
    summarizing: what went well, what to improve, and any archived items.
+6. **Complete Sprint**: Update `sprint.json` → `status: "complete"`.
 
 Reference: FR-012
 
@@ -54,3 +56,4 @@ Reference: FR-012
 - If consolidation is due (every 3 Sprints): stale improvements archived
   and `last_consolidation_sprint` updated
 - `state.json` → `phase: "retrospective"`
+- `sprint.json` → `status: "complete"`

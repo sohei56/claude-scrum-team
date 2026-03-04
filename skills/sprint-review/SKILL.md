@@ -15,6 +15,7 @@ disable-model-invocation: true
 - `sprint-history.json` → `sprints[]` (SprintSummary appended with: id,
   goal, type, pbis_completed, pbis_total, started_at, completed_at)
 - `state.json` → `phase: sprint_review`
+- `sprint.json` → `status: "sprint_review"`
 
 ## Preconditions
 
@@ -25,6 +26,7 @@ disable-model-invocation: true
 ## Steps
 
 1. **Transition state**: Update `state.json` → `phase: "sprint_review"`.
+   Update `sprint.json` → `status: "sprint_review"`.
 2. **Present change summary**: Present to the user what was accomplished
    during the Sprint, including: the Sprint Goal, which PBIs were completed
    (`status: "done"`), and which PBIs remain incomplete (if any).
@@ -68,7 +70,20 @@ disable-model-invocation: true
    - `completed_at`: current timestamp
 7. **Get user feedback**: Solicit feedback from the user on the Increment
    and any adjustments needed for upcoming work.
-8. **Commit Sprint deliverables**: Once the user approves the Sprint
+8. **Handle defects and feedback**: If the user reports bugs, defects,
+   or requests changes:
+   a. **Do NOT fix anything directly** — the Scrum Master operates in
+      Delegate mode and must never write code or make implementation
+      changes during Sprint Review.
+   b. **Create a new PBI** in `backlog.json` for EACH reported defect or
+      change request, with `status: "draft"` and a clear title/description
+      of the issue.
+   c. Acknowledge each item and confirm it has been added to the backlog.
+   d. After the user confirms "that's all" or indicates they have no more
+      feedback, proceed to the next step.
+   e. These new PBIs will be addressed in the next Sprint through the
+      normal Backlog Refinement → Sprint Planning workflow.
+9. **Commit Sprint deliverables**: Once the user approves the Sprint
    Review, commit all Sprint deliverables to Git:
    - Run `git status` to see all changed/new files.
    - Stage all relevant files (source code, tests, config, design docs,
@@ -93,5 +108,6 @@ Reference: FR-010, FR-011
 
 - SprintSummary has been appended to `sprint-history.json` → `sprints[]`
 - User has reviewed the Increment and provided feedback
+- Any reported defects/changes have been created as new PBIs in `backlog.json` (NOT fixed directly)
 - Sprint deliverables have been committed to Git
 - `state.json` → `phase: "sprint_review"`

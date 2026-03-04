@@ -15,15 +15,17 @@ disable-model-invocation: true
 ## Outputs (files/keys updated)
 
 - `sprint.json` → `developers[]` populated with:
-  - `id` (consistent naming: `dev-001`, `dev-002`, ...)
+  - `id` (consistent naming with Sprint suffix: `dev-001-s3`, `dev-002-s3`, ...)
   - `assigned_work.implement[]` (PBI IDs)
   - `assigned_work.review[]` (PBI IDs, round-robin, no self-review)
   - `status: "active"`
   - `sub_agents: []` (empty, populated at runtime)
+- `sprint.json` → `status: "active"`
 - Agent Teams teammates spawned
 
 ## Preconditions
 
+- `state.json` exists with `phase: "sprint_planning"` or `"integration_sprint"`
 - `sprint.json` exists with `status: "planning"` and `pbi_ids` populated
 - `backlog.json` contains PBIs with `status: "refined"` matching `pbi_ids`
 - Sprint Planning has been completed (implementer/reviewer assignments made)
@@ -34,7 +36,9 @@ disable-model-invocation: true
 2. Read `backlog.json` to get PBI details for the Sprint.
 3. Calculate developer count: `min(number of refined PBIs in Sprint, 6)`.
 4. For each Developer (1 to `developer_count`):
-   a. Assign a consistent ID: `dev-001`, `dev-002`, etc.
+   a. Assign a consistent ID that includes the Sprint number as a suffix:
+      `dev-001-s{N}`, `dev-002-s{N}`, etc. (e.g., `dev-001-s3` for Sprint 3).
+      Extract the Sprint number from `sprint.json` → `id`.
    b. Determine implementation assignment from `backlog.json` →
       `items[].implementer_id`.
    c. Determine review assignment (round-robin):
@@ -45,7 +49,7 @@ disable-model-invocation: true
    d. Create Developer entry:
       ```json
       {
-        "id": "dev-001",
+        "id": "dev-001-s3",
         "assigned_work": {
           "implement": ["pbi-001"],
           "review": ["pbi-002"]
@@ -57,8 +61,9 @@ disable-model-invocation: true
 5. Update `sprint.json` → `developers[]` with all Developer entries.
 6. Spawn Agent Teams teammates using `agents/developer.md` template:
    - Each teammate receives their PBI assignment via task list.
-   - Teammates are named consistently (`Dev-001`, `Dev-002`, ...).
+   - Teammates are named consistently with Sprint suffix (`Dev-001-S3`, `Dev-002-S3`, ...).
 7. Verify all teammates are active and have received their assignments.
+8. Update `sprint.json` → `status: "active"` to mark the Sprint as in progress.
 
 ## Exit Criteria
 
@@ -68,3 +73,4 @@ disable-model-invocation: true
   `"scrum-master"` for single-PBI Sprints)
 - No Developer reviews their own implementation
 - All Agent Teams teammates are spawned and active
+- `sprint.json` → `status: "active"`

@@ -109,10 +109,12 @@ disable-model-invocation: true
    strictly forbidden.
 
 9. **Return to Development Sprint**: Transition `state.json` →
-   `phase: "sprint_planning"`. Run a normal Development Sprint cycle
-   (Sprint Planning → Design → Implementation → Cross-Review → Sprint
-   Review → Retrospective) to address the fix PBIs. After the Sprint
-   completes, return to step 1 (Integration Sprint) to re-test.
+   `phase: "backlog_created"`. Run the normal Development Sprint cycle
+   (Backlog Refinement → Sprint Planning → Design → Implementation →
+   Cross-Review → Sprint Review → Retrospective) to address the fix
+   PBIs. After the fix Sprint completes, the Scrum Master will
+   re-evaluate the Product Goal — if all PBIs are done, the workflow
+   naturally re-enters Integration Sprint for re-testing.
 
 10. **Release Decision**: Ask the user if the product is release-ready.
     - If yes: Update `state.json` → `phase: "complete"`.

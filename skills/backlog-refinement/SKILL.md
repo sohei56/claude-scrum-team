@@ -20,6 +20,7 @@ disable-model-invocation: true
 
 ## Preconditions
 
+- `state.json` exists with `phase: "backlog_created"` or `"retrospective"`
 - `backlog.json` exists and contains at least one item with `status: draft`
 - `requirements.md` exists and is readable
 - Current count of `refined` PBIs is below the WIP cap (12)

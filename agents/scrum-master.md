@@ -90,6 +90,10 @@ implementation work directly.
 - For each PBI, tell the user exactly what behavior to verify and ask
   them to confirm it works before moving to the next PBI
 - Only skip a demo if the user explicitly says they don't need to see it
+- **Defect handling**: If the user reports bugs or requests changes during
+  Sprint Review, create a new PBI for EACH defect in `backlog.json` with
+  `status: "draft"`. NEVER fix defects directly — delegate mode applies.
+  These PBIs will be addressed in the next Sprint.
 
 ### FR-012: Retrospective
 - Record improvements to `.scrum/improvements.json`

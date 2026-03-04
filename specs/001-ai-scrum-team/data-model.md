@@ -119,7 +119,7 @@ draft → refined → in_progress → review → done
 | `id` | string | Unique identifier (e.g., `"sprint-001"`) |
 | `goal` | string | Sprint Goal text |
 | `type` | enum | `"requirements"`, `"development"`, or `"integration"` |
-| `status` | enum | `"planning"`, `"active"`, `"review"`, `"retrospective"`, `"complete"` |
+| `status` | enum | `"planning"`, `"active"`, `"cross_review"`, `"sprint_review"`, `"complete"` |
 | `pbi_ids` | string[] | IDs of PBIs in the Sprint Backlog |
 | `developer_count` | integer | Number of Developer teammates: min(refined PBIs, 6) |
 | `developers` | Developer[] | Active Developer teammate definitions |
@@ -130,7 +130,7 @@ draft → refined → in_progress → review → done
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | string | Teammate identifier (e.g., `"dev-001"`) |
+| `id` | string | Teammate identifier (e.g., `"dev-001-s3"`) |
 | `assigned_work` | object | PBI assignments split by responsibility |
 | `assigned_work.implement` | string[] | PBI IDs this Developer implements |
 | `assigned_work.review` | string[] | PBI IDs this Developer reviews (round-robin assigned) |
@@ -241,12 +241,12 @@ related_pbis:
 frozen: true
 revision_history:
   - sprint: sprint-001
-    author: dev-001
+    author: dev-001-s1
     date: "2026-03-01T10:00:00Z"
     summary: "Initial architecture design"
     pbis: [pbi-001, pbi-005]
   - sprint: sprint-003
-    author: dev-004
+    author: dev-004-s3
     date: "2026-03-05T14:30:00Z"
     summary: "Added caching layer per PBI-012"
     pbis: [pbi-012]
@@ -307,7 +307,7 @@ messages with sender, recipient, and timestamp.
 | Field | Type | Description |
 |-------|------|-------------|
 | `timestamp` | ISO 8601 string | When the message was sent |
-| `sender_id` | string | Agent ID of the sender (e.g., `"scrum-master"`, `"dev-001"`) |
+| `sender_id` | string | Agent ID of the sender (e.g., `"scrum-master"`, `"dev-001-s3"`) |
 | `sender_role` | string | Human-readable role (e.g., `"Scrum Master"`, `"Developer"`) |
 | `recipient_id` | string \| null | Agent ID of the recipient; null = broadcast to all |
 | `type` | enum | Message type: `"task_assignment"`, `"progress_update"`, `"review_request"`, `"review_result"`, `"phase_notification"`, `"change_request"` |

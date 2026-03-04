@@ -5,6 +5,10 @@ description: >
   writes tests, performs cross-review. Spawned per Sprint by the
   Scrum Master via Agent Teams.
 skills:
+  - requirements-sprint
+  - design-phase
+  - implementation-phase
+  - cross-review
   - install-subagents
   - smoke-test
 ---

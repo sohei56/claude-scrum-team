@@ -13,10 +13,12 @@ disable-model-invocation: true
 ## Outputs
 
 - `.scrum/reviews/<pbi-id>-review.md` (created per PBI)
-- `backlog.json` → `items[].status: review → done`
+- `backlog.json` → `items[].status: in_progress → review` (set at start of review)
+- `backlog.json` → `items[].status: review → done` (set after passing review)
 - `backlog.json` → `items[].review_doc_path` set to the review file path
 - In single-PBI Sprint: `reviewer_id = "scrum-master"`, Scrum Master performs review
 - `state.json` → `phase: review`
+- `sprint.json` → `status: "cross_review"`
 
 ## Preconditions
 
@@ -28,24 +30,27 @@ disable-model-invocation: true
 ## Steps
 
 1. **Transition state**: Update `state.json` → `phase: "review"`.
-2. **Read context**: For each PBI in the current Sprint, the assigned reviewer
+   Update `sprint.json` → `status: "cross_review"`.
+2. **Mark PBIs as under review**: Update `backlog.json` → `items[].status`
+   from `in_progress` to `review` for all PBIs in the current Sprint.
+3. **Read context**: For each PBI in the current Sprint, the assigned reviewer
    reads `requirements.md` and the relevant design documents referenced in
    the PBI's `design_doc_paths`.
-3. **Examine implementation**: Reviewer examines the implementation against
+4. **Examine implementation**: Reviewer examines the implementation against
    the design document and the PBI's acceptance criteria. Check for
    correctness, completeness, and adherence to requirements.
-4. **Produce review document**: Reviewer creates
+5. **Produce review document**: Reviewer creates
    `.scrum/reviews/<pbi-id>-review.md` with findings including: summary,
    items checked, issues found (if any), and pass/fail verdict.
-5. **Single-PBI Sprint**: If the Sprint contains only one PBI, the Scrum
+6. **Single-PBI Sprint**: If the Sprint contains only one PBI, the Scrum
    Master performs the review instead of a peer Developer
    (`reviewer_id = "scrum-master"`).
-6. **Handle issues**: If issues are found, attempt to fix them within the
+7. **Handle issues**: If issues are found, attempt to fix them within the
    current Sprint. If the issue cannot be resolved within the Sprint, log
    it as a new PBI in `backlog.json` with `status: "draft"`.
-7. **Update PBI status**: For PBIs that pass review, update
+8. **Update PBI status**: For PBIs that pass review, update
    `backlog.json` → `items[].status` from `review` to `done`.
-8. **Set review path**: Set `items[].review_doc_path` in `backlog.json`
+9. **Set review path**: Set `items[].review_doc_path` in `backlog.json`
    to the path of the created review document.
 
 Reference: FR-009
