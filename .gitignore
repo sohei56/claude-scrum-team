@@ -1,6 +1,9 @@
 # Runtime state (not committed)
 .scrum/
 
+# Local Claude Code hooks (symlinks to hooks/ for dev use)
+.claude/hooks/
+
 # Python
 __pycache__/
 *.pyc
