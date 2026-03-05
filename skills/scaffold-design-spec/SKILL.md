@@ -1,12 +1,13 @@
 ---
 name: scaffold-design-spec
 description: Create template stub files for newly enabled catalog entries, including user-facing documentation
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 ## Inputs
 
-- `.design/catalog.md` (entries newly flipped to enabled)
+- `.design/catalog.md` (reference list of all design document types)
+- `.design/catalog-config.json` (list of enabled spec IDs)
 - `sprint.json` -> `id` (current Sprint ID)
 - `backlog.json` -> PBI IDs for `related_pbis` linkage
 
@@ -27,13 +28,14 @@ disable-model-invocation: true
 ## Preconditions
 
 - `state.json` exists with `phase: "sprint_planning"`
-- `.design/catalog.md` exists and contains at least one entry marked as enabled
+- `.design/catalog.md` exists (reference document type list)
+- `.design/catalog-config.json` exists with at least one ID in the `enabled` array
 - `sprint.json` exists with a valid `id`
 - `backlog.json` exists with PBIs that can be linked as `related_pbis`
 
 ## Steps
 
-1. Read `.design/catalog.md` and identify all entries that have been flipped to enabled.
+1. Read `.design/catalog-config.json` to get the list of enabled spec IDs. Cross-reference with `.design/catalog.md` to get the category, name, and granularity for each enabled ID.
 2. For each enabled entry that does not already have a corresponding file at `.design/specs/{category}/{id}-{slug}.md`:
    a. Create the stub file at the target path, creating directories as needed.
    b. Populate YAML frontmatter:

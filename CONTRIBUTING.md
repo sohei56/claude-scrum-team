@@ -12,6 +12,7 @@ sh scripts/setup-dev.sh
 
 # Or install dependencies manually:
 brew install bats-core jq yq shellcheck
+pip install ruff
 git submodule update --init --recursive
 ```
 
@@ -44,7 +45,7 @@ bats tests/integration/script-compose.bats
 
 ```bash
 # Lint all shell scripts
-shellcheck scrum-start.sh scripts/*.sh hooks/*.sh
+shellcheck scrum-start.sh scripts/*.sh scripts/lib/*.sh hooks/*.sh hooks/lib/*.sh
 
 # Lint Python code
 ruff check dashboard/
@@ -101,7 +102,8 @@ specs/                   # Feature specifications
 
 - `agents/scrum-master.md` — Team lead (Delegate mode)
 - `agents/developer.md` — Teammate template (spawned per Sprint)
-- `.design/catalog.md` — Design document governance
+- `.design/catalog.md` — Design document type reference (read-only in working dirs)
+- `.design/catalog-config.json` — Editable list of enabled spec IDs
 - `specs/001-ai-scrum-team/` — Feature specification and design docs
 
 ## Pull Request Process

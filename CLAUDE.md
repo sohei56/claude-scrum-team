@@ -22,19 +22,24 @@ skills/                  # 14 Ceremony Skills (YAML frontmatter + Markdown)
   spawn-teammates/       # Spawn developer teammates for sprint
   sprint-planning/       # Sprint planning and PBI assignment
   sprint-review/         # Sprint review ceremony
-hooks/                   # Claude Code hooks (phase gates, dashboard events)
+hooks/                   # Claude Code hooks (phase gates, completion gates, quality gates, dashboard events, session context)
   lib/                   # Shared hook helpers (validation, logging)
 dashboard/               # Textual TUI dashboard (Python)
   app.py                 # Main TUI application
 scripts/                 # Setup and utility scripts
   lib/                   # Shared script helpers (prereq checks)
-  setup-user.sh          # Copies agents/skills/hooks to target project
+  setup-user.sh          # Copies agents/skills/hooks/catalog to target project
   setup-dev.sh           # Installs dev dependencies (bats, shellcheck, etc.)
+  statusline.sh          # Claude Code status line script
 tests/                   # Test suites
   unit/                  # Bats unit tests
   lint/                  # Bats lint tests
+  integration/           # Script composition tests
+  fixtures/              # Test data (JSON fixtures for validation)
 specs/                   # Feature specifications and data model
-.design/                 # Design document governance (catalog.md)
+.design/                 # Design document governance
+  catalog.md             # Immutable document type reference (read-only)
+  catalog-config.json    # Editable list of enabled spec IDs
 .scrum/                  # Runtime state (JSON, gitignored)
 ```
 
@@ -72,17 +77,17 @@ sh /path/to/claude-scrum-team/scrum-start.sh
 - **Python**: Ruff-formatted, type hints, 4-space indent
 - **Markdown**: 2-space indent for YAML frontmatter, 80-char line width for prose
 - **JSON**: 2-space indent
-- **Commits**: Conventional Commits format (`feat:`, `fix:`, `docs:`, `chore:`)
+- **Commits**: Conventional Commits format (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`)
 
 ## Key Conventions
 
 - Scrum Master agent operates in **Delegate mode** — coordinates only, never writes code
 - All state persisted to `.scrum/` JSON files for resume capability
-- Design documents governed by `.design/catalog.md` (enabled/disabled entries)
+- Design documents governed by `.design/catalog.md` (read-only type reference) + `.design/catalog-config.json` (editable enabled list)
 - Developer teammates named with Sprint suffix: `dev-001-s{N}`
 - PBI status flow: `draft → refined → in_progress → review → done`
 - Sprint status flow: `planning → active → cross_review → sprint_review → complete`
-- Phase flow: `new → requirements_sprint → backlog_created → sprint_planning → design → implementation → review → sprint_review → retrospective → [next Sprint or integration_sprint] → complete`
+- Phase flow: `new → requirements_sprint → backlog_created → sprint_planning → design → implementation → review → sprint_review → retrospective → sprint_planning (next Sprint) | integration_sprint → backlog_created (defect-fix loop) | complete`
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

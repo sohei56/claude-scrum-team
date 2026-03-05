@@ -1,7 +1,7 @@
 ---
 name: change-process
 description: FR-016 Change Process — modify frozen documents with user approval
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 ## Inputs

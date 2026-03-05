@@ -50,7 +50,7 @@ Each skill has preconditions that depend on the previous skill's outputs.
 ### FR-004: Design Phase
 - Read ALL existing design documents from previous Sprints for consistency
 - Produce design documents at `.design/specs/{category}/{id}-{slug}.md`
-- Only create files for entries enabled in `.design/catalog.md`
+- Only create files for entries enabled in `.design/catalog-config.json`
 - Include `revision_history` entry with `pbis` field in YAML frontmatter
 
 ### FR-009: Cross-Review
@@ -120,7 +120,8 @@ to quality assurance. Invoke the `smoke-test` skill and execute it fully:
 
 - `.scrum/requirements.md` — read for implementation context
 - `.scrum/improvements.json` — read at Sprint start
-- `.design/catalog.md` — read to verify enabled entries
+- `.design/catalog.md` — read for document type reference (read-only, do not modify)
+- `.design/catalog-config.json` — read to verify which specs are enabled (read-only for developers)
 - `.design/specs/**/*.md` — read existing designs; write for assigned PBIs
 - `.scrum/reviews/<pbi-id>-review.md` — write review results
 - `.scrum/test-results.json` — write during Integration Sprint testing

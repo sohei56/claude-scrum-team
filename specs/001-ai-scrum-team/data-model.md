@@ -29,7 +29,8 @@ read (selectively) by Developer teammates.
 new → requirements_sprint → backlog_created → sprint_planning
   → design → implementation → review → sprint_review
   → retrospective → sprint_planning (next Sprint)
-  → integration_sprint → complete
+  → integration_sprint → backlog_created (defect-fix loop)
+                        → complete
 ```
 
 Valid phases:
@@ -204,17 +205,46 @@ during the Requirements Sprint (FR-002). Frozen during Development Sprints
 
 ---
 
+## Entity: DesignCatalogConfig
+
+**File**: `.design/catalog-config.json`
+**Owner**: Scrum Master (read/write)
+**Readers**: Developer teammates (read-only), phase-gate.sh, scaffold-design-spec skill
+**Reference**: `.design/catalog.md` (read-only document type catalog)
+
+Controls which design spec types are active for the project. The full list
+of recognized document types lives in `.design/catalog.md` (read-only,
+managed in claude-scrum-team). This config file is the only editable part.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `enabled` | string[] | Array of spec IDs from catalog.md that are active (e.g., `["D-001", "S-001", "S-010"]`) |
+
+### Rules
+- Only spec IDs that exist in `.design/catalog.md` may appear in `enabled`.
+- The phase-gate hook enforces that design spec files can only be created
+  for IDs present in both `catalog.md` (exists) and `catalog-config.json`
+  (enabled).
+- When a spec ID is added to `enabled`, the `scaffold-design-spec` skill
+  must be invoked to create template stubs.
+- `catalog.md` is read-only in working directories; only this config file
+  may be edited to control which entries are active.
+
+---
+
 ## Entity: DesignDocument
 
 **Directory**: `.design/specs/{category}/`
-**Governance**: `.design/catalog.md` (catalog-first, R8)
+**Governance**: `.design/catalog.md` (type reference) + `.design/catalog-config.json` (enablement)
 **Format**: Markdown with YAML frontmatter
 **Owner**: Assigned Developer (write), Reviewer (read)
 **Readers**: All Developers in subsequent Sprints (FR-004)
 
-Design documents are governed by `.design/catalog.md`. No design document
-may be created unless its spec type is listed and enabled in the catalog.
-Files follow the naming convention `.design/specs/{category}/{id}-{slug}.md`.
+Design documents are governed by `.design/catalog.md` (read-only type
+reference) and `.design/catalog-config.json` (editable enabled list). No
+design document may be created unless its spec type is listed in the catalog
+and enabled in the config. Files follow the naming convention
+`.design/specs/{category}/{id}-{slug}.md`.
 
 | Category | Example Entry | Example File |
 |----------|--------------|-------------|
@@ -226,6 +256,7 @@ Files follow the naming convention `.design/specs/{category}/{id}-{slug}.md`.
 | quality | S-050 Test Strategy | `quality/S-050-test-strategy.md` |
 | decision-records | D-001 Architecture Decision Record | `decision-records/D-001-auth-api-choice.md` |
 | operations | S-060 Migration / Upgrade | `operations/S-060-v2-migration.md` |
+| docs | D-010 Requirements Document | `docs/D-010-requirements.md` |
 
 ### YAML Frontmatter
 
@@ -270,13 +301,15 @@ frontmatter to track edit history across Sprints. Each entry is a
 | `change_process` | boolean \| absent | `true` if the document was frozen and FR-016 Change Process was followed. Omitted on initial creation |
 
 ### Rules
-- **Catalog-first**: no design file may be created without an enabled
-  entry in `.design/catalog.md`. The Scrum Master enables entries during
+- **Catalog-first**: no design file may be created without an entry in
+  `.design/catalog.md` AND an enabled entry in `.design/catalog-config.json`.
+  The Scrum Master adds spec IDs to the config's `enabled` array during
   Sprint Planning.
-- **Immediate stub creation**: when a catalog entry is flipped to
-  `enabled`, the Scrum Master invokes `scaffold-design-spec` to create
-  a template stub with required frontmatter and placeholder sections.
-  Developers populate the stub during the design phase.
+- **Immediate stub creation**: when a spec ID is added to the `enabled`
+  array in `catalog-config.json`, the Scrum Master invokes
+  `scaffold-design-spec` to create a template stub with required
+  frontmatter and placeholder sections. Developers populate the stub
+  during the design phase.
 - Multiple PBIs may reference the same design document.
 - PBIs reference design documents via `design_doc_paths: string[]`
   (paths relative to project root, e.g., `.design/specs/ui/S-030-login.md`).
@@ -326,10 +359,10 @@ messages with sender, recipient, and timestamp.
 
 **File**: `.scrum/dashboard.json`
 **Owner**: Hook scripts (append-only)
-**Readers**: Textual dashboard app (File Change Log panel), statusline.sh
+**Readers**: Textual dashboard app (Work Log panel), statusline.sh
 
 Stores timestamped agent activity events written by Claude Code hooks
-(R2 Layer 2). Used by the Textual dashboard's File Change Log panel
+(R2 Layer 2). Used by the Textual dashboard's Work Log panel
 (FR-014d) and the status line for real-time agent activity.
 
 | Field | Type | Description |

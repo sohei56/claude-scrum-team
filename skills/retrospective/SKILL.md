@@ -1,7 +1,7 @@
 ---
 name: retrospective
 description: Sprint Retrospective — record improvements, consolidate periodically
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 ## Inputs

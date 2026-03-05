@@ -302,6 +302,19 @@
       "additionalProperties": false
     },
 
+    "CatalogConfig": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z]+-\\d+$" },
+          "description": "Spec IDs from catalog.md that are active for this project"
+        }
+      },
+      "additionalProperties": false
+    },
+
     "TestResults": {
       "type": "object",
       "required": ["categories", "overall_status", "started_at", "updated_at"],

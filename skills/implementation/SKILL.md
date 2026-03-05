@@ -1,12 +1,12 @@
 ---
 name: implementation
 description: Implementation phase — Developers implement PBIs per design documents
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 ## Inputs
 
-- `state.json` -> `phase: design`
+- `state.json` -> `phase: design | implementation`
 - `sprint.json` (current Sprint with developer assignments)
 - `.design/specs/**/*.md` (populated design documents and user-facing docs)
 - `requirements.md` (source requirements for reference)
@@ -20,7 +20,7 @@ disable-model-invocation: true
 
 ## Preconditions
 
-- `state.json` exists with `phase: design`
+- `state.json` exists with `phase: design` or `implementation`
 - `sprint.json` exists with developer assignments
 - Design documents in `.design/specs/**/*.md` are populated (design phase is
   complete), including user-facing documentation
@@ -29,7 +29,7 @@ disable-model-invocation: true
 
 ## Steps
 
-1. Transition `state.json` to `phase: implementation`.
+1. Transition `state.json` to `phase: implementation` (if not already set by the Scrum Master).
 2. Each Developer reads the improvement log (if it exists from prior
    retrospectives) and applies any relevant improvements to their workflow
    and coding practices.
@@ -45,8 +45,13 @@ disable-model-invocation: true
 6. Ensure code passes the project's linter/formatter:
    - Run linting and formatting checks.
    - Fix any violations before marking implementation as complete.
-7. Update `backlog.json` -> `items[].status` to `in_progress` for each PBI
-   being implemented.
+7. Update `backlog.json` → `items[].status` to `in_progress` for each PBI
+   being implemented. Use this command (replace `pbi-001` with your PBI ID):
+   ```bash
+   jq '(.items[] | select(.id == "pbi-001")).status = "in_progress"' .scrum/backlog.json > .scrum/backlog.json.tmp && mv .scrum/backlog.json.tmp .scrum/backlog.json
+   ```
+   **You MUST run this command** — the TUI dashboard reads status from
+   `backlog.json` and will not update without it.
 8. Report progress to Scrum Master: summarize what was implemented, test
    coverage, and any blockers encountered.
 

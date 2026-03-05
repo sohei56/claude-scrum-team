@@ -99,16 +99,11 @@ git clone https://github.com/sohei56/claude-scrum-team.git
 # In your project directory:
 cd /path/to/your/project
 
-# Install TUI dependencies
-python3 -m venv .venv
-source .venv/bin/activate
-pip install textual watchdog
-
-# Launch the Scrum team
+# Launch the Scrum team (auto-installs Python dependencies if needed)
 sh /path/to/claude-scrum-team/scrum-start.sh
 ```
 
-The script validates prerequisites, copies agent definitions and Skills to your project's `.claude/` directory, and launches a tmux session with Claude Code (Scrum Master) and the TUI dashboard.
+The script validates prerequisites (auto-installing `textual` and `watchdog` if missing), copies agent definitions, Skills, hooks, and the design catalog to your project's `.claude/` directory, and launches a tmux session with Claude Code (Scrum Master) and the TUI dashboard.
 
 For detailed setup instructions, see [quickstart.md](specs/001-ai-scrum-team/quickstart.md).
 
@@ -135,11 +130,11 @@ For detailed setup instructions, see [quickstart.md](specs/001-ai-scrum-team/qui
 | `scrum-start.sh` | Entry point — validates prereqs, copies agents/skills, launches tmux |
 | `agents/` | Scrum Master (Delegate mode) and Developer agent definitions |
 | `skills/` | 14 ceremony Skills with mandatory Inputs/Outputs |
-| `hooks/` | Phase gates, completion gates, quality gates, dashboard events |
+| `hooks/` | Phase gates, completion gates, quality gates, dashboard events, session context |
 | `dashboard/app.py` | Textual TUI with real-time panels |
 | `scripts/` | Status line, user setup, contributor setup |
 | `.scrum/` | Runtime state (JSON, gitignored) |
-| `.design/` | Design documents governed by `catalog.md` |
+| `.design/` | Design documents governed by `catalog.md` (read-only) + `catalog-config.json` (enabled list) |
 
 ## Development
 

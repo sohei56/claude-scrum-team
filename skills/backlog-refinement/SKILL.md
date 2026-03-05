@@ -1,7 +1,7 @@
 ---
 name: backlog-refinement
 description: Refine coarse-grained PBIs into implementation-ready items
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 ## Inputs

@@ -4,7 +4,7 @@ description: >
   Requirements Sprint ceremony. Spawns a single Developer to elicit
   requirements from the user through natural language dialogue,
   producing a requirements document and initial Product Backlog.
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 ## Inputs

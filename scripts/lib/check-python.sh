@@ -43,7 +43,7 @@ check_python_prereqs() {
     exit 3
   fi
 
-  # 3. TUI packages
+  # 3. TUI packages — auto-install if missing
   local missing_pkgs=""
   if ! python3 -c "import textual" 2>/dev/null; then
     missing_pkgs="textual"
@@ -52,20 +52,16 @@ check_python_prereqs() {
     missing_pkgs="${missing_pkgs:+${missing_pkgs} }watchdog"
   fi
   if [ -n "$missing_pkgs" ]; then
-    echo "Error: Missing Python package(s): ${missing_pkgs}" >&2
-    echo "" >&2
-    echo "Recommended: install in a virtual environment:" >&2
-    echo "  python3 -m venv .venv" >&2
-    printf '  source .venv/bin/activate   # On Windows: .venv\\Scripts\\Activate.ps1\n' >&2
-    echo "  pip install textual watchdog" >&2
-    echo "" >&2
-    echo "Or install directly:" >&2
-    echo "  pip install textual watchdog" >&2
-    echo "" >&2
-    echo "If pip is not available:" >&2
-    echo "  python3 -m ensurepip --upgrade   # Install pip itself" >&2
-    echo "  # Or: apt install python3-pip    # Debian/Ubuntu" >&2
-    echo "  # Or: brew install python3       # macOS (includes pip)" >&2
-    exit 3
+    echo "Installing missing Python package(s): ${missing_pkgs}..."
+    # shellcheck disable=SC2086
+    if python3 -m pip install --quiet $missing_pkgs 2>/dev/null; then
+      echo "  Installed successfully."
+    else
+      echo "Error: Failed to install Python package(s): ${missing_pkgs}" >&2
+      echo "" >&2
+      echo "Try installing manually:" >&2
+      echo "  pip install textual watchdog" >&2
+      exit 3
+    fi
   fi
 }

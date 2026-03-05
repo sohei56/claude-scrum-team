@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# dashboard-event.sh — PostToolUse/TeammateIdle hook
+# dashboard-event.sh — PostToolUse/TeammateIdle/Stop/TaskCompleted/SubagentStart/SubagentStop hook
 # Feeds the dashboard events log and communications log.
 # Reads hook event JSON from stdin (Claude Code hook payload).
 # Appends file change events to .scrum/dashboard.json and agent

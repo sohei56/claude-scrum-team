@@ -4,7 +4,7 @@ description: >
   Reproducible sub-agent selection from the awesome-claude-code-subagents
   catalog. Developers invoke after receiving PBI assignments to install
   relevant specialist sub-agents for their work.
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 ## Inputs

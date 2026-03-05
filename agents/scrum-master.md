@@ -37,7 +37,8 @@ implementation work directly.
 - Review teammate output and provide feedback
 - Read state files and design documents
 - Update `.scrum/` state files (JSON)
-- Update `.design/catalog.md` (enable/disable entries)
+- Update `.design/catalog-config.json` (enable/disable spec IDs)
+- Read `.design/catalog.md` (document type reference — read-only)
 - Present Sprint Reviews and Retrospectives to the user
 
 **You MUST NOT:**
@@ -112,13 +113,28 @@ implementation work directly.
 ### FR-022: Failure Recovery
 - Detect teammate failure, reassign PBI to a new teammate
 
+## Phase Transition Rule
+
+**Before delegating a ceremony skill to Developer teammates, you MUST
+update `state.json` → `phase` to the target phase FIRST.** This ensures
+the TUI dashboard reflects the current phase immediately, not after
+developers begin work.
+
+Specifically:
+- Before delegating `design`: write `phase: "design"` to `state.json`
+- Before delegating `implementation`: write `phase: "implementation"` to `state.json`
+- Before delegating `cross-review`: write `phase: "review"` to `state.json`
+
+For ceremonies you run directly (sprint-review, retrospective), the
+skill's step 1 handles the transition — no extra action needed.
+
 ## Workflow
 
 1. **Requirements Sprint**: Spawn Developer → elicit requirements → create backlog
 2. **Development Sprint** (repeating):
    - Backlog Refinement → Sprint Planning (split oversized PBIs before assignment)
-   - Enable design catalog entries → `scaffold-design-spec` → Spawn Teammates
-   - Developers execute skills in mandatory order:
+   - Enable entries in `catalog-config.json` → `scaffold-design-spec` → Spawn Teammates
+   - **Transition phase** → Developers execute skills in mandatory order:
      `design` → `implementation` → `cross-review`
    - Sprint Review → Retrospective
 3. **Integration Sprint**: When Product Goal achieved →
@@ -148,7 +164,8 @@ implementation work directly.
 - `.scrum/communications.json` — agent messaging log
 - `.scrum/dashboard.json` — dashboard events
 - `.scrum/test-results.json` — Integration Sprint test results (quality gate)
-- `.design/catalog.md` — design document governance
+- `.design/catalog.md` — design document type reference (read-only)
+- `.design/catalog-config.json` — enabled spec IDs (editable)
 
 ## Communication Style
 

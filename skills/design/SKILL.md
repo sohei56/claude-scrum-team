@@ -1,14 +1,15 @@
 ---
 name: design
 description: Design phase — Developers author design documents and user-facing documentation
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 ## Inputs
 
-- `state.json` -> `phase: sprint_planning`
+- `state.json` -> `phase: sprint_planning | design`
 - `sprint.json` -> `developers[]` (developer assignments)
-- `.design/catalog.md` (catalog of design and documentation topics)
+- `.design/catalog.md` (reference list of design document types — read-only)
+- `.design/catalog-config.json` (list of enabled spec IDs)
 - Existing `.design/specs/**/*.md` stubs (created by scaffold-design-spec skill)
 - `requirements.md` (source requirements for reference)
 
@@ -24,7 +25,7 @@ disable-model-invocation: true
 
 ## Preconditions
 
-- `state.json` exists with `phase: sprint_planning`
+- `state.json` exists with `phase: sprint_planning` or `design`
 - `sprint.json` exists with developer assignments
 - `.design/specs/**/*.md` stub files exist (created by scaffold-design-spec)
 - `backlog.json` exists with PBIs assigned to the current Sprint
@@ -32,7 +33,7 @@ disable-model-invocation: true
 
 ## Steps
 
-1. Transition `state.json` to `phase: design`.
+1. Transition `state.json` to `phase: design` (if not already set by the Scrum Master).
 2. Each Developer MUST read ALL existing design documents and user-facing
    documentation from previous Sprints before writing their own. This ensures
    consistency across the system's design and prevents contradictions or
@@ -64,7 +65,8 @@ disable-model-invocation: true
 7. Verify all assigned design stubs and user-facing documentation files have
    been populated with substantive content before considering the phase
    complete. Every documentation file must correspond to an enabled entry
-   in `.design/catalog.md` — do not create documentation outside the catalog.
+   in `.design/catalog-config.json` — do not create documentation for spec IDs
+  not listed in the enabled array.
 
 Reference: FR-004
 

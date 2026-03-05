@@ -239,6 +239,104 @@ teardown() {
   [ "$decision" = "deny" ]
 }
 
+@test "phase-gate.sh denies Write to .design/catalog.md" {
+  mkdir -p .scrum
+  echo '{"phase": "design"}' > .scrum/state.json
+
+  local event_json
+  event_json='{"tool_name":"Write","tool_input":{"file_path":".design/catalog.md"}}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/phase-gate.sh'"
+  assert_success
+
+  local decision
+  decision="$(echo "$output" | jq -r '.decision')"
+  [ "$decision" = "deny" ]
+}
+
+@test "phase-gate.sh denies Edit to .design/catalog.md in any phase" {
+  mkdir -p .scrum
+  echo '{"phase": "implementation"}' > .scrum/state.json
+
+  local event_json
+  event_json='{"tool_name":"Edit","tool_input":{"file_path":".design/catalog.md"}}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/phase-gate.sh'"
+  assert_success
+
+  local decision
+  decision="$(echo "$output" | jq -r '.decision')"
+  [ "$decision" = "deny" ]
+}
+
+@test "phase-gate.sh denies design spec write when ID not in catalog-config.json" {
+  mkdir -p .scrum .design
+  echo '{"phase": "implementation"}' > .scrum/state.json
+  printf '| ID | Spec Name | Granularity |\n|---|---|---|\n| S-030 | Screen Design | One per screen |\n' > .design/catalog.md
+  echo '{"enabled": ["S-001"]}' > .design/catalog-config.json
+
+  local event_json
+  event_json='{"tool_name":"Write","tool_input":{"file_path":".design/specs/ui/S-030-screen-design.md"}}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/phase-gate.sh'"
+  assert_success
+
+  local decision
+  decision="$(echo "$output" | jq -r '.decision')"
+  [ "$decision" = "deny" ]
+}
+
+@test "phase-gate.sh denies design spec write when ID not in catalog.md" {
+  mkdir -p .scrum .design
+  echo '{"phase": "design"}' > .scrum/state.json
+  printf '| ID | Spec Name | Granularity |\n|---|---|---|\n| S-001 | System Architecture | One per project |\n' > .design/catalog.md
+  echo '{"enabled": ["S-030"]}' > .design/catalog-config.json
+
+  local event_json
+  event_json='{"tool_name":"Write","tool_input":{"file_path":".design/specs/ui/S-030-screen-design.md"}}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/phase-gate.sh'"
+  assert_success
+
+  local decision
+  decision="$(echo "$output" | jq -r '.decision')"
+  [ "$decision" = "deny" ]
+}
+
+@test "phase-gate.sh allows design spec write when ID in both catalog.md and config" {
+  mkdir -p .scrum .design
+  echo '{"phase": "design"}' > .scrum/state.json
+  printf '| ID | Spec Name | Granularity |\n|---|---|---|\n| S-030 | Screen Design | One per screen |\n' > .design/catalog.md
+  echo '{"enabled": ["S-030"]}' > .design/catalog-config.json
+
+  local event_json
+  event_json='{"tool_name":"Write","tool_input":{"file_path":".design/specs/ui/S-030-screen-design.md"}}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/phase-gate.sh'"
+  assert_success
+
+  local decision
+  decision="$(echo "$output" | jq -r '.decision')"
+  [ "$decision" = "allow" ]
+}
+
+@test "phase-gate.sh enforces catalog in implementation phase too" {
+  mkdir -p .scrum .design
+  echo '{"phase": "implementation"}' > .scrum/state.json
+  printf '| ID | Spec Name | Granularity |\n|---|---|---|\n| S-030 | Screen Design | One per screen |\n' > .design/catalog.md
+  echo '{"enabled": ["S-030"]}' > .design/catalog-config.json
+
+  local event_json
+  event_json='{"tool_name":"Write","tool_input":{"file_path":".design/specs/ui/S-030-screen-design.md"}}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/phase-gate.sh'"
+  assert_success
+
+  local decision
+  decision="$(echo "$output" | jq -r '.decision')"
+  [ "$decision" = "allow" ]
+}
+
 @test "phase-gate.sh allows metadata file Edit during sprint_planning" {
   mkdir -p .scrum
   jq -n '{"phase": "sprint_planning", "current_sprint_id": "sprint-001"}' > .scrum/state.json

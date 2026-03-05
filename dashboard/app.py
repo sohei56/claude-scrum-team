@@ -8,7 +8,7 @@ Panels:
   (a) Sprint Overview — Sprint Goal, phase, PBI count, Developer assignments
   (b) PBI Progress Board — sortable DataTable of PBIs with status colors
   (c) Communication Log — scrollable agent message log
-  (d) File Change Log — scrollable file modification log
+  (d) Work Log — scrollable activity/work log
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
-from threading import Lock
+from threading import Lock, Timer
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -78,6 +78,23 @@ def format_phase(current_phase: str) -> str:
     return f"[bold]Phase:[/bold] [bold white on red] {current_phase} [/]"
 
 
+def get_backlog_items(backlog: dict | list | None) -> list:
+    """Extract PBI items from backlog data, handling variant key names."""
+    if isinstance(backlog, dict):
+        return (
+            backlog.get("items")
+            or backlog.get("backlog_items")
+            or backlog.get("pbis")
+            or backlog.get("pbi_list")
+            or backlog.get("product_backlog")
+            or backlog.get("backlog")
+            or []
+        )
+    if isinstance(backlog, list):
+        return backlog
+    return []
+
+
 def read_json(path: Path) -> dict | list | None:
     """Read a JSON file, returning None if missing or invalid."""
     try:
@@ -135,12 +152,15 @@ class SprintOverview(Static):
                     if isinstance(p, dict) and p.get("status") == "done":
                         done_count += 1
             elif backlog and pbi_ids:
-                for item in backlog.get("items", []):
+                for item in get_backlog_items(backlog):
+                    if not isinstance(item, dict):
+                        continue
                     if item.get("id") in pbi_ids and item.get("status") == "done":
                         done_count += 1
 
-            # Developer count: from developer_count (spec) or derive from pbis (agent)
-            dev_count = sprint.get("developer_count") or 0
+            # Developer count: from developer_count, developers[], or pbis[]
+            devs = sprint.get("developers") or []
+            dev_count = sprint.get("developer_count") or len(devs) or 0
             if not dev_count and sprint_pbis:
                 devs_set = set()
                 for p in sprint_pbis:
@@ -162,10 +182,14 @@ class SprintOverview(Static):
             )
 
             # Agent assignments: from developers[] (spec) or pbis[] (agent)
-            devs = sprint.get("developers") or []
             if devs:
                 dev_parts = []
                 for d in devs:
+                    if isinstance(d, str):
+                        dev_parts.append(d)
+                        continue
+                    if not isinstance(d, dict):
+                        continue
                     did = d.get("id", "?")
                     status = d.get("status", "?")
                     impl = d.get("assigned_work", {}).get("implement", [])
@@ -235,9 +259,8 @@ class PBIProgressBoard(DataTable):
                         pbi_review_map[pid] = p["reviewer"]
 
         # Collect PBI items from backlog (spec format) or sprint.pbis (agent format)
-        items = []
-        if backlog and isinstance(backlog, dict):
-            items = backlog.get("items", [])
+        # Try multiple key names — LLM agents may use non-canonical names
+        items = get_backlog_items(backlog)
         if not items and sprint and isinstance(sprint, dict):
             items = sprint.get("pbis", [])
 
@@ -249,23 +272,24 @@ class PBIProgressBoard(DataTable):
             raw_status = item.get("status", "?")
             # Normalize status to canonical form
             status = STATUS_NORMALIZE.get(raw_status, raw_status)
-            # Resolve implementer from multiple possible field names,
-            # then fall back to sprint developer assignments (case-insensitive)
+            # Resolve implementer: prefer sprint.json developer map (most
+            # reliable — set by spawn-teammates after reconciliation), then
+            # fall back to backlog.json fields which may hold placeholders.
             pbi_key = str(pbi_id).lower()
             impl = (
-                item.get("implementer_id")
+                pbi_impl_map.get(pbi_key)
+                or item.get("implementer_id")
                 or item.get("implementer")
                 or item.get("assigned_to")
                 or item.get("developer")
                 or item.get("developer_id")
-                or pbi_impl_map.get(pbi_key)
                 or "-"
             )
             reviewer = (
-                item.get("reviewer_id")
+                pbi_review_map.get(pbi_key)
+                or item.get("reviewer_id")
                 or item.get("reviewer")
                 or item.get("assigned_reviewer")
-                or pbi_review_map.get(pbi_key)
                 or "-"
             )
 
@@ -387,11 +411,11 @@ class CommunicationLog(RichLog):
             )
 
 
-class FileChangeLog(RichLog):
-    """Panel (d): Scrollable file modification log."""
+class WorkLog(RichLog):
+    """Panel (d): Scrollable activity/work log."""
 
     DEFAULT_CSS = """
-    FileChangeLog {
+    WorkLog {
         height: 1fr;
         border: solid $accent;
     }
@@ -439,12 +463,19 @@ class FileChangeLog(RichLog):
 
 
 class ScrumFileHandler(FileSystemEventHandler):
-    """Watchdog handler that triggers dashboard updates on .scrum/ changes."""
+    """Watchdog handler that triggers debounced dashboard updates on .scrum/ changes.
+
+    Uses a 200ms debounce timer so that rapid writes (e.g., tmp-file + mv)
+    are coalesced into a single refresh rather than causing redundant redraws.
+    """
+
+    DEBOUNCE_SECONDS = 0.2
 
     def __init__(self, app: ScrumDashboard) -> None:
         super().__init__()
         self.app = app
         self._lock = Lock()
+        self._pending_timer: object | None = None
 
     def on_modified(self, event) -> None:
         if event.is_directory:
@@ -457,13 +488,19 @@ class ScrumFileHandler(FileSystemEventHandler):
         self._schedule_update()
 
     def on_moved(self, event) -> None:
-        if event.is_directory:
-            return
         self._schedule_update()
 
     def _schedule_update(self) -> None:
         with self._lock:
-            self.app.call_from_thread(self.app.refresh_panels)
+            # Cancel any pending debounce timer and start a new one
+            if self._pending_timer is not None:
+                self._pending_timer.cancel()
+            self._pending_timer = Timer(
+                self.DEBOUNCE_SECONDS,
+                lambda: self.app.call_from_thread(self.app.refresh_panels),
+            )
+            self._pending_timer.daemon = True
+            self._pending_timer.start()
 
 
 class ScrumDashboard(App):
@@ -480,7 +517,7 @@ class ScrumDashboard(App):
         layout: grid;
         grid-size: 2 1;
     }
-    #comm-title, #file-title {
+    #comm-title, #work-title {
         height: 1;
         text-style: bold;
         color: $text;
@@ -508,16 +545,16 @@ class ScrumDashboard(App):
                 CommunicationLog(id="comm-log"),
             )
             yield Vertical(
-                Static("[bold]File Change Log[/bold]", id="file-title"),
-                FileChangeLog(id="file-log"),
+                Static("[bold]Work Log[/bold]", id="work-title"),
+                WorkLog(id="work-log"),
             )
         yield Footer()
 
     def on_mount(self) -> None:
         self.refresh_panels()
         self._start_watcher()
-        # Periodic fallback: refresh every 3 seconds in case watchdog misses events
-        self.set_interval(3, self.refresh_panels)
+        # Periodic fallback: refresh every 1 second in case watchdog misses events
+        self.set_interval(1, self.refresh_panels)
 
     def _start_watcher(self) -> None:
         """Start watchdog observer for .scrum/ directory."""
@@ -550,8 +587,8 @@ class ScrumDashboard(App):
         comm_log = self.query_one("#comm-log", CommunicationLog)
         comm_log.update_content()
 
-        file_log = self.query_one("#file-log", FileChangeLog)
-        file_log.update_content()
+        work_log = self.query_one("#work-log", WorkLog)
+        work_log.update_content()
 
     def action_refresh(self) -> None:
         self.refresh_panels()

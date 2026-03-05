@@ -5,7 +5,7 @@ description: >
   test frameworks, runs all tests, performs HTTP smoke testing, optionally
   runs browser E2E via Playwright MCP, and records results to
   .scrum/test-results.json.
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 ## Inputs

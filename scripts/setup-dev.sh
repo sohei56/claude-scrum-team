@@ -57,10 +57,24 @@ echo ""
 echo "Running end-user setup..."
 sh "$SCRIPT_DIR/setup-user.sh"
 
+# --- Remove hook registration from settings.json for development ---
+# setup-user.sh registers hooks in .claude/settings.json, but those hooks
+# are meant for target projects running under scrum-start.sh.  When
+# developing claude-scrum-team itself there is no .scrum/state.json and the
+# hooks would error on every tool use.  Keep the hook *files* symlinked for
+# testing, but strip the hook registrations so they don't fire.
+echo ""
+echo "Removing hook registrations from .claude/settings.json (dev mode)..."
+settings_file="$PROJECT_ROOT/.claude/settings.json"
+if [ -f "$settings_file" ]; then
+  tmp_settings="$(mktemp)"
+  jq 'del(.hooks)' "$settings_file" > "$tmp_settings" && mv "$tmp_settings" "$settings_file"
+  echo "  Removed hooks config — hooks will not fire during development."
+fi
+
 # --- Replace hook copies with symlinks for development ---
 # setup-user.sh copies hook files, but contributors need symlinks so edits
 # to hooks/ are immediately reflected without re-running setup.
-echo ""
 echo "Replacing hook copies with symlinks for development..."
 hooks_dir="$PROJECT_ROOT/.claude/hooks"
 rm -rf "$hooks_dir"

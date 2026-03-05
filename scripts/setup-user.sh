@@ -68,6 +68,18 @@ for lib_file in "$PROJECT_ROOT/hooks/lib/"*.sh; do
   fi
 done
 
+# --- Copy design catalog ---
+echo "Copying design catalog to $TARGET_DIR/.design/..."
+mkdir -p "$TARGET_DIR/.design"
+cp "$PROJECT_ROOT/.design/catalog.md" "$TARGET_DIR/.design/"
+# Copy default catalog config if none exists yet (preserve existing project config)
+if [ ! -f "$TARGET_DIR/.design/catalog-config.json" ]; then
+  cp "$PROJECT_ROOT/.design/catalog-config.json" "$TARGET_DIR/.design/"
+  echo "  Created default catalog-config.json"
+else
+  echo "  catalog-config.json already exists — preserving project configuration"
+fi
+
 # --- Configure settings.json ---
 echo "Configuring $TARGET_DIR/.claude/settings.json..."
 
@@ -133,6 +145,10 @@ cat > "$settings_file" << 'SETTINGS_EOF'
           {
             "type": "command",
             "command": ".claude/hooks/completion-gate.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/dashboard-event.sh"
           }
         ]
       }
@@ -143,6 +159,10 @@ cat > "$settings_file" << 'SETTINGS_EOF'
           {
             "type": "command",
             "command": ".claude/hooks/quality-gate.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/dashboard-event.sh"
           }
         ]
       }
@@ -257,4 +277,5 @@ echo "Project configured at: $TARGET_DIR"
 echo "  .claude/agents/     — Agent definitions"
 echo "  .claude/skills/     — Skill definitions"
 echo "  .claude/hooks/      — Hook scripts"
+echo "  .design/            — Design catalog and configuration"
 echo "  .claude/settings.json — Hook and status line configuration"

@@ -4,7 +4,7 @@ description: >
   Integration Sprint — product-wide quality assurance with integration,
   E2E, regression testing, and user acceptance testing. Triggered when
   the Product Goal is achieved.
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 ## Inputs

@@ -2,8 +2,9 @@
 # phase-gate.sh — PreToolUse hook
 # Gates tools by current Scrum phase and enforces design catalog governance.
 # Reads .scrum/state.json for the current phase, .design/catalog.md for
-# governance, and the hook event JSON (Claude Code PreToolUse payload) from
-# stdin. Outputs a permissionDecision JSON object.
+# document type validation, .design/catalog-config.json for enablement state,
+# and the hook event JSON (Claude Code PreToolUse payload) from stdin.
+# Outputs a permissionDecision JSON object.
 set -euo pipefail
 
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -12,6 +13,7 @@ HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 STATE_FILE=".scrum/state.json"
 CATALOG_FILE=".design/catalog.md"
+CONFIG_FILE=".design/catalog-config.json"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -57,39 +59,58 @@ is_design_spec_path() {
   esac
 }
 
-# Check whether a filename has a matching enabled catalog entry.
-# Catalog entries are in markdown table rows: | ID | Name | enabled | ...
-# We check if the catalog file contains an "enabled" row.  Design spec files
-# follow the pattern: .design/specs/{category}/{id}-{slug}.md
+# Check whether a spec ID exists in catalog.md (any table row).
+# Design spec files follow the pattern: .design/specs/{category}/{id}-{slug}.md
 # We extract the ID prefix (e.g. "S-001") and look for it in catalog.md.
-has_enabled_catalog_entry() {
+has_catalog_entry() {
   local path="$1"
   if [ ! -f "$CATALOG_FILE" ]; then
     return 1
   fi
 
-  # Extract filename from path: e.g. S-001-system-architecture.md
-  local filename
+  local filename spec_id
   filename="$(basename "$path")"
-
-  # Extract the spec ID prefix (everything before the second hyphen group,
-  # e.g. "S-001" from "S-001-system-architecture.md" or "D-001" from
-  # "D-001-architecture-decision-record.md").
-  local spec_id
   spec_id="$(echo "$filename" | sed -E 's/^([A-Z]+-[0-9]+)-.*/\1/')"
 
   if [ -z "$spec_id" ] || [ "$spec_id" = "$filename" ]; then
-    # Could not parse a spec ID — fail closed
     return 1
   fi
 
-  # Look for a table row containing the spec_id and "enabled"
-  # Grep returns 0 if found, 1 if not found
-  if grep -qE "\\|\\s*${spec_id}\\s*\\|.*\\|\\s*enabled\\s*\\|" "$CATALOG_FILE" 2>/dev/null; then
+  # Check if spec ID appears in any catalog table row
+  if grep -qE "\\|\\s*${spec_id}\\s*\\|" "$CATALOG_FILE" 2>/dev/null; then
     return 0
   fi
 
   return 1
+}
+
+# Check whether a spec ID is enabled in catalog-config.json.
+is_enabled_in_config() {
+  local path="$1"
+  if [ ! -f "$CONFIG_FILE" ]; then
+    return 1
+  fi
+
+  local filename spec_id
+  filename="$(basename "$path")"
+  spec_id="$(echo "$filename" | sed -E 's/^([A-Z]+-[0-9]+)-.*/\1/')"
+
+  if [ -z "$spec_id" ] || [ "$spec_id" = "$filename" ]; then
+    return 1
+  fi
+
+  # Check if spec_id is in the enabled array
+  if jq -e --arg id "$spec_id" '.enabled | index($id) != null' "$CONFIG_FILE" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  return 1
+}
+
+# shellcheck disable=SC2329 # kept for external use and testability
+has_enabled_catalog_entry() {
+  local path="$1"
+  has_catalog_entry "$path" && is_enabled_in_config "$path"
 }
 
 # Extract target file path from tool_input JSON.
@@ -161,26 +182,33 @@ if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Phase-specific rules
+# Catalog governance: catalog.md is read-only in working directories
 # ---------------------------------------------------------------------------
 
-case "$phase" in
-  design)
-    # During design phase, deny Write/Edit under .design/specs/
-    # if the target file has no enabled catalog entry
-    if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
-      if [ -n "$target_path" ] && is_design_spec_path "$target_path"; then
-        if ! has_enabled_catalog_entry "$target_path"; then
-          deny "Design phase: cannot write to '$target_path' — no enabled catalog entry found in .design/catalog.md. Enable the spec in the catalog first."
-        fi
-      fi
+if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
+  if [ -n "$target_path" ]; then
+    case "$target_path" in
+      .design/catalog.md)
+        deny "catalog.md is read-only. It is managed in claude-scrum-team and must not be modified in working directories. To control which specs are active, update .design/catalog-config.json instead."
+        ;;
+    esac
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# Design spec governance: all phases require catalog entry + enabled config
+# ---------------------------------------------------------------------------
+
+if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
+  if [ -n "$target_path" ] && is_design_spec_path "$target_path"; then
+    if ! has_catalog_entry "$target_path"; then
+      deny "Cannot write to '$target_path' — no matching entry found in .design/catalog.md. Only documents listed in the catalog may be created."
     fi
+    if ! is_enabled_in_config "$target_path"; then
+      deny "Cannot write to '$target_path' — spec is not enabled in .design/catalog-config.json. Add its ID to the enabled array first."
+    fi
+  fi
+fi
 
-    allow
-    ;;
-
-  *)
-    # Default: allow (source code gating already handled above)
-    allow
-    ;;
-esac
+# All specific gating handled above — allow everything else
+allow

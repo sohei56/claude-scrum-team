@@ -1,12 +1,12 @@
 ---
 name: cross-review
 description: Cross-review process — Developers review each other's work
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 ## Inputs
 
-- `state.json` → `phase: implementation`
+- `state.json` → `phase: implementation | review`
 - `backlog.json` → all PBIs in the current Sprint with `status: in_progress` and implementation complete
 - `.scrum/requirements.md` and relevant design docs for each PBI
 
@@ -22,17 +22,23 @@ disable-model-invocation: true
 
 ## Preconditions
 
-- `state.json` exists with `phase: "implementation"`
+- `state.json` exists with `phase: "implementation"` or `"review"`
 - `backlog.json` exists and contains PBIs in the current Sprint with implementation complete
 - `.scrum/requirements.md` exists and is readable
 - Relevant design docs referenced by PBIs exist
 
 ## Steps
 
-1. **Transition state**: Update `state.json` → `phase: "review"`.
+1. **Transition state**: Update `state.json` → `phase: "review"` (if not already set by the Scrum Master).
    Update `sprint.json` → `status: "cross_review"`.
 2. **Mark PBIs as under review**: Update `backlog.json` → `items[].status`
    from `in_progress` to `review` for all PBIs in the current Sprint.
+   Use this command for each PBI (replace `pbi-001` with the PBI ID):
+   ```bash
+   jq '(.items[] | select(.id == "pbi-001")).status = "review"' .scrum/backlog.json > .scrum/backlog.json.tmp && mv .scrum/backlog.json.tmp .scrum/backlog.json
+   ```
+   **You MUST run this command** — the TUI dashboard reads status from
+   `backlog.json` and will not update without it.
 3. **Read context**: For each PBI in the current Sprint, the assigned reviewer
    reads `requirements.md` and the relevant design documents referenced in
    the PBI's `design_doc_paths`.
@@ -50,6 +56,10 @@ disable-model-invocation: true
    it as a new PBI in `backlog.json` with `status: "draft"`.
 8. **Update PBI status**: For PBIs that pass review, update
    `backlog.json` → `items[].status` from `review` to `done`.
+   Use this command for each passing PBI (replace `pbi-001`):
+   ```bash
+   jq '(.items[] | select(.id == "pbi-001")).status = "done"' .scrum/backlog.json > .scrum/backlog.json.tmp && mv .scrum/backlog.json.tmp .scrum/backlog.json
+   ```
 9. **Set review path**: Set `items[].review_doc_path` in `backlog.json`
    to the path of the created review document.
 

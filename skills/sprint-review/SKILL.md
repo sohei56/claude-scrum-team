@@ -1,7 +1,7 @@
 ---
 name: sprint-review
 description: Sprint Review ceremony — present Increment to user
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 ## Inputs
@@ -77,7 +77,7 @@ disable-model-invocation: true
    `sprint-history.json` → `sprints[]` with:
    - `id`: Sprint identifier from `sprint.json`
    - `goal`: Sprint Goal
-   - `type`: Sprint type (e.g., `requirements`, `design`, `implementation`)
+   - `type`: Sprint type (`requirements`, `development`, or `integration`)
    - `pbis_completed`: count of PBIs with `status: "done"`
    - `pbis_total`: total count of PBIs in the Sprint
    - `started_at`: Sprint start timestamp from `sprint.json`

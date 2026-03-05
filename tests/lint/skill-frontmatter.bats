@@ -74,13 +74,13 @@ extract_frontmatter() {
   done
 }
 
-@test "all skills have disable-model-invocation set to true" {
+@test "all skills have disable-model-invocation set to false" {
   for skill in "${SKILL_NAMES[@]}"; do
     local skill_file="${PROJECT_ROOT}/skills/${skill}/SKILL.md"
     local value
     value="$(extract_frontmatter "$skill_file" | yq '.["disable-model-invocation"]')"
-    [ "$value" = "true" ] || {
-      echo "disable-model-invocation is not true in: $skill_file (got: $value)"
+    [ "$value" = "false" ] || {
+      echo "disable-model-invocation is not false in: $skill_file (got: $value)"
       return 1
     }
   done
