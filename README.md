@@ -33,14 +33,9 @@ Run `scrum-start.sh` in any project directory and a full AI Scrum team takes ove
 
 Vibe coding is fast but chaotic. Spec-Driven Development (SDD) is disciplined but demands everything upfront. Real projects live in between — you start with a rough vision and refine it as you go.
 
-When a project has clear guardrails (like a C compiler with a pre-written test suite), you can let agents run unsupervised. But most real-world work has fuzzy requirements that need course corrections along the way. **claude-scrum-team** brings Scrum's inspect-and-adapt loop to Claude Code Agent Teams, giving you structured iteration without requiring a complete specification on day one.
+When requirements are crystal-clear from the beginning — like a project backed by a full test suite — you can hand off to agents entirely and walk away. In practice, though, most projects have fuzzy requirements that need to be shaped as you go. **claude-scrum-team** brings Scrum's inspect-and-adapt loop to Claude Code Agent Teams, giving you structured iteration without requiring a complete specification on day one.
 
-What this gives you:
-
-- **Structured multi-agent development** — instead of one AI doing everything sequentially, multiple Developer agents work on PBIs in parallel, each designing, implementing, and cross-reviewing independently.
-- **Quality gates at every stage** — design documents are reviewed before implementation starts, cross-reviews catch issues before Sprint Review, and Integration Sprints run automated tests before you see the product.
-- **Continuous improvement** — Retrospectives after each Sprint produce actionable improvements that feed into the next Sprint, so the team gets better over time.
-- **Full visibility** — a real-time TUI dashboard shows you exactly what every agent is doing, what files they're changing, and how the Sprint is progressing.
+The answer here is a Scrum team made entirely of AI agents. A Scrum Master orchestrates ceremonies and coordinates a pool of Developer agents, while you stay in the Product Owner seat — describing what you want, approving Sprint Goals, and reviewing results.
 
 ## Demo
 
@@ -55,11 +50,10 @@ One command sets up agents, skills, and hooks — then launches Claude Code with
 1. **You describe your project** — the Scrum Master spawns a Developer to elicit requirements and write `requirements.md`
 2. **Backlog Refinement** — the SM creates and refines PBIs from your requirements
 3. **Sprint Planning** — the SM proposes a Sprint Goal; you approve or adjust
-4. **Design + Implementation** — Developers design, then implement their PBIs in parallel
-5. **Cross-Review** — each Developer reviews another's work (no self-review)
-6. **Sprint Review** — the SM launches the app and demos every completed PBI; you confirm each works
-7. **Retrospective** — the team reflects and records improvements for the next Sprint
-8. **Repeat** until the Product Goal is achieved, then an **Integration Sprint** runs automated tests and a final UAT
+4. **Design + Implementation + Cross-Review** — Developers design and implement their PBIs in parallel, then review each other's work (no self-review)
+5. **Sprint Review** — the SM launches the app and demos every completed PBI; you confirm each works
+6. **Retrospective** — the team reflects and records improvements for the next Sprint
+7. **Repeat** until the Product Goal is achieved, then an **Integration Sprint** runs automated tests and a final UAT
 
 ## Features
 
@@ -91,23 +85,38 @@ This is not a carbon copy of human Scrum — it adapts the framework to how AI a
 ### Sprint Lifecycle
 
 ```
-Requirements Sprint ──> Backlog Refinement ──> Sprint Planning
-                                                     │
-                 ┌───────────────────────────────────┘
-                 v
-         Scaffold Design Specs ──> Spawn Teammates ──> Design Phase
-                                                          │
-                 ┌────────────────────────────────────────┘
-                 v
-         Implementation Phase ──> Cross-Review ──> Sprint Review
-                                                       │
-                 ┌─────────────────────────────────────┘
-                 v
-           Retrospective ──> [next Sprint or Integration Sprint]
-                                        │
-                 ┌──────────────────────┘
-                 v
-         Smoke Tests ──> UAT ──> Release Decision
+ ┌─────────────────────────────────────────────────────────────┐
+ │  Requirements Sprint (Sprint 0)                             │
+ │  Requirements Elicitation ──▶ Initial Product Backlog       │
+ └──────────────────────────────┬──────────────────────────────┘
+                                ▼
+ ┌─────────────────────────────────────────────────────────────┐
+ │  Sprint N                                                   │
+ │                                                             │
+ │  1. Backlog Refine    PBIs: draft ──▶ refined               │
+ │          ▼                                                  │
+ │  2. Planning          PO approves Sprint Goal               │
+ │          ▼                                                  │
+ │  3. Scaffold Specs    Create design doc stubs from catalog  │
+ │          ▼                                                  │
+ │  4. Spawn Teammates   Launch Developer agents for PBIs      │
+ │          ▼                                                  │
+ │  5. Design            Write design specs (parallel)         │
+ │          ▼                                                  │
+ │  6. Implementation    Build features with TDD (parallel)    │
+ │          ▼                                                  │
+ │  7. Cross-Review      Devs review each other's work         │
+ │          ▼                                                  │
+ │  8. Sprint Review     Demo to PO, accept/reject PBIs        │
+ │          ▼                                                  │
+ │  9. Retrospective     Record improvements for next Sprint   │
+ └──────────┬──────────────────────────┬───────────────────────┘
+            │                          │
+            ▼                          ▼
+     Next Sprint N+1   ┌───────────────────────────────────────┐
+                       │  Integration Sprint                   │
+                       │  Smoke Tests ──▶ UAT ──▶ Release      │
+                       └───────────────────────────────────────┘
 ```
 
 ## Quick Start
@@ -159,17 +168,6 @@ For detailed setup instructions, see [quickstart.md](specs/001-ai-scrum-team/qui
 ## Development
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and workflow.
-
-```bash
-# Install dev dependencies
-sh scripts/setup-dev.sh
-
-# Run tests
-bats tests/unit/ tests/lint/
-
-# Lint shell scripts
-shellcheck scrum-start.sh scripts/*.sh scripts/lib/*.sh hooks/*.sh hooks/lib/*.sh
-```
 
 ## License
 
