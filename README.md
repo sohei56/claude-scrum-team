@@ -5,7 +5,7 @@
 <h1 align="center">claude-scrum-team</h1>
 
 <p align="center">
-  <strong>AI-powered Scrum team for Claude Code</strong>
+  <strong>AI-Powered Scrum Team for Claude Code — a full Scrum workflow driven by multi-agent coordination via Agent Teams</strong>
 </p>
 
 <p align="center">
@@ -31,7 +31,11 @@ Run `scrum-start.sh` in any project directory and a full AI Scrum team takes ove
 
 ## Why?
 
-Claude Code is powerful on its own, but complex projects benefit from structure. This tool gives you:
+Vibe coding is fast but chaotic. Spec-Driven Development (SDD) is disciplined but demands everything upfront. Real projects live in between — you start with a rough vision and refine it as you go.
+
+When a project has clear guardrails (like a C compiler with a pre-written test suite), you can let agents run unsupervised. But most real-world work has fuzzy requirements that need course corrections along the way. **claude-scrum-team** brings Scrum's inspect-and-adapt loop to Claude Code Agent Teams, giving you structured iteration without requiring a complete specification on day one.
+
+What this gives you:
 
 - **Structured multi-agent development** — instead of one AI doing everything sequentially, multiple Developer agents work on PBIs in parallel, each designing, implementing, and cross-reviewing independently.
 - **Quality gates at every stage** — design documents are reviewed before implementation starts, cross-reviews catch issues before Sprint Review, and Integration Sprints run automated tests before you see the product.
@@ -59,14 +63,30 @@ One command sets up agents, skills, and hooks — then launches Claude Code with
 
 ## Features
 
-- **14 ceremony Skills** covering the full Scrum lifecycle
-- **Scrum Master in Delegate mode** — coordinates but never writes code
-- **Parallel Developer agents** — up to 6 developers per Sprint
-- **Design document governance** — catalog-controlled design specs with freeze/change process
+- **14 ceremony skills** covering the full Scrum lifecycle: requirements elicitation, backlog refinement, sprint planning, design, implementation, cross-review, sprint review, retrospective, and integration testing
+- **Multi-agent coordination** — Scrum Master (Delegate mode) orchestrates up to 6 parallel Developer agents per Sprint
+- **Real-time TUI dashboard** — Textual-based four-panel display (Sprint Overview, PBI Progress Board, Communication Log, Work Log) with watchdog filesystem monitoring
+- **Design document governance** — immutable catalog (`catalog.md`) with editable enablement config (`catalog-config.json`), enforced by phase-gate hooks
+- **Quality enforcement hooks** — phase gates (source code restrictions), completion gates (exit criteria), quality gates (Definition of Done), dashboard events, and session context restoration
+- **State persistence** — all state in `.scrum/` JSON files for full session resume capability
 - **Automated testing** — Integration Sprints run smoke tests, unit tests, and E2E via Playwright
-- **Real-time TUI dashboard** — Sprint overview, PBI board, communication log, file changes
-- **State persistence** — all state in `.scrum/` JSON files; resume any interrupted session
 - **Retrospective-driven improvement** — improvements from past Sprints are applied automatically
+
+### AI-Specific Adaptations
+
+This is not a carbon copy of human Scrum — it adapts the framework to how AI agents actually work.
+
+**Extensions leveraging AI strengths:**
+
+- **Dynamic team sizing** — the number of Developer agents is optimized per Sprint based on PBI count and complexity
+- **On-demand specialization** — each Developer selects and spawns domain-specific sub-agents based on their assigned PBI (e.g., a frontend PBI triggers a UI-specialist sub-agent)
+
+**Constraints addressing AI weaknesses:**
+
+- **Mandatory Requirements Sprint** — the first Sprint is dedicated solely to requirements elicitation, preventing the team from charging ahead without a map
+- **No work without a PBI** — all development must be tied to a backlog item, stopping the Scrum Master from drifting into ad-hoc fixes mid-conversation
+- **Controlled document creation** — only document types listed in the design catalog may be created, curbing the AI tendency to produce sprawling, unstructured documentation
+- **PO-driven Sprint scope** — Sprint boundaries are set by meaningful review checkpoints rather than velocity estimates, since AI agents have no stable velocity baseline
 
 ### Sprint Lifecycle
 
