@@ -6,6 +6,10 @@
 # communication messages to .scrum/communications.json.
 set -euo pipefail
 
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/validate.sh
+. "$HOOK_DIR/lib/validate.sh"
+
 DASHBOARD_FILE=".scrum/dashboard.json"
 COMMS_FILE=".scrum/communications.json"
 SESSION_MAP=".scrum/session-map.json"
@@ -15,13 +19,6 @@ MAX_MESSAGES=200
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-# Ensure .scrum directory exists
-ensure_scrum_dir() {
-  if [ ! -d ".scrum" ]; then
-    mkdir -p ".scrum"
-  fi
-}
 
 # Initialize dashboard.json if it does not exist
 ensure_dashboard_file() {
@@ -37,11 +34,6 @@ ensure_comms_file() {
   if [ ! -f "$COMMS_FILE" ]; then
     jq -n --argjson max "$MAX_MESSAGES" '{"messages": [], "max_messages": $max}' > "$COMMS_FILE"
   fi
-}
-
-# Get current ISO 8601 timestamp (works on both BSD and GNU date)
-get_timestamp() {
-  date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo "1970-01-01T00:00:00Z"
 }
 
 # Append an event to dashboard.json, trimming oldest if over cap

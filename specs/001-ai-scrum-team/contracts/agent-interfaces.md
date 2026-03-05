@@ -342,16 +342,24 @@ Line 3: Agents: SM:active Dev1:impl(PBI-7) Dev2:review(PBI-5)
 **Configuration**: `<project>/.claude/settings.json`
 **Responsibility**: R7 Layer 2 — enforcement without relying on prompts
 
+### Shared Hook Library
+- **File**: `hooks/lib/validate.sh`
+- **Provides**: `validate_json_file`, `log_hook`, `get_timestamp`, `ensure_scrum_dir`
+- **Sourced by**: All hooks via `HOOK_DIR` pattern
+- **Logging**: Writes timestamped entries to `.scrum/hooks.log` (auto-trimmed at 500 lines)
+
 ### SessionStart Hook
 - **Script**: `hooks/session-context.sh`
-- **Reads**: `.scrum/state.json`
+- **Reads**: `.scrum/state.json`, `.scrum/sprint.json`
 - **Output**: `additionalContext` with current phase, Sprint info
 - **Purpose**: Inject phase context at session start
+- **Validation**: Uses `validate_json_file` to verify state files before parsing
 
 ### PreToolUse Hook
 - **Script**: `hooks/phase-gate.sh`
 - **Reads**: `.scrum/state.json` current phase; `.design/catalog.md`
 - **Output**: `permissionDecision` (`allow`, `deny`, or `ask`)
+- **Logging**: Logs all deny decisions to `.scrum/hooks.log`
 - **Purpose**: Gate tool usage by current phase. Examples:
   - During `design` phase: deny `Edit` on source files
   - During `design` phase: deny `Write`/`Edit` under `.design/specs/`
@@ -363,12 +371,14 @@ Line 3: Agents: SM:active Dev1:impl(PBI-7) Dev2:review(PBI-5)
 - **Script**: `hooks/completion-gate.sh`
 - **Reads**: `.scrum/state.json`, relevant state files
 - **Output**: exit code 2 + `reason` if exit criteria not met
+- **Logging**: Logs all blocked stop attempts to `.scrum/hooks.log`
 - **Purpose**: Prevent premature phase completion
+- **Graceful degradation**: Allows stop (with warning) if state files are missing
 
 ### TaskCompleted Hook
 - **Script**: `hooks/quality-gate.sh`
-- **Reads**: PBI status, test results, lint results
-- **Output**: exit code 2 + instructions if quality gates fail
+- **Reads**: PBI status, design docs, test files, lint results (scoped to git-changed files)
+- **Output**: Advisory warnings to stderr (does not hard-block)
 - **Purpose**: Enforce Definition of Done (FR-017) before marking tasks complete
 
 ---

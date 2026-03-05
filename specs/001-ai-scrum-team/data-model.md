@@ -357,6 +357,25 @@ Stores timestamped agent activity events written by Claude Code hooks
 
 ---
 
+## Entity: HookLog
+
+**File**: `.scrum/hooks.log`
+**Owner**: All hooks (append-only via `log_hook` from `hooks/lib/validate.sh`)
+**Readers**: Developers (debugging)
+
+Plain-text log of hook activity for debugging. Each line is a timestamped
+entry in the format: `<ISO8601> [LEVEL] <hook_name>: <message>`.
+
+Levels: `INFO`, `WARN`, `ERROR`.
+
+### Constraints
+
+- The file is auto-trimmed to 500 lines (newest kept) on each append.
+- Created automatically on first log entry.
+- Not required for any hook functionality — purely diagnostic.
+
+---
+
 ## Entity: TestResults
 
 **File**: `.scrum/test-results.json`

@@ -168,10 +168,19 @@ EOF
     local py_files
     py_files="$(get_changed_files "py")"
     if [ -n "$py_files" ]; then
-      # shellcheck disable=SC2086
-      if ! ruff check $py_files --quiet >/dev/null 2>&1; then
-        warn "PBI ${pbi_id}: ruff linter reported issues in changed Python files."
-        linter_passed=false
+      local failed_py=""
+      while IFS= read -r pf; do
+        [ -z "$pf" ] && continue
+        [ -f "$pf" ] || continue
+        if ! ruff check "$pf" --quiet >/dev/null 2>&1; then
+          failed_py="${failed_py}${failed_py:+, }${pf}"
+          linter_passed=false
+        fi
+      done <<EOF
+$py_files
+EOF
+      if [ -n "$failed_py" ]; then
+        warn "PBI ${pbi_id}: ruff reported issues in: ${failed_py}"
       fi
     fi
   fi

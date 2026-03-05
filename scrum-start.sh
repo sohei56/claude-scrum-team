@@ -20,16 +20,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # --- Validate prerequisites ---
 
-# Check Claude Code CLI
-if ! command -v claude >/dev/null 2>&1; then
-  echo "Error: Claude Code CLI not found on PATH." >&2
-  echo "Install it: https://docs.anthropic.com/en/docs/claude-code/overview" >&2
-  exit 1
-fi
-
-# Check Python 3.9+ and TUI packages (textual, watchdog)
 # shellcheck source=scripts/lib/check-python.sh
 . "$SCRIPT_DIR/scripts/lib/check-python.sh"
+check_claude_cli
 check_python_prereqs
 
 # --- Run setup (copies agents, skills, hooks, configures settings) ---

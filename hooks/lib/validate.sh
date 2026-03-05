@@ -12,6 +12,18 @@ _VALIDATE_SH_LOADED=1
 HOOK_LOG_FILE=".scrum/hooks.log"
 HOOK_LOG_MAX_LINES=500
 
+# Ensure .scrum directory exists
+ensure_scrum_dir() {
+  if [ ! -d ".scrum" ]; then
+    mkdir -p ".scrum"
+  fi
+}
+
+# Get current ISO 8601 timestamp (works on both BSD and GNU date)
+get_timestamp() {
+  date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo "1970-01-01T00:00:00Z"
+}
+
 # Log a timestamped message to .scrum/hooks.log
 # Usage: log_hook <hook_name> <level> <message>
 # Levels: INFO, WARN, ERROR
@@ -20,13 +32,10 @@ log_hook() {
   local level="$2"
   local message="$3"
 
-  # Ensure .scrum directory exists
-  if [ ! -d ".scrum" ]; then
-    mkdir -p ".scrum"
-  fi
+  ensure_scrum_dir
 
   local ts
-  ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo "unknown")"
+  ts="$(get_timestamp)"
 
   printf '%s [%s] %s: %s\n' "$ts" "$level" "$hook_name" "$message" >> "$HOOK_LOG_FILE"
 

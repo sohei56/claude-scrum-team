@@ -153,7 +153,7 @@ sh scripts/setup-dev.sh
 bats tests/unit/ tests/lint/
 
 # Lint shell scripts
-shellcheck scrum-start.sh scripts/*.sh hooks/*.sh
+shellcheck scrum-start.sh scripts/*.sh scripts/lib/*.sh hooks/*.sh hooks/lib/*.sh
 ```
 
 ## License

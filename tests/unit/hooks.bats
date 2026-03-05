@@ -93,6 +93,69 @@ teardown() {
   jq -e '.messages | type == "array"' .scrum/communications.json
 }
 
+@test "dashboard-event.sh handles SubagentStart event" {
+  mkdir -p .scrum
+
+  local event_json
+  event_json='{"hook_event_name":"SubagentStart","agent_id":"abc12345-1234-5678-9abc-def012345678"}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/dashboard-event.sh'"
+  assert_success
+
+  [ -f ".scrum/dashboard.json" ]
+  # Event type should be subagent_start
+  jq -e '.events[-1].type == "subagent_start"' .scrum/dashboard.json
+}
+
+@test "dashboard-event.sh handles SubagentStop event" {
+  mkdir -p .scrum
+
+  local event_json
+  event_json='{"hook_event_name":"SubagentStop","agent_id":"abc12345-1234-5678-9abc-def012345678"}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/dashboard-event.sh'"
+  assert_success
+
+  [ -f ".scrum/dashboard.json" ]
+  jq -e '.events[-1].type == "subagent_stop"' .scrum/dashboard.json
+
+  # Should also create a communications message
+  [ -f ".scrum/communications.json" ]
+  jq -e '.messages[-1].type == "status_change"' .scrum/communications.json
+}
+
+@test "dashboard-event.sh handles TaskCompleted event" {
+  mkdir -p .scrum
+
+  local event_json
+  event_json='{"hook_event_name":"TaskCompleted","agent_id":"dev-001","tool_name":"test-runner"}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/dashboard-event.sh'"
+  assert_success
+
+  [ -f ".scrum/dashboard.json" ]
+  jq -e '.events[-1].type == "task_completed"' .scrum/dashboard.json
+}
+
+@test "dashboard-event.sh deduplicates comms messages" {
+  mkdir -p .scrum
+
+  # Send same TeammateIdle event twice
+  local event_json
+  event_json='{"hook_event_name":"TeammateIdle","teammate_name":"dev-001-s1","session_id":"abc12345","last_message":"waiting for task"}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/dashboard-event.sh'"
+  assert_success
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/dashboard-event.sh'"
+  assert_success
+
+  # Should only have 1 message (second was deduplicated)
+  local msg_count
+  msg_count="$(jq '.messages | length' .scrum/communications.json)"
+  [ "$msg_count" -eq 1 ]
+}
+
 # ---------------------------------------------------------------------------
 # phase-gate.sh
 # ---------------------------------------------------------------------------

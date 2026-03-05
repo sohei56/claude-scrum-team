@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
-# check-python.sh — Shared Python prerequisite checks
+# check-python.sh — Shared prerequisite checks
 # Sourced by scrum-start.sh and setup-user.sh to avoid duplication.
 #
-# Verifies:
-#   1. python3 is on PATH
-#   2. Python version >= 3.9
-#   3. textual and watchdog packages are importable
+# Provides:
+#   check_claude_cli   — Verify Claude Code CLI on PATH (exits 1 on failure)
+#   check_python_prereqs — Verify Python 3.9+ and TUI packages (exits 3 on failure)
 #
-# On failure: prints actionable error to stderr and exits with code 3.
 # On success: exports PYTHON_VERSION (e.g. "3.12").
 
 # Guard against double-sourcing
@@ -16,6 +14,15 @@ if [ "${_CHECK_PYTHON_LOADED:-}" = "1" ]; then
   return 0 2>/dev/null || true
 fi
 _CHECK_PYTHON_LOADED=1
+
+# Verify Claude Code CLI is available
+check_claude_cli() {
+  if ! command -v claude >/dev/null 2>&1; then
+    echo "Error: Claude Code CLI not found on PATH." >&2
+    echo "Install it: https://docs.anthropic.com/en/docs/claude-code/overview" >&2
+    exit 1
+  fi
+}
 
 check_python_prereqs() {
   # 1. python3 on PATH
