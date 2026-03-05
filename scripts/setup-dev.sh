@@ -57,6 +57,23 @@ echo ""
 echo "Running end-user setup..."
 sh "$SCRIPT_DIR/setup-user.sh"
 
+# --- Replace hook copies with symlinks for development ---
+# setup-user.sh copies hook files, but contributors need symlinks so edits
+# to hooks/ are immediately reflected without re-running setup.
+echo ""
+echo "Replacing hook copies with symlinks for development..."
+hooks_dir="$PROJECT_ROOT/.claude/hooks"
+rm -rf "$hooks_dir"
+mkdir -p "$hooks_dir"
+for hook_file in "$PROJECT_ROOT/hooks/"*.sh; do
+  if [ -f "$hook_file" ]; then
+    ln -s "../../hooks/$(basename "$hook_file")" "$hooks_dir/$(basename "$hook_file")"
+  fi
+done
+# Symlink the lib directory
+ln -s "../../hooks/lib" "$hooks_dir/lib"
+echo "  Symlinked .claude/hooks/ → hooks/ for live development."
+
 echo ""
 echo "=== Contributor setup complete ==="
 echo ""

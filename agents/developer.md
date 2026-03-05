@@ -102,6 +102,13 @@ to quality assurance. Invoke the `smoke-test` skill and execute it fully:
   or receive a fix request, report it to the Scrum Master — do NOT fix it
   yourself. Only the Scrum Master can create PBIs and assign them to you.
 
+- **No work before Sprint Start.** You MUST NOT begin any implementation
+  work until the Sprint has started (phase is `implementation`). During
+  Sprint Planning, your role is limited to estimation and clarification —
+  do NOT write, edit, or create source code. The phase-gate hook enforces
+  this rule and will deny source code modifications outside implementation
+  and review phases.
+
 ## Communication
 
 - Report progress to Scrum Master via Agent Teams messaging

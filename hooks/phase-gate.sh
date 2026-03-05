@@ -143,17 +143,30 @@ fi
 # Phase gating rules
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Source code gating: only implementation and review phases allow source edits
+# ---------------------------------------------------------------------------
+
+if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
+  if [ -n "$target_path" ] && is_source_file "$target_path"; then
+    case "$phase" in
+      implementation|review)
+        # Allowed — these are the only phases where source code may be modified
+        ;;
+      *)
+        deny "$phase phase: source code changes are not allowed. Work on source code is only permitted during implementation and review phases. If you found a defect, report it to the Scrum Master to create a PBI."
+        ;;
+    esac
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# Phase-specific rules
+# ---------------------------------------------------------------------------
+
 case "$phase" in
   design)
-    # Rule 1: During design phase, deny Edit on source files
-    # (only .design/specs/ files should be edited)
-    if [ "$tool_name" = "Edit" ] && [ -n "$target_path" ]; then
-      if is_source_file "$target_path"; then
-        deny "Design phase: editing source files is not allowed. Only .design/specs/ files may be modified during design."
-      fi
-    fi
-
-    # Rule 2: During design phase, deny Write/Edit under .design/specs/
+    # During design phase, deny Write/Edit under .design/specs/
     # if the target file has no enabled catalog entry
     if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
       if [ -n "$target_path" ] && is_design_spec_path "$target_path"; then
@@ -166,30 +179,8 @@ case "$phase" in
     allow
     ;;
 
-  sprint_review)
-    # Rule 3: During sprint_review phase, deny code modifications
-    if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
-      if [ -n "$target_path" ] && is_source_file "$target_path"; then
-        deny "Sprint review phase: code modifications are not allowed. Focus on reviewing completed work."
-      fi
-    fi
-
-    allow
-    ;;
-
-  requirements_sprint)
-    # Rule 4: During requirements_sprint phase, deny source file creation
-    if [ "$tool_name" = "Write" ] && [ -n "$target_path" ]; then
-      if is_source_file "$target_path"; then
-        deny "Requirements sprint phase: source file creation is not allowed. Focus on gathering and documenting requirements."
-      fi
-    fi
-
-    allow
-    ;;
-
   *)
-    # Default: allow
+    # Default: allow (source code gating already handled above)
     allow
     ;;
 esac
