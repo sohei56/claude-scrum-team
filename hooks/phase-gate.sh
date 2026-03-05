@@ -107,7 +107,7 @@ is_enabled_in_config() {
   return 1
 }
 
-# shellcheck disable=SC2329 # kept for external use and testability
+# shellcheck disable=SC2317,SC2329 # kept for external use and testability
 has_enabled_catalog_entry() {
   local path="$1"
   has_catalog_entry "$path" && is_enabled_in_config "$path"
