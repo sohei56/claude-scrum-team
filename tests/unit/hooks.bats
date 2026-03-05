@@ -130,3 +130,105 @@ teardown() {
   decision="$(echo "$output" | jq -r '.decision')"
   [ "$decision" = "deny" ]
 }
+
+# ---------------------------------------------------------------------------
+# completion-gate.sh
+# ---------------------------------------------------------------------------
+
+@test "completion-gate.sh allows stop when no state file exists" {
+  # No .scrum/ directory at all
+  run bash "$PROJECT_ROOT/hooks/completion-gate.sh"
+  assert_success
+}
+
+@test "completion-gate.sh allows stop in ungated phase" {
+  mkdir -p .scrum
+  # Create a state file with a phase that has no exit criteria
+  jq -n '{"phase": "sprint_planning", "current_sprint_id": "sprint-001"}' > .scrum/state.json
+
+  run bash "$PROJECT_ROOT/hooks/completion-gate.sh"
+  assert_success
+}
+
+@test "completion-gate.sh blocks stop when PBIs still refined in implementation" {
+  mkdir -p .scrum
+  cp "$FIXTURES_DIR/valid-state.json" .scrum/state.json   # phase=implementation
+  cp "$FIXTURES_DIR/valid-sprint.json" .scrum/sprint.json  # pbi_ids=["pbi-001"]
+  cp "$FIXTURES_DIR/valid-backlog.json" .scrum/backlog.json # pbi-001 status=refined
+
+  run bash "$PROJECT_ROOT/hooks/completion-gate.sh"
+  [ "$status" -eq 2 ]
+}
+
+@test "completion-gate.sh allows stop when PBIs started in implementation" {
+  mkdir -p .scrum
+  cp "$FIXTURES_DIR/valid-state.json" .scrum/state.json
+  cp "$FIXTURES_DIR/valid-sprint.json" .scrum/sprint.json
+
+  # Create backlog with PBI status=in_progress (not refined)
+  jq '.items[0].status = "in_progress"' "$FIXTURES_DIR/valid-backlog.json" > .scrum/backlog.json
+
+  run bash "$PROJECT_ROOT/hooks/completion-gate.sh"
+  assert_success
+}
+
+@test "completion-gate.sh allows stop when state files missing in implementation" {
+  mkdir -p .scrum
+  cp "$FIXTURES_DIR/valid-state.json" .scrum/state.json
+  # Intentionally do NOT create sprint.json or backlog.json
+
+  run bash "$PROJECT_ROOT/hooks/completion-gate.sh"
+  assert_success
+}
+
+@test "completion-gate.sh blocks stop when PBIs not done in review" {
+  mkdir -p .scrum
+  jq '.phase = "review"' "$FIXTURES_DIR/valid-state.json" > .scrum/state.json
+  cp "$FIXTURES_DIR/valid-sprint.json" .scrum/sprint.json
+  jq '.items[0].status = "in_progress"' "$FIXTURES_DIR/valid-backlog.json" > .scrum/backlog.json
+
+  run bash "$PROJECT_ROOT/hooks/completion-gate.sh"
+  [ "$status" -eq 2 ]
+}
+
+@test "completion-gate.sh allows stop when all PBIs done in review" {
+  mkdir -p .scrum
+  jq '.phase = "review"' "$FIXTURES_DIR/valid-state.json" > .scrum/state.json
+  cp "$FIXTURES_DIR/valid-sprint.json" .scrum/sprint.json
+  jq '.items[0].status = "done"' "$FIXTURES_DIR/valid-backlog.json" > .scrum/backlog.json
+
+  run bash "$PROJECT_ROOT/hooks/completion-gate.sh"
+  assert_success
+}
+
+# ---------------------------------------------------------------------------
+# quality-gate.sh
+# ---------------------------------------------------------------------------
+
+@test "quality-gate.sh skips checks when no PBI ID in event" {
+  mkdir -p .scrum
+
+  local event_json='{"hook_type":"TaskCompleted"}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/quality-gate.sh'"
+  assert_success
+}
+
+@test "quality-gate.sh skips checks when no backlog exists" {
+  mkdir -p .scrum
+
+  local event_json='{"hook_type":"TaskCompleted","pbi_id":"pbi-001"}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/quality-gate.sh'"
+  assert_success
+}
+
+@test "quality-gate.sh runs DoD checks and always exits 0" {
+  mkdir -p .scrum
+  cp "$FIXTURES_DIR/valid-backlog.json" .scrum/backlog.json
+
+  local event_json='{"hook_type":"TaskCompleted","pbi_id":"pbi-001"}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/quality-gate.sh'"
+  assert_success
+}

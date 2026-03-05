@@ -43,12 +43,19 @@ if [ "$python_major" -lt 3 ] || { [ "$python_major" -eq 3 ] && [ "$python_minor"
 fi
 
 # Check TUI packages
-if ! python3 -c "import textual" 2>/dev/null || ! python3 -c "import watchdog" 2>/dev/null; then
-  echo "Error: Python TUI packages 'textual' and 'watchdog' are required." >&2
+missing_pkgs=""
+if ! python3 -c "import textual" 2>/dev/null; then
+  missing_pkgs="textual"
+fi
+if ! python3 -c "import watchdog" 2>/dev/null; then
+  missing_pkgs="${missing_pkgs:+${missing_pkgs} }watchdog"
+fi
+if [ -n "$missing_pkgs" ]; then
+  echo "Error: Missing Python package(s): ${missing_pkgs}" >&2
   echo "" >&2
   echo "Recommended: install in a virtual environment:" >&2
   echo "  python3 -m venv .venv" >&2
-  printf '  source .venv/bin/activate   # On Windows: .venv\\Scripts\\activate\n' >&2
+  printf '  source .venv/bin/activate   # On Windows: .venv\\Scripts\\Activate.ps1\n' >&2
   echo "  pip install textual watchdog" >&2
   echo "" >&2
   echo "Or install directly:" >&2

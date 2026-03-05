@@ -256,7 +256,11 @@ if [ "$is_web_project" = true ]; then
     if ! grep -q "playwright" "$mcp_file" 2>/dev/null; then
       # Add playwright server to existing mcpServers
       tmp_mcp="$(mktemp)"
-      jq '.mcpServers.playwright = {"type": "stdio", "command": "npx", "args": ["@anthropic-ai/mcp-playwright"]}' "$mcp_file" > "$tmp_mcp" 2>/dev/null && mv "$tmp_mcp" "$mcp_file"
+      if jq '.mcpServers.playwright = {"type": "stdio", "command": "npx", "args": ["@anthropic-ai/mcp-playwright"]}' "$mcp_file" > "$tmp_mcp" 2>/dev/null; then
+        mv "$tmp_mcp" "$mcp_file"
+      else
+        rm -f "$tmp_mcp"
+      fi
       echo "  Added Playwright MCP to existing .mcp.json"
     else
       echo "  Playwright MCP already configured in .mcp.json"
