@@ -31,9 +31,11 @@ Run `scrum-start.sh` in any project directory and a full AI Scrum team takes ove
 
 ## Concept
 
-Vibe coding is freewheeling; traditional spec-driven development demands everything be defined upfront. This project occupies the middle ground: you don't need a complete spec before you start, but development still moves with structure and rhythm.
+Vibe coding is freewheeling; traditional spec-driven development demands everything be defined upfront. This project occupies the middle ground: **you don't need a complete spec before you start, but development still moves with structure and rhythm.**
 
-The answer is a Scrum team made entirely of AI agents. A Scrum Master orchestrates the ceremonies and coordinates a pool of Developer agents, while you stay in the Product Owner seat — describing what you want, approving Sprint Goals, and reviewing the results.
+In practice, clear upfront specs (like a full test suite) let you hand off to agents and walk away. But most real projects have fuzzy requirements that need to be shaped as you go — the right tool needs to let you steer along the way without losing momentum.
+
+The answer here is a Scrum team made entirely of AI agents. A Scrum Master orchestrates ceremonies and coordinates a pool of Developer agents, while you stay in the Product Owner seat — describing what you want, approving Sprint Goals, and reviewing results.
 
 ## Demo
 
@@ -86,14 +88,24 @@ Requirements Sprint ──> Backlog Refinement ──> Sprint Planning
          Smoke Tests ──> UAT ──> Release Decision
 ```
 
-## Why AI Agents Suit This
+## AI-Specific Design
 
-Human Scrum teams carry overhead: scheduling, miscommunication, context-switching. AI agents sidestep much of that:
+This project intentionally departs from human Scrum in a few ways — some to exploit what AI does well, others to guard against where it goes wrong.
 
-- **No coordination tax** — the Scrum Master delegates instantly; Developers start in parallel without waiting for a meeting
-- **Perfect memory within a session** — every agent has full access to requirements, design docs, and Sprint state; nothing falls through the cracks
-- **Consistent ceremony execution** — Skills enforce mandatory inputs and outputs for every ceremony, so ceremonies don't get skipped or rushed
-- **Tireless iteration** — Retrospective improvements feed directly into the next Sprint without anyone needing to remember to act on them
+### Advantages unique to AI
+
+- **Team size scales per Sprint** — the number of Developer agents is optimized for each Sprint's workload rather than fixed.
+- **Developers adapt their expertise to their PBI** — each Developer selects and invokes the most appropriate sub-agents for the task at hand, rather than being locked to a fixed skill set.
+- **No coordination tax** — the Scrum Master delegates instantly; Developers start in parallel without scheduling overhead.
+- **Consistent ceremony execution** — Skills enforce mandatory inputs and outputs for every ceremony, so nothing gets skipped.
+- **Retrospective improvements feed forward automatically** — no one needs to remember to act on them.
+
+### Guardrails for AI behavior
+
+- **Requirements-only first Sprint** — the first Sprint is dedicated solely to requirements elicitation. Without a map, agents tend to drift in the wrong direction early on.
+- **No work without a PBI** — agents are prohibited from making changes outside of an assigned PBI, preventing the Scrum Master from silently "helping" mid-conversation.
+- **Controlled document creation** — agents may only create documents defined in the design catalog, preventing unstructured document sprawl.
+- **Sprint scope set by PO review cadence, not velocity** — Sprint boundaries are defined by when the Product Owner should review progress, not by a capacity metric.
 
 ## Quick Start
 
