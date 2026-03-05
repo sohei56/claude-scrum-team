@@ -31,9 +31,9 @@ Run `scrum-start.sh` in any project directory and a full AI Scrum team takes ove
 
 ## Concept
 
-Vibe coding is freewheeling; traditional spec-driven development demands everything be defined upfront. This project occupies the middle ground: **you don't need a complete spec before you start, but development still moves with structure and rhythm.**
+Vibe coding is freewheeling; traditional spec-driven development (SDD) demands everything be defined upfront. This project occupies the middle ground: **you don't need a complete spec before you start, but development still moves with structure and rhythm.**
 
-In practice, clear upfront specs (like a full test suite) let you hand off to agents and walk away. But most real projects have fuzzy requirements that need to be shaped as you go — the right tool needs to let you steer along the way without losing momentum.
+When requirements are crystal-clear from the beginning — like a project backed by a full test suite — you can hand off to agents entirely and walk away. In practice, though, most projects have fuzzy requirements that need to be shaped as you go. The right tool should let you steer along the way without losing momentum or letting agents drift in the wrong direction.
 
 The answer here is a Scrum team made entirely of AI agents. A Scrum Master orchestrates ceremonies and coordinates a pool of Developer agents, while you stay in the Product Owner seat — describing what you want, approving Sprint Goals, and reviewing results.
 
@@ -90,7 +90,7 @@ Requirements Sprint ──> Backlog Refinement ──> Sprint Planning
 
 ## AI-Specific Design
 
-This project intentionally departs from human Scrum in a few ways — some to exploit what AI does well, others to guard against where it goes wrong.
+This project intentionally departs from human Scrum in several ways — some to exploit what AI does well, others to guard against where it goes wrong.
 
 ### Advantages unique to AI
 
@@ -102,10 +102,12 @@ This project intentionally departs from human Scrum in a few ways — some to ex
 
 ### Guardrails for AI behavior
 
-- **Requirements-only first Sprint** — the first Sprint is dedicated solely to requirements elicitation. Without a map, agents tend to drift in the wrong direction early on.
+AI agents can confidently march in the wrong direction without these guardrails:
+
+- **Requirements-only first Sprint** — the first Sprint is dedicated solely to requirements elicitation. Without a map, agents drift early and waste subsequent Sprints correcting course.
 - **No work without a PBI** — agents are prohibited from making changes outside of an assigned PBI, preventing the Scrum Master from silently "helping" mid-conversation.
 - **Controlled document creation** — agents may only create documents defined in the design catalog, preventing unstructured document sprawl.
-- **Sprint scope set by PO review cadence, not velocity** — Sprint boundaries are defined by when the Product Owner should review progress, not by a capacity metric.
+- **Sprint scope set by PO review cadence, not velocity** — Sprint boundaries are defined by when the Product Owner should meaningfully review progress, not by a capacity metric.
 
 ## Quick Start
 
