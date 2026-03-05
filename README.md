@@ -5,7 +5,7 @@
 <h1 align="center">claude-scrum-team</h1>
 
 <p align="center">
-  <strong>AI-powered Scrum team for Claude Code</strong>
+  <strong>AI-Powered Scrum Team for Claude Code — a full Scrum workflow driven by multi-agent coordination via Agent Teams.</strong>
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <a href="#why">Why?</a> &bull;
+  <a href="#concept">Concept</a> &bull;
   <a href="#demo">Demo</a> &bull;
   <a href="#features">Features</a> &bull;
   <a href="#quick-start">Quick Start</a> &bull;
@@ -29,14 +29,11 @@
 
 Run `scrum-start.sh` in any project directory and a full AI Scrum team takes over — a **Scrum Master** coordinates **Developer** agents through Sprint cycles while you act as the **Product Owner**, approving goals and reviewing the working product.
 
-## Why?
+## Concept
 
-Claude Code is powerful on its own, but complex projects benefit from structure. This tool gives you:
+Vibe coding is freewheeling; traditional spec-driven development demands everything be defined upfront. This project occupies the middle ground: you don't need a complete spec before you start, but development still moves with structure and rhythm.
 
-- **Structured multi-agent development** — instead of one AI doing everything sequentially, multiple Developer agents work on PBIs in parallel, each designing, implementing, and cross-reviewing independently.
-- **Quality gates at every stage** — design documents are reviewed before implementation starts, cross-reviews catch issues before Sprint Review, and Integration Sprints run automated tests before you see the product.
-- **Continuous improvement** — Retrospectives after each Sprint produce actionable improvements that feed into the next Sprint, so the team gets better over time.
-- **Full visibility** — a real-time TUI dashboard shows you exactly what every agent is doing, what files they're changing, and how the Sprint is progressing.
+The answer is a Scrum team made entirely of AI agents. A Scrum Master orchestrates the ceremonies and coordinates a pool of Developer agents, while you stay in the Product Owner seat — describing what you want, approving Sprint Goals, and reviewing the results.
 
 ## Demo
 
@@ -59,14 +56,13 @@ One command sets up agents, skills, and hooks — then launches Claude Code with
 
 ## Features
 
-- **14 ceremony Skills** covering the full Scrum lifecycle
-- **Scrum Master in Delegate mode** — coordinates but never writes code
-- **Parallel Developer agents** — up to 6 developers per Sprint
-- **Design document governance** — catalog-controlled design specs with freeze/change process
-- **Automated testing** — Integration Sprints run smoke tests, unit tests, and E2E via Playwright
-- **Real-time TUI dashboard** — Sprint overview, PBI board, communication log, file changes
-- **State persistence** — all state in `.scrum/` JSON files; resume any interrupted session
-- **Retrospective-driven improvement** — improvements from past Sprints are applied automatically
+- **14 ceremony Skills** covering the full Scrum lifecycle: requirements elicitation, backlog refinement, sprint planning, design, implementation, cross-review, sprint review, retrospective, and integration testing
+- **Scrum Master in Delegate mode** — orchestrates up to 6 parallel Developer agents per Sprint; never writes code directly
+- **Real-time TUI dashboard** — Textual-based four-panel display (Sprint Overview, PBI Progress Board, Communication Log, Work Log) with watchdog filesystem monitoring
+- **Design document governance** — immutable catalog (`catalog.md`) paired with an editable enablement config (`catalog-config.json`), enforced by phase-gate hooks
+- **Quality enforcement hooks** — phase gates (source code restrictions), completion gates (exit criteria), quality gates (Definition of Done), dashboard events, and session context restoration
+- **State persistence** — all state stored in `.scrum/` JSON files for full session resume capability
+- **Retrospective-driven improvement** — improvements from past Sprints are captured and applied automatically to future ones
 
 ### Sprint Lifecycle
 
@@ -89,6 +85,15 @@ Requirements Sprint ──> Backlog Refinement ──> Sprint Planning
                  v
          Smoke Tests ──> UAT ──> Release Decision
 ```
+
+## Why AI Agents Suit This
+
+Human Scrum teams carry overhead: scheduling, miscommunication, context-switching. AI agents sidestep much of that:
+
+- **No coordination tax** — the Scrum Master delegates instantly; Developers start in parallel without waiting for a meeting
+- **Perfect memory within a session** — every agent has full access to requirements, design docs, and Sprint state; nothing falls through the cracks
+- **Consistent ceremony execution** — Skills enforce mandatory inputs and outputs for every ceremony, so ceremonies don't get skipped or rushed
+- **Tireless iteration** — Retrospective improvements feed directly into the next Sprint without anyone needing to remember to act on them
 
 ## Quick Start
 
