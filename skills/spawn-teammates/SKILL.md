@@ -74,6 +74,8 @@ disable-model-invocation: true
    including the skill invocation sequence.
 8. Update `sprint.json` → `status: "active"` to mark the Sprint as in progress.
 
+Reference: FR-007
+
 ## Exit Criteria
 
 - `sprint.json` → `developers[]` is populated with `developer_count` entries

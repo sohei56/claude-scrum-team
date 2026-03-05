@@ -140,6 +140,8 @@ Send a message to the Scrum Master via Agent Teams with:
 - Summary per category: `unit: 15/15 passed`, `smoke: 7/8 failed`
 - First 3 error details for any failed category
 
+Reference: FR-013
+
 ## Exit Criteria
 
 - `.scrum/test-results.json` exists with `overall_status` set to `"passed"` or `"failed"`

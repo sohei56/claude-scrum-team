@@ -23,9 +23,11 @@ skills/                  # 14 Ceremony Skills (YAML frontmatter + Markdown)
   sprint-planning/       # Sprint planning and PBI assignment
   sprint-review/         # Sprint review ceremony
 hooks/                   # Claude Code hooks (phase gates, dashboard events)
+  lib/                   # Shared hook helpers (validation, logging)
 dashboard/               # Textual TUI dashboard (Python)
   app.py                 # Main TUI application
 scripts/                 # Setup and utility scripts
+  lib/                   # Shared script helpers (prereq checks)
   setup-user.sh          # Copies agents/skills/hooks to target project
   setup-dev.sh           # Installs dev dependencies (bats, shellcheck, etc.)
 tests/                   # Test suites
@@ -51,7 +53,7 @@ specs/                   # Feature specifications and data model
 bats tests/unit/ tests/lint/
 
 # Lint shell scripts
-shellcheck scrum-start.sh scripts/*.sh hooks/*.sh
+shellcheck scrum-start.sh scripts/*.sh scripts/lib/*.sh hooks/*.sh hooks/lib/*.sh
 
 # Lint/format Python
 ruff check dashboard/

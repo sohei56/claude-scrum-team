@@ -3,4 +3,5 @@ shell=bash
 
 # Bash 3.2 compatibility — no bashisms beyond what 3.2 supports
 # SC2039: In POSIX sh, something is undefined (we target bash, not sh)
-disable=SC2039
+# SC1091: Not following sourced files (dynamic paths resolved at runtime)
+disable=SC2039,SC1091

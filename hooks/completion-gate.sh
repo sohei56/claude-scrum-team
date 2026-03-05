@@ -6,6 +6,10 @@
 # if exit criteria are not met.
 set -euo pipefail
 
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/validate.sh
+. "$HOOK_DIR/lib/validate.sh"
+
 STATE_FILE=".scrum/state.json"
 SPRINT_FILE=".scrum/sprint.json"
 BACKLOG_FILE=".scrum/backlog.json"
@@ -19,6 +23,7 @@ TEST_RESULTS_FILE=".scrum/test-results.json"
 
 block_stop() {
   local reason="$1"
+  log_hook "completion-gate" "WARN" "Blocked stop: $reason"
   jq -n --arg r "$reason" '{"reason": $r}' >&2
   exit 2
 }
@@ -50,8 +55,8 @@ get_pbi_status() {
 # Main
 # ---------------------------------------------------------------------------
 
-# If state file does not exist, allow stop (nothing to gate)
-if [ ! -f "$STATE_FILE" ]; then
+# If state file does not exist or is invalid, allow stop (nothing to gate)
+if ! validate_json_file "$STATE_FILE" "phase"; then
   allow_stop
 fi
 

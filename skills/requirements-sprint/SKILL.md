@@ -59,6 +59,8 @@ disable-model-invocation: true
 8. **Finalize**: Update `state.json` → `phase: "backlog_created"`.
    Terminate the Requirements Sprint Developer.
 
+Reference: FR-002
+
 ## Exit Criteria
 
 - `.scrum/requirements.md` exists and covers business, functional, and

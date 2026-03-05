@@ -21,50 +21,12 @@ if ! command -v claude >/dev/null 2>&1; then
   exit 1
 fi
 
-# Check Python 3.9+
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "Error: Python 3.9+ not found on PATH." >&2
-  echo "Install Python: https://www.python.org/downloads/" >&2
-  exit 3
-fi
+# Check Python 3.9+ and TUI packages (textual, watchdog)
+# shellcheck source=lib/check-python.sh
+. "$SCRIPT_DIR/lib/check-python.sh"
+check_python_prereqs
 
-# Verify Python version >= 3.9
-python_version="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
-python_major="$(echo "$python_version" | cut -d. -f1)"
-python_minor="$(echo "$python_version" | cut -d. -f2)"
-if [ "$python_major" -lt 3 ] || { [ "$python_major" -eq 3 ] && [ "$python_minor" -lt 9 ]; }; then
-  echo "Error: Python 3.9+ required, found Python $python_version." >&2
-  exit 3
-fi
-
-# Check TUI packages (textual, watchdog)
-missing_packages=()
-if ! python3 -c "import textual" 2>/dev/null; then
-  missing_packages+=("textual")
-fi
-if ! python3 -c "import watchdog" 2>/dev/null; then
-  missing_packages+=("watchdog")
-fi
-
-if [ ${#missing_packages[@]} -gt 0 ]; then
-  echo "Error: Python TUI packages '${missing_packages[*]}' are required." >&2
-  echo "" >&2
-  echo "Recommended: install in a virtual environment:" >&2
-  echo "  python3 -m venv .venv" >&2
-  printf '  source .venv/bin/activate   # On Windows: .venv\\Scripts\\activate\n' >&2
-  echo "  pip install textual watchdog" >&2
-  echo "" >&2
-  echo "Or install directly:" >&2
-  echo "  pip install textual watchdog" >&2
-  echo "" >&2
-  echo "If pip is not available:" >&2
-  echo "  python3 -m ensurepip --upgrade   # Install pip itself" >&2
-  echo "  # Or: apt install python3-pip    # Debian/Ubuntu" >&2
-  echo "  # Or: brew install python3       # macOS (includes pip)" >&2
-  exit 3
-fi
-
-echo "Prerequisites OK: Claude Code, Python $python_version, textual, watchdog"
+echo "Prerequisites OK: Claude Code, Python $PYTHON_VERSION, textual, watchdog"
 
 # Try to install tmux if missing (optional — dashboard degrades to status line without it)
 if ! command -v tmux >/dev/null 2>&1; then
@@ -99,11 +61,17 @@ done
 
 # --- Copy hook scripts ---
 echo "Copying hook scripts to $TARGET_DIR/.claude/hooks/..."
-mkdir -p "$TARGET_DIR/.claude/hooks"
+mkdir -p "$TARGET_DIR/.claude/hooks/lib"
 for hook_file in "$PROJECT_ROOT/hooks/"*.sh; do
   if [ -f "$hook_file" ]; then
     cp "$hook_file" "$TARGET_DIR/.claude/hooks/"
     chmod +x "$TARGET_DIR/.claude/hooks/$(basename "$hook_file")"
+  fi
+done
+# Copy hook library files
+for lib_file in "$PROJECT_ROOT/hooks/lib/"*.sh; do
+  if [ -f "$lib_file" ]; then
+    cp "$lib_file" "$TARGET_DIR/.claude/hooks/lib/"
   fi
 done
 

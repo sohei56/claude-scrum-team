@@ -6,6 +6,10 @@
 # stdin. Outputs a permissionDecision JSON object.
 set -euo pipefail
 
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/validate.sh
+. "$HOOK_DIR/lib/validate.sh"
+
 STATE_FILE=".scrum/state.json"
 CATALOG_FILE=".design/catalog.md"
 
@@ -20,6 +24,7 @@ allow() {
 
 deny() {
   local reason="$1"
+  log_hook "phase-gate" "WARN" "Denied: $reason"
   jq -n --arg r "$reason" '{"decision": "deny", "reason": $r}'
   exit 0
 }

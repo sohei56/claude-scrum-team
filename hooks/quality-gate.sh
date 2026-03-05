@@ -6,6 +6,10 @@
 # Outputs exit code 0 (pass) with warnings to stderr — does NOT hard-block.
 set -euo pipefail
 
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/validate.sh
+. "$HOOK_DIR/lib/validate.sh"
+
 BACKLOG_FILE=".scrum/backlog.json"
 
 # ---------------------------------------------------------------------------
@@ -105,7 +109,30 @@ check_tests_exist() {
   return 0
 }
 
+# Get files changed in the current branch (scoped to PBI work).
+# Falls back to all files if git is unavailable or not in a repo.
+get_changed_files() {
+  local ext="$1"
+  if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    # Files changed vs default branch (main/master), plus any uncommitted changes
+    local base_branch
+    base_branch="$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || echo "main")"
+    local merge_base
+    merge_base="$(git merge-base "$base_branch" HEAD 2>/dev/null || echo "")"
+    if [ -n "$merge_base" ]; then
+      { git diff --name-only "$merge_base" HEAD -- "*.${ext}" 2>/dev/null; git diff --name-only -- "*.${ext}" 2>/dev/null; } | sort -u
+    else
+      # No merge base (e.g., initial branch) — fall back to all tracked files
+      git ls-files -- "*.${ext}" 2>/dev/null
+    fi
+  else
+    # Not a git repo — fall back to find
+    find . -name "*.${ext}" -type f 2>/dev/null
+  fi
+}
+
 # Check if code passes linter (if linter tools are available)
+# Scopes checks to files changed in the current branch, not all project files.
 check_linter() {
   local pbi_id="$1"
   local linter_available=false
@@ -114,13 +141,14 @@ check_linter() {
   # Check shellcheck availability
   if command -v shellcheck >/dev/null 2>&1; then
     linter_available=true
-    # Run shellcheck on shell scripts (non-blocking — just warn)
+    # Run shellcheck on changed shell scripts only
     local shell_files
-    shell_files="$(find hooks scripts -name "*.sh" -type f 2>/dev/null || true)"
+    shell_files="$(get_changed_files "sh")"
     if [ -n "$shell_files" ]; then
       local failed_files=""
       while IFS= read -r sf; do
         [ -z "$sf" ] && continue
+        [ -f "$sf" ] || continue
         if ! shellcheck "$sf" >/dev/null 2>&1; then
           failed_files="${failed_files}${failed_files:+, }${sf}"
           linter_passed=false
@@ -137,9 +165,14 @@ EOF
   # Check ruff availability (Python linter)
   if command -v ruff >/dev/null 2>&1; then
     linter_available=true
-    if ! ruff check . --quiet >/dev/null 2>&1; then
-      warn "PBI ${pbi_id}: ruff linter reported issues."
-      linter_passed=false
+    local py_files
+    py_files="$(get_changed_files "py")"
+    if [ -n "$py_files" ]; then
+      # shellcheck disable=SC2086
+      if ! ruff check $py_files --quiet >/dev/null 2>&1; then
+        warn "PBI ${pbi_id}: ruff linter reported issues in changed Python files."
+        linter_passed=false
+      fi
     fi
   fi
 
@@ -192,8 +225,8 @@ if [ -z "$pbi_id" ]; then
   exit 0
 fi
 
-if [ ! -f "$BACKLOG_FILE" ]; then
-  warn "No backlog.json found. Cannot verify DoD for PBI ${pbi_id}."
+if ! validate_json_file "$BACKLOG_FILE" "items"; then
+  warn "Cannot verify DoD for PBI ${pbi_id} — backlog.json missing or invalid."
   exit 0
 fi
 

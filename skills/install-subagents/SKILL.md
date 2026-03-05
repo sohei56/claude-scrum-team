@@ -54,6 +54,8 @@ disable-model-invocation: true
   sub-agents. Log a brief note for the Scrum Master.
 - Sub-agents are optional enhancements, not requirements.
 
+Reference: FR-019
+
 ## Exit Criteria
 
 - Relevant sub-agents installed to `.claude/agents/` (if available)

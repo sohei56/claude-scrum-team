@@ -113,6 +113,8 @@ disable-model-invocation: true
     - If yes: Update `state.json` → `phase: "complete"`.
     - If no: Identify remaining work, return to Development Sprint cycle.
 
+Reference: FR-013
+
 ## Exit Criteria
 
 - `.scrum/test-results.json` exists with `overall_status: "passed"`
