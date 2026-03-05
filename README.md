@@ -31,11 +31,9 @@ Run `scrum-start.sh` in any project directory and a full AI Scrum team takes ove
 
 ## Why?
 
-Vibe coding is fast but chaotic. Spec-Driven Development (SDD) is disciplined but demands everything upfront. Real projects live in between — you start with a rough vision and refine it as you go.
+Vibe coding is fast but chaotic. Spec-Driven Development (SDD) is disciplined but demands everything upfront. Most real projects live in between — requirements are fuzzy and need to be shaped as you go.
 
-When requirements are crystal-clear from the beginning — like a project backed by a full test suite — you can hand off to agents entirely and walk away. In practice, though, most projects have fuzzy requirements that need to be shaped as you go. **claude-scrum-team** brings Scrum's inspect-and-adapt loop to Claude Code Agent Teams, giving you structured iteration without requiring a complete specification on day one.
-
-The answer here is a Scrum team made entirely of AI agents. A Scrum Master orchestrates ceremonies and coordinates a pool of Developer agents, while you stay in the Product Owner seat — describing what you want, approving Sprint Goals, and reviewing results.
+**claude-scrum-team** brings Scrum's inspect-and-adapt loop to Claude Code Agent Teams, giving you structured iteration without requiring a complete specification on day one. You stay in the Product Owner seat — describing what you want, approving Sprint Goals, and reviewing working software each Sprint — while a team of AI agents handles the rest.
 
 ## Demo
 
