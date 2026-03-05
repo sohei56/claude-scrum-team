@@ -8,7 +8,7 @@ description: >
 disable-model-invocation: true
 ---
 
-## Inputs (required state)
+## Inputs
 
 - `state.json` → `phase: "integration_sprint"`
 - `.scrum/requirements.md` — for endpoint/workflow discovery

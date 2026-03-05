@@ -7,12 +7,21 @@ scrum-start.sh           # Entry point — validates prereqs, launches tmux
 agents/                  # Scrum Master + Developer agent definitions
   scrum-master.md        # Team lead (Delegate mode)
   developer.md           # Developer teammate
-skills/                  # Ceremony Skills (YAML frontmatter + Markdown)
-  backlog-refinement/    change-process/      cross-review/
-  design/          implementation/ install-subagents/
-  integration-sprint/    requirements-sprint/  retrospective/
-  scaffold-design-spec/  smoke-test/          spawn-teammates/
-  sprint-planning/       sprint-review/
+skills/                  # 14 Ceremony Skills (YAML frontmatter + Markdown)
+  backlog-refinement/    # Refine PBIs from coarse to sprint-ready
+  change-process/        # Manage changes to frozen design docs
+  cross-review/          # Cross-review between developers
+  design/                # Design phase — create design specs
+  implementation/        # Implementation phase — build PBI features
+  install-subagents/     # Install specialist sub-agents for PBI work
+  integration-sprint/    # Product-wide QA and integration testing
+  requirements-sprint/   # Elicit requirements from user
+  retrospective/         # Sprint retrospective ceremony
+  scaffold-design-spec/  # Create design doc stubs from catalog
+  smoke-test/            # Automated test execution
+  spawn-teammates/       # Spawn developer teammates for sprint
+  sprint-planning/       # Sprint planning and PBI assignment
+  sprint-review/         # Sprint review ceremony
 hooks/                   # Claude Code hooks (phase gates, dashboard events)
 dashboard/               # Textual TUI dashboard (Python)
   app.py                 # Main TUI application

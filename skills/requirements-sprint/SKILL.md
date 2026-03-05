@@ -7,11 +7,11 @@ description: >
 disable-model-invocation: true
 ---
 
-## Inputs (required state)
+## Inputs
 
 - `state.json` → `phase: "new"` (first run) or resuming from `requirements_sprint`
 
-## Outputs (files/keys updated)
+## Outputs
 
 - `.scrum/requirements.md` — requirements document covering business,
   functional, and non-functional requirements

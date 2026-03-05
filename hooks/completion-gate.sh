@@ -62,7 +62,9 @@ case "$phase" in
   implementation)
     # All Sprint PBIs must have status != "refined" (work must have started)
     if [ ! -f "$SPRINT_FILE" ] || [ ! -f "$BACKLOG_FILE" ]; then
-      block_stop "Implementation phase: cannot verify PBI status — sprint.json or backlog.json missing."
+      # Allow stop when state files are missing — blocking would trap users
+      echo "[completion-gate] WARNING: sprint.json or backlog.json missing; cannot verify PBI status." >&2
+      allow_stop
     fi
 
     not_started_pbis=""
@@ -86,7 +88,9 @@ EOF
   review)
     # All Sprint PBIs must have status "done"
     if [ ! -f "$SPRINT_FILE" ] || [ ! -f "$BACKLOG_FILE" ]; then
-      block_stop "Review phase: cannot verify PBI status — sprint.json or backlog.json missing."
+      # Allow stop when state files are missing — blocking would trap users
+      echo "[completion-gate] WARNING: sprint.json or backlog.json missing; cannot verify PBI status." >&2
+      allow_stop
     fi
 
     incomplete_pbis=""

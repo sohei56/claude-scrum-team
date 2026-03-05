@@ -7,12 +7,12 @@ description: >
 disable-model-invocation: true
 ---
 
-## Inputs (required state)
+## Inputs
 
 - PBI assignment (task context from `backlog.json` → assigned PBI details)
 - Catalog URL: `https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`
 
-## Outputs (files/keys updated)
+## Outputs
 
 - `.claude/agents/*.md` — installed sub-agent definition files with YAML
   frontmatter (`tools`, `model`)

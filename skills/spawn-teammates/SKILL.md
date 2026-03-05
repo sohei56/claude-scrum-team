@@ -7,12 +7,12 @@ description: >
 disable-model-invocation: true
 ---
 
-## Inputs (required state)
+## Inputs
 
 - `sprint.json` → `pbi_ids`, `developer_count`
 - `backlog.json` → `items[]` (PBIs assigned to this Sprint)
 
-## Outputs (files/keys updated)
+## Outputs
 
 - `sprint.json` → `developers[]` populated with:
   - `id` (consistent naming with Sprint suffix: `dev-001-s3`, `dev-002-s3`, ...)

@@ -39,14 +39,9 @@ ensure_comms_file() {
   fi
 }
 
-# Get current ISO 8601 timestamp
+# Get current ISO 8601 timestamp (works on both BSD and GNU date)
 get_timestamp() {
-  # Compatible with both macOS (BSD date) and GNU date
-  if date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null; then
-    return
-  fi
-  # Fallback
-  date -u "+%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo "1970-01-01T00:00:00Z"
+  date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo "1970-01-01T00:00:00Z"
 }
 
 # Append an event to dashboard.json, trimming oldest if over cap

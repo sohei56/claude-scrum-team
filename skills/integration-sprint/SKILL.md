@@ -7,12 +7,12 @@ description: >
 disable-model-invocation: true
 ---
 
-## Inputs (required state)
+## Inputs
 
 - `state.json` → `phase: "retrospective"` (after last Development Sprint)
 - User confirmation that the Product Goal is achieved
 
-## Outputs (files/keys updated)
+## Outputs
 
 - `.scrum/test-results.json` — structured test results from automated testing
 - `state.json` → `phase: "integration_sprint"` → `"complete"` when user

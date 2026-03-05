@@ -150,9 +150,10 @@ EOF
 
   if [ "$linter_passed" = "true" ]; then
     info "PBI ${pbi_id}: Linter checks passed."
+    return 0
   fi
 
-  return 0
+  return 1
 }
 
 # Check if cross-review document exists for the PBI
@@ -221,7 +222,9 @@ if ! check_tests_exist "$pbi_id"; then
 fi
 
 # DoD Check 4: Code passes linter
-check_linter "$pbi_id"
+if ! check_linter "$pbi_id"; then
+  warning_count=$((warning_count + 1))
+fi
 
 # DoD Check 5: Cross-review completed
 if ! check_review_doc "$pbi_id" "$pbi_data"; then
