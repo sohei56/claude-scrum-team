@@ -88,7 +88,7 @@ if [ -d "$subagents_dir/.git" ]; then
 else
   echo "Cloning sub-agent catalog (awesome-claude-code-subagents)..."
   if git clone --filter=blob:none --no-checkout --depth 1 \
-       https://github.com/VoltAgent/awesome-claude-code-subagents.git "$subagents_dir" 2>/dev/null && \
+       git@github.com:VoltAgent/awesome-claude-code-subagents.git "$subagents_dir" 2>/dev/null && \
      git -C "$subagents_dir" sparse-checkout set categories 2>/dev/null && \
      git -C "$subagents_dir" checkout 2>/dev/null; then
     :

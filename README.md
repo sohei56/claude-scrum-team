@@ -121,7 +121,7 @@ This is not a carbon copy of human Scrum — it adapts the framework to how AI a
 
 ```bash
 # Clone the repository
-git clone https://github.com/sohei56/claude-scrum-team.git
+git clone git@github.com:sohei56/claude-scrum-team.git
 
 # In your project directory:
 cd /path/to/your/project
