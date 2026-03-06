@@ -71,7 +71,7 @@ This is not a carbon copy of human Scrum — it adapts the framework to how AI a
 **Extensions leveraging AI strengths:**
 
 - **Dynamic team sizing** — the number of Developer agents is optimized per Sprint based on PBI count and complexity
-- **On-demand specialization** — each Developer selects and spawns domain-specific sub-agents based on their assigned PBI (e.g., a frontend PBI triggers a UI-specialist sub-agent)
+- **On-demand specialization** — each Developer selects and spawns domain-specific sub-agents from the [awesome-claude-code-subagents](https://github.com/VoltAgent/awesome-claude-code-subagents) catalog based on their assigned PBI (e.g., a frontend PBI triggers a UI-specialist sub-agent)
 
 **Constraints addressing AI weaknesses:**
 
@@ -162,6 +162,7 @@ For detailed setup instructions, see [quickstart.md](specs/001-ai-scrum-team/qui
 | `scripts/` | Status line, user setup, contributor setup |
 | `.scrum/` | Runtime state (JSON, gitignored) |
 | `.design/` | Design documents governed by `catalog.md` (read-only) + `catalog-config.json` (enabled list) |
+| [awesome-claude-code-subagents](https://github.com/VoltAgent/awesome-claude-code-subagents) | Pre-cloned specialist sub-agent catalog (auto-updated on setup) |
 
 ## Development
 
