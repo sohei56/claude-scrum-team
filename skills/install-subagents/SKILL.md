@@ -10,7 +10,7 @@ disable-model-invocation: false
 ## Inputs
 
 - PBI assignment (task context from `backlog.json` → assigned PBI details)
-- Catalog URL: `https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`
+- Catalog path: `.claude/subagents-catalog/categories/`
 
 ## Outputs
 
@@ -23,22 +23,24 @@ disable-model-invocation: false
 
 - Developer has received PBI assignment via Agent Teams
 - `.claude/agents/` directory exists
-- Network access available (for catalog browsing)
 
 ## Steps
 
 1. **Analyze PBI**: Read the assigned PBI details (title, description,
    acceptance criteria, design document paths) to understand what
    specialist skills are needed.
-2. **Browse Catalog**: Access the awesome-claude-code-subagents catalog at
-   `https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`.
+2. **Browse Catalog**: Read the local sub-agent catalog at
+   `.claude/subagents-catalog/categories/`. Each subdirectory is a
+   category (e.g., `01-core-development/`, `04-quality-security/`).
+   List `.md` files within relevant categories and review their
+   descriptions to find matching specialists.
 3. **Select Agents**: Choose relevant specialist sub-agents based on PBI
    requirements. Consider:
    - Testing specialists (for test-heavy PBIs)
    - Documentation specialists (for docs-related PBIs)
    - Code review specialists (for quality-focused work)
    - Language/framework specialists (matching the project's tech stack)
-4. **Install**: Download selected sub-agent definition files (`.md` with
+4. **Install**: Copy selected sub-agent definition files (`.md` with
    YAML frontmatter) to `.claude/agents/`.
 5. **Verify**: Confirm installed agents have valid YAML frontmatter with
    required fields (`tools`, `model`).
@@ -48,8 +50,8 @@ disable-model-invocation: false
 
 ## Graceful Degradation
 
-- If the catalog is unavailable (network error, 404, etc.), proceed
-  without sub-agents. Do NOT show an error to the user.
+- If the catalog directory is missing (setup skipped or clone failed),
+  proceed without sub-agents. Do NOT show an error to the user.
 - If no matching agents are found for the PBI type, proceed without
   sub-agents. Log a brief note for the Scrum Master.
 - Sub-agents are optional enhancements, not requirements.
