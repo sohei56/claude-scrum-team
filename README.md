@@ -5,7 +5,7 @@
 <h1 align="center">claude-scrum-team</h1>
 
 <p align="center">
-  <strong>AI-Powered Scrum Team for Claude Code — a full Scrum workflow driven by multi-agent coordination via Agent Teams.</strong>
+  <strong>AI-Powered Scrum Team for Claude Code — a full Scrum workflow driven by multi-agent coordination via Agent Teams</strong>
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <a href="#concept">Concept</a> &bull;
+  <a href="#why">Why?</a> &bull;
   <a href="#demo">Demo</a> &bull;
   <a href="#features">Features</a> &bull;
   <a href="#quick-start">Quick Start</a> &bull;
@@ -29,13 +29,11 @@
 
 Run `scrum-start.sh` in any project directory and a full AI Scrum team takes over — a **Scrum Master** coordinates **Developer** agents through Sprint cycles while you act as the **Product Owner**, approving goals and reviewing the working product.
 
-## Concept
+## Why?
 
-Vibe coding is freewheeling; traditional spec-driven development (SDD) demands everything be defined upfront. This project occupies the middle ground: **you don't need a complete spec before you start, but development still moves with structure and rhythm.**
+Vibe coding is fast but chaotic. Spec-Driven Development (SDD) is disciplined but demands everything upfront. Most real projects live in between — requirements are fuzzy and need to be shaped as you go.
 
-When requirements are crystal-clear from the beginning — like a project backed by a full test suite — you can hand off to agents entirely and walk away. In practice, though, most projects have fuzzy requirements that need to be shaped as you go. The right tool should let you steer along the way without losing momentum or letting agents drift in the wrong direction.
-
-The answer here is a Scrum team made entirely of AI agents. A Scrum Master orchestrates ceremonies and coordinates a pool of Developer agents, while you stay in the Product Owner seat — describing what you want, approving Sprint Goals, and reviewing results.
+**claude-scrum-team** brings Scrum's inspect-and-adapt loop to Claude Code Agent Teams, giving you structured iteration without requiring a complete specification on day one. You stay in the Product Owner seat — describing what you want, approving Sprint Goals, and reviewing working software each Sprint — while a team of AI agents handles the rest.
 
 ## Demo
 
@@ -50,64 +48,74 @@ One command sets up agents, skills, and hooks — then launches Claude Code with
 1. **You describe your project** — the Scrum Master spawns a Developer to elicit requirements and write `requirements.md`
 2. **Backlog Refinement** — the SM creates and refines PBIs from your requirements
 3. **Sprint Planning** — the SM proposes a Sprint Goal; you approve or adjust
-4. **Design + Implementation** — Developers design, then implement their PBIs in parallel
-5. **Cross-Review** — each Developer reviews another's work (no self-review)
-6. **Sprint Review** — the SM launches the app and demos every completed PBI; you confirm each works
-7. **Retrospective** — the team reflects and records improvements for the next Sprint
-8. **Repeat** until the Product Goal is achieved, then an **Integration Sprint** runs automated tests and a final UAT
+4. **Design + Implementation + Cross-Review** — Developers design and implement their PBIs in parallel, then review each other's work (no self-review)
+5. **Sprint Review** — the SM launches the app and demos every completed PBI; you confirm each works
+6. **Retrospective** — the team reflects and records improvements for the next Sprint
+7. **Repeat** until the Product Goal is achieved, then an **Integration Sprint** runs automated tests and a final UAT
 
 ## Features
 
-- **14 ceremony Skills** covering the full Scrum lifecycle: requirements elicitation, backlog refinement, sprint planning, design, implementation, cross-review, sprint review, retrospective, and integration testing
-- **Scrum Master in Delegate mode** — orchestrates up to 6 parallel Developer agents per Sprint; never writes code directly
+- **14 ceremony skills** covering the full Scrum lifecycle: requirements elicitation, backlog refinement, sprint planning, design, implementation, cross-review, sprint review, retrospective, and integration testing
+- **Multi-agent coordination** — Scrum Master (Delegate mode) orchestrates up to 6 parallel Developer agents per Sprint
 - **Real-time TUI dashboard** — Textual-based four-panel display (Sprint Overview, PBI Progress Board, Communication Log, Work Log) with watchdog filesystem monitoring
-- **Design document governance** — immutable catalog (`catalog.md`) paired with an editable enablement config (`catalog-config.json`), enforced by phase-gate hooks
+- **Design document governance** — immutable catalog (`catalog.md`) with editable enablement config (`catalog-config.json`), enforced by phase-gate hooks
 - **Quality enforcement hooks** — phase gates (source code restrictions), completion gates (exit criteria), quality gates (Definition of Done), dashboard events, and session context restoration
-- **State persistence** — all state stored in `.scrum/` JSON files for full session resume capability
-- **Retrospective-driven improvement** — improvements from past Sprints are captured and applied automatically to future ones
+- **State persistence** — all state in `.scrum/` JSON files for full session resume capability
+- **Automated testing** — Integration Sprints run smoke tests, unit tests, and E2E via Playwright
+- **Retrospective-driven improvement** — improvements from past Sprints are applied automatically
+
+### AI-Specific Adaptations
+
+This is not a carbon copy of human Scrum — it adapts the framework to how AI agents actually work.
+
+**Extensions leveraging AI strengths:**
+
+- **Dynamic team sizing** — the number of Developer agents is optimized per Sprint based on PBI count and complexity
+- **On-demand specialization** — each Developer selects and spawns domain-specific sub-agents based on their assigned PBI (e.g., a frontend PBI triggers a UI-specialist sub-agent)
+
+**Constraints addressing AI weaknesses:**
+
+- **Mandatory Requirements Sprint** — the first Sprint is dedicated solely to requirements elicitation, preventing the team from charging ahead without a map
+- **No work without a PBI** — all development must be tied to a backlog item, stopping the Scrum Master from drifting into ad-hoc fixes mid-conversation
+- **Controlled document creation** — only document types listed in the design catalog may be created, curbing the AI tendency to produce sprawling, unstructured documentation
+- **PO-driven Sprint scope** — Sprint boundaries are set by meaningful review checkpoints rather than velocity estimates, since AI agents have no stable velocity baseline
 
 ### Sprint Lifecycle
 
 ```
-Requirements Sprint ──> Backlog Refinement ──> Sprint Planning
-                                                     │
-                 ┌───────────────────────────────────┘
-                 v
-         Scaffold Design Specs ──> Spawn Teammates ──> Design Phase
-                                                          │
-                 ┌────────────────────────────────────────┘
-                 v
-         Implementation Phase ──> Cross-Review ──> Sprint Review
-                                                       │
-                 ┌─────────────────────────────────────┘
-                 v
-           Retrospective ──> [next Sprint or Integration Sprint]
-                                        │
-                 ┌──────────────────────┘
-                 v
-         Smoke Tests ──> UAT ──> Release Decision
+ ┌─────────────────────────────────────────────────────────────┐
+ │  Requirements Sprint (Sprint 0)                             │
+ │  Requirements Elicitation ──▶ Initial Product Backlog       │
+ └──────────────────────────────┬──────────────────────────────┘
+                                ▼
+ ┌─────────────────────────────────────────────────────────────┐
+ │  Sprint N                                                   │
+ │                                                             │
+ │  1. Backlog Refine    PBIs: draft ──▶ refined               │
+ │          ▼                                                  │
+ │  2. Planning          PO approves Sprint Goal               │
+ │          ▼                                                  │
+ │  3. Scaffold Specs    Create design doc stubs from catalog  │
+ │          ▼                                                  │
+ │  4. Spawn Teammates   Launch Developer agents for PBIs      │
+ │          ▼                                                  │
+ │  5. Design            Write design specs (parallel)         │
+ │          ▼                                                  │
+ │  6. Implementation    Build features with TDD (parallel)    │
+ │          ▼                                                  │
+ │  7. Cross-Review      Devs review each other's work         │
+ │          ▼                                                  │
+ │  8. Sprint Review     Demo to PO, accept/reject PBIs        │
+ │          ▼                                                  │
+ │  9. Retrospective     Record improvements for next Sprint   │
+ └──────────┬──────────────────────────┬───────────────────────┘
+            │                          │
+            ▼                          ▼
+     Next Sprint N+1   ┌───────────────────────────────────────┐
+                       │  Integration Sprint                   │
+                       │  Smoke Tests ──▶ UAT ──▶ Release      │
+                       └───────────────────────────────────────┘
 ```
-
-## AI-Specific Design
-
-This project intentionally departs from human Scrum in several ways — some to exploit what AI does well, others to guard against where it goes wrong.
-
-### Advantages unique to AI
-
-- **Team size scales per Sprint** — the number of Developer agents is optimized for each Sprint's workload rather than fixed.
-- **Developers adapt their expertise to their PBI** — each Developer selects and invokes the most appropriate sub-agents for the task at hand, rather than being locked to a fixed skill set.
-- **No coordination tax** — the Scrum Master delegates instantly; Developers start in parallel without scheduling overhead.
-- **Consistent ceremony execution** — Skills enforce mandatory inputs and outputs for every ceremony, so nothing gets skipped.
-- **Retrospective improvements feed forward automatically** — no one needs to remember to act on them.
-
-### Guardrails for AI behavior
-
-AI agents can confidently march in the wrong direction without these guardrails:
-
-- **Requirements-only first Sprint** — the first Sprint is dedicated solely to requirements elicitation. Without a map, agents drift early and waste subsequent Sprints correcting course.
-- **No work without a PBI** — agents are prohibited from making changes outside of an assigned PBI, preventing the Scrum Master from silently "helping" mid-conversation.
-- **Controlled document creation** — agents may only create documents defined in the design catalog, preventing unstructured document sprawl.
-- **Sprint scope set by PO review cadence, not velocity** — Sprint boundaries are defined by when the Product Owner should meaningfully review progress, not by a capacity metric.
 
 ## Quick Start
 
@@ -158,17 +166,6 @@ For detailed setup instructions, see [quickstart.md](specs/001-ai-scrum-team/qui
 ## Development
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and workflow.
-
-```bash
-# Install dev dependencies
-sh scripts/setup-dev.sh
-
-# Run tests
-bats tests/unit/ tests/lint/
-
-# Lint shell scripts
-shellcheck scrum-start.sh scripts/*.sh scripts/lib/*.sh hooks/*.sh hooks/lib/*.sh
-```
 
 ## License
 
