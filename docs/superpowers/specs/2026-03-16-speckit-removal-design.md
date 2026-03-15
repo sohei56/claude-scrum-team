@@ -15,6 +15,8 @@ Remove all spec-kit infrastructure and migrate valuable documentation content to
 
 A flat `docs/` directory with no external tooling, governance frameworks, or catalog dependencies. Files are plain Markdown/JSON managed directly in git. The `.design/` directory (used by target projects) is unaffected.
 
+Note: References to `.design/specs/` throughout the codebase are for target project design documents and are unrelated to the `specs/` directory being removed. No changes needed for these.
+
 ## New Structure
 
 ```
@@ -33,16 +35,17 @@ docs/
 | Target | Type | Reason |
 |--------|------|--------|
 | `.specify/` | Directory | Spec-kit infrastructure (templates, scripts, constitution) |
-| `.claude/commands/speckit.*.md` | 9 files | Spec-kit commands |
+| `.claude/commands/speckit.*.md` | 9 files: `speckit.analyze.md`, `speckit.checklist.md`, `speckit.clarify.md`, `speckit.constitution.md`, `speckit.implement.md`, `speckit.plan.md`, `speckit.specify.md`, `speckit.tasks.md`, `speckit.taskstoissues.md` | Spec-kit commands |
 | `specs/` | Directory | Content migrated to `docs/` |
 
 ## File Updates
 
 | File | Change |
 |------|--------|
-| `hooks/phase-gate.sh` | Remove `.specify/*` exclusion pattern |
+| `hooks/phase-gate.sh` | Remove `.specify/*` and `specs/*` from exclusion patterns |
 | `CLAUDE.md` | Update `specs/` references to `docs/` |
-| `README.md` | Update repository structure diagram |
+| `README.md` | Update repository structure diagram and `specs/` links to `docs/` |
+| `CONTRIBUTING.md` | Update `specs/` references to `docs/` (directory tree and bullet points) |
 
 ## Migration Details
 
@@ -80,3 +83,15 @@ docs/
 - Remove `Branch: / Date:` header
 - Remove `.specify/` reference from repository layout
 - Update `specs/` references to `docs/`
+
+### Discarded Files (not migrated)
+- `specs/001-ai-scrum-team/plan.md` — Implementation plan; ephemeral, served only during initial development
+- `specs/001-ai-scrum-team/tasks.md` — Task list; ephemeral, implementation-phase-only value
+- `specs/001-ai-scrum-team/checklists/requirements.md` — Spec-kit requirements quality checklist; not needed for ongoing development
+
+## Post-Implementation Verification
+
+Confirm no remaining references to `.specify/`, `speckit`, or `specs/001-` exist in tracked files (excluding `docs/superpowers/` design history):
+```bash
+git grep -l '\.specify\|speckit\|specs/001-' -- ':!docs/superpowers/'
+```
