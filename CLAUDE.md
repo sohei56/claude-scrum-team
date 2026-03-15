@@ -36,7 +36,7 @@ tests/                   # Test suites
   lint/                  # Bats lint tests
   integration/           # Script composition tests
   fixtures/              # Test data (JSON fixtures for validation)
-specs/                   # Feature specifications and data model
+docs/                    # Project documentation (requirements, architecture, data model, contracts)
 .design/                 # Design document governance
   catalog.md             # Immutable document type reference (read-only)
   catalog-config.json    # Editable list of enabled spec IDs

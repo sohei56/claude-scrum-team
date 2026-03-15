@@ -1,6 +1,5 @@
 # Quickstart: AI-Powered Scrum Team Development
 
-**Branch**: `001-ai-scrum-team` | **Date**: 2026-02-26
 
 ## For End Users
 
@@ -132,8 +131,7 @@ claude-scrum-team/
 ├── .design/
 │   ├── catalog.md           # Design document governance
 │   └── specs/{category}/    # Design documents per catalog entries
-├── specs/                   # Feature specifications
-└── .specify/                # Speckit tooling
+└── docs/                    # Project documentation (requirements, architecture, data model, contracts, quickstart)
 ```
 
 ## Running Tests
@@ -202,9 +200,9 @@ in YAML frontmatter with `pbis` field.
 
 ## Development Workflow
 
-1. Read the spec: `specs/001-ai-scrum-team/spec.md`
-2. Read the data model: `specs/001-ai-scrum-team/data-model.md`
-3. Read the contracts: `specs/001-ai-scrum-team/contracts/`
+1. Read the requirements: `docs/requirements.md`
+2. Read the data model: `docs/data-model.md`
+3. Read the contracts: `docs/contracts/`
 4. Make changes
 5. Run `shellcheck` on modified shell scripts
 6. Run `bats tests/unit/ tests/lint/` to verify

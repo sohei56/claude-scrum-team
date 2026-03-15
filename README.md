@@ -132,7 +132,7 @@ sh /path/to/claude-scrum-team/scrum-start.sh
 
 The script validates prerequisites (auto-installing `textual` and `watchdog` if missing), copies agent definitions, Skills, hooks, and the design catalog to your project's `.claude/` directory, and launches a tmux session with Claude Code (Scrum Master) and the TUI dashboard.
 
-For detailed setup instructions, see [quickstart.md](specs/001-ai-scrum-team/quickstart.md).
+For detailed setup instructions, see [quickstart.md](docs/quickstart.md).
 
 ### Prerequisites
 

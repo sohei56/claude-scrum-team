@@ -38,13 +38,13 @@ ask() {
 }
 
 # Check whether a file path targets source code (not metadata / config).
-# Source files live outside .scrum/, .design/, specs/, agents/, skills/,
+# Source files live outside .scrum/, .design/, docs/, agents/, skills/,
 # hooks/, scripts/, dashboard/, tests/, and common dot-directories.
 is_source_file() {
   local path="$1"
   case "$path" in
-    .scrum/*|.design/*|specs/*|agents/*|skills/*|hooks/*|scripts/*|dashboard/*|tests/*) return 1 ;;
-    .git/*|.claude/*|.specify/*|.github/*) return 1 ;;
+    .scrum/*|.design/*|docs/*|agents/*|skills/*|hooks/*|scripts/*|dashboard/*|tests/*) return 1 ;;
+    .git/*|.claude/*|.github/*) return 1 ;;
     *.md|*.json|*.yaml|*.yml|*.toml|*.cfg|*.ini|*.editorconfig|LICENSE*|.gitignore|.gitmodules|.shellcheckrc) return 1 ;;
     *) return 0 ;;
   esac

@@ -1,11 +1,13 @@
-# Feature Specification: AI-Powered Scrum Team
+# Requirements: AI-Powered Scrum Team
 
-**Feature Branch**: `001-ai-scrum-team`
-**Created**: 2026-02-21
-**Status**: Draft
-**Input**: User description: "Build claude-scrum-team — a shell-script-launched AI-powered Scrum development team for Claude Code."
+## Overview
 
-## User Scenarios & Testing *(mandatory)*
+claude-scrum-team is a shell-script-launched AI-powered Scrum development
+team for Claude Code. It assembles a Scrum Master and Developer agents that
+coordinate through Agent Teams to deliver iterative Development Sprints,
+with the user acting as Product Owner.
+
+## User Stories
 
 ### User Story 1 - Launch Scrum Team and Requirements Elicitation (Priority: P1)
 
@@ -18,11 +20,7 @@ parties agree on the requirements document. After the Requirements
 Sprint, the Scrum Master creates the initial Product Backlog with
 coarse-grained PBIs.
 
-**Why this priority**: Without team startup and requirements
-elicitation, no subsequent development activity is possible.
-This is the entry point for the entire product.
-
-**Independent Test**: Run `sh ./claude-scrum-team/scrum-start.sh`,
+**Verification**: Run `sh ./claude-scrum-team/scrum-start.sh`,
 answer the Developer's questions, and confirm the requirements
 document is produced, saved, and the initial Product Backlog is
 created with coarse-grained PBIs.
@@ -73,11 +71,7 @@ summary and, only when UX changes are included, a live demo.
 The user inspects results and provides feedback. A Sprint Retrospective records
 improvements.
 
-**Why this priority**: This is the core development loop that
-produces working software. It includes design, implementation,
-testing, and review in each Sprint.
-
-**Independent Test**: Start a Development Sprint after the
+**Verification**: Start a Development Sprint after the
 Requirements Sprint, verify Sprint Planning refines PBIs, design
 documents are produced, implementation and cross-review occur,
 and Sprint Review presents the Increment to the user.
@@ -134,11 +128,7 @@ testing, regression testing, documentation consistency checks,
 and user acceptance testing via live demo. When the user confirms
 the product is release-ready, the project is complete.
 
-**Why this priority**: The Integration Sprint is the final gate
-before release. It depends on all Development Sprints being
-complete.
-
-**Independent Test**: After Development Sprints, trigger the
+**Verification**: After Development Sprints, trigger the
 Integration Sprint, verify all testing categories are executed,
 and confirm the user can declare the product release-ready.
 
@@ -180,12 +170,7 @@ real-time PBI Progress Board, Communication Log, and File
 Change Log. The user never needs to inspect raw files or logs
 to understand project status.
 
-**Why this priority**: The dashboard is the primary interface
-for the user to monitor progress. While development can proceed
-without it (via Sprint Review summaries), it significantly
-improves the user experience.
-
-**Independent Test**: Launch the dashboard during a Development
+**Verification**: Launch the dashboard during a Development
 Sprint and verify it displays Sprint Overview, PBI Progress
 Board, Communication Log, and File Change Log, all updating
 in real time.
@@ -228,11 +213,7 @@ Developer teammate is a full Claude Code session, it can use
 these sub-agents via the Task tool during implementation. This
 happens automatically without user involvement.
 
-**Why this priority**: Enhances Developer effectiveness but is
-not required for core functionality. Development Sprints can
-operate without specialist sub-agents.
-
-**Independent Test**: Observe Sprint Planning and verify each
+**Verification**: Observe Sprint Planning and verify each
 Developer teammate selects relevant specialist sub-agents from
 the catalog based on their assigned PBIs, and uses them via the
 Task tool during implementation.
@@ -309,9 +290,7 @@ Task tool during implementation.
   only the artifacts relevant to their assigned PBIs. This
   prevents context overflow across Sprints.
 
-## Requirements *(mandatory)*
-
-### Functional Requirements
+## Functional Requirements
 
 - **FR-001**: The system MUST launch a complete Scrum team when the
   user runs the shell script `scrum-start.sh`. The script launches
@@ -399,10 +378,10 @@ Task tool during implementation.
   (a) **Sprint Overview** — Sprint Goal, selected PBIs, assigned
   Developers, and current phase;
   (b) **Real-time PBI Progress Board** — each PBI's status
-  (`draft` → `refined` → `in_progress` → `review` → `done`)
+  (`draft` -> `refined` -> `in_progress` -> `review` -> `done`)
   updated as Developers work;
   (c) **Communication Log** — messages exchanged between agents
-  (Scrum Master ↔ Developers, Developer ↔ Developer);
+  (Scrum Master <-> Developers, Developer <-> Developer);
   (d) **File Change Log** — files created, modified, or deleted
   by agents during implementation.
   The dashboard MUST update in real time as work progresses.
@@ -455,7 +434,7 @@ Task tool during implementation.
   reassign the PBI to a new Developer teammate, and resume work
   without requiring user intervention.
 
-### Key Entities
+## Key Entities
 
 - **Scrum Team**: The complete team consisting of the Product
   Owner (user), Scrum Master (Agent Teams team lead), and
@@ -467,10 +446,10 @@ Task tool during implementation.
   PBIs start coarse-grained and are progressively refined.
 
 - **Product Backlog Item (PBI)**: A unit of work with a 5-state
-  lifecycle: `draft` (coarse-grained, e.g. "User Management") →
+  lifecycle: `draft` (coarse-grained, e.g. "User Management") ->
   `refined` (implementation-ready: one function, screen, API, or
-  platform component) → `in_progress` (Developer implementing) →
-  `review` (cross-review by another Developer) → `done` (meets
+  platform component) -> `in_progress` (Developer implementing) ->
+  `review` (cross-review by another Developer) -> `done` (meets
   Definition of Done). Each refined PBI produces three
   deliverables: design document, implementation, and tests.
   Design is completed and reviewed before implementation begins.
@@ -506,9 +485,7 @@ Task tool during implementation.
   and approved by the user. Does not need to target coherent groups
   of related functionality.
 
-## Success Criteria *(mandatory)*
-
-### Measurable Outcomes
+## Success Criteria
 
 - **SC-001**: The user can go from zero to a running Scrum team
   with a single shell command (`sh ./claude-scrum-team/scrum-start.sh`)
@@ -548,39 +525,6 @@ Task tool during implementation.
   consistent with those from earlier Sprints, as verified during
   the Integration Sprint documentation consistency check.
 
-## Clarifications
-
-### Session 2026-02-26
-
-- Q: Should external dependencies be allowed for the TUI dashboard? → A: Yes — Python 3.9+ with `textual` and `watchdog` packages are allowed as TUI dependencies. FR-018 revised to permit this. The dashboard must display four panels: Sprint Overview, PBI Progress Board, Communication Log, and File Change Log.
-- Q: Should the awesome-claude-code-subagents catalog be installed into `.claude/skills/` instead of `.claude/agents/`? → A: No — catalog entries are subagent definition files (`.md` with subagent YAML frontmatter: `tools`, `model`), not Skill format. They require context isolation, model routing, and tool sandboxing that only subagents provide. Keep `.claude/agents/` as the installation target.
-
-### Session 2026-02-25
-
-- Q: What is the agent orchestration model? → A: Agent Teams — the shell script launches one Claude Code session as the team lead (Scrum Master), which spawns Developer teammates via Agent Teams. Each teammate is an independent Claude Code session coordinating through a shared task list and direct messaging.
-- Q: Where are project artifacts stored on disk? → A: A `.scrum/` directory in the project root with flat JSON files (one file per concern: `state.json`, `backlog.json`, `sprint.json`, etc.) and a `reviews/` subdirectory. Design documents live separately under `.design/specs/{category}/`, governed by `.design/catalog.md`.
-- Q: What serialization format for state files? → A: JSON — one file per concern (e.g., `state.json`, `backlog.json`, `improvements.json`).
-- Q: How are cross-Sprint context limits managed? → A: Fresh context per Sprint — the Scrum Master (team lead) reads state files from disk at Sprint start; Developer teammates receive only their assigned artifacts (PBI, relevant design docs, requirements).
-- Q: What are the explicit PBI lifecycle states? → A: 5 states: `draft` (coarse-grained) → `refined` (implementation-ready) → `in_progress` → `review` → `done`.
-- Q: Can Agent Teams teammates use specialist sub-agents from the catalog? → A: Yes — teammates are full Claude Code sessions that load `.claude/agents/` automatically. They install sub-agent `.md` files from the catalog and use them via the Task tool. This is distinct from Agent Teams itself: teammates coordinate via shared task list and messaging, while sub-agents are ephemeral workers within a teammate's session.
-
-### Session 2026-02-21
-
-- Q: Can the user close Claude Code mid-Sprint and resume later? → A: Full resume — all project state is persisted to disk and the project resumes on the next session.
-- Q: What happens if the shell script is run when a project already exists? → A: Auto-resume — the script resumes the existing project automatically.
-- Q: How does the user access the TUI dashboard during a Sprint? → A: Always visible — the dashboard is shown persistently alongside the conversation.
-- Q: What happens if a Developer agent fails mid-implementation? → A: Auto-recover — the Scrum Master detects the failure, reassigns the PBI to a new Developer agent, and work resumes.
-
-## Out of Scope (MVP)
-
-- Web-based dashboard
-- Multi-user / multi-PO support
-- Integration with external project management tools
-- Custom agent definitions by users (the awesome-claude-code-
-  subagents catalog at `https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`
-  is used instead)
-- Multiple Scrum Teams working on the same product
-
 ## Assumptions
 
 - Claude Code is installed and available on the user's PATH.
@@ -604,3 +548,36 @@ Task tool during implementation.
 - The user clones or downloads the claude-scrum-team repository
   and runs the shell script from within or alongside their
   project directory.
+
+## Out of Scope
+
+- Web-based dashboard
+- Multi-user / multi-PO support
+- Integration with external project management tools
+- Custom agent definitions by users (the awesome-claude-code-
+  subagents catalog at `https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`
+  is used instead)
+- Multiple Scrum Teams working on the same product
+
+## Clarifications
+
+### 2026-02-26
+
+- Q: Should external dependencies be allowed for the TUI dashboard? A: Yes — Python 3.9+ with `textual` and `watchdog` packages are allowed as TUI dependencies. FR-018 revised to permit this. The dashboard must display four panels: Sprint Overview, PBI Progress Board, Communication Log, and File Change Log.
+- Q: Should the awesome-claude-code-subagents catalog be installed into `.claude/skills/` instead of `.claude/agents/`? A: No — catalog entries are subagent definition files (`.md` with subagent YAML frontmatter: `tools`, `model`), not Skill format. They require context isolation, model routing, and tool sandboxing that only subagents provide. Keep `.claude/agents/` as the installation target.
+
+### 2026-02-25
+
+- Q: What is the agent orchestration model? A: Agent Teams — the shell script launches one Claude Code session as the team lead (Scrum Master), which spawns Developer teammates via Agent Teams. Each teammate is an independent Claude Code session coordinating through a shared task list and direct messaging.
+- Q: Where are project artifacts stored on disk? A: A `.scrum/` directory in the project root with flat JSON files (one file per concern: `state.json`, `backlog.json`, `sprint.json`, etc.) and a `reviews/` subdirectory. Design documents live separately under `.design/specs/{category}/`, governed by `.design/catalog.md`.
+- Q: What serialization format for state files? A: JSON — one file per concern (e.g., `state.json`, `backlog.json`, `improvements.json`).
+- Q: How are cross-Sprint context limits managed? A: Fresh context per Sprint — the Scrum Master (team lead) reads state files from disk at Sprint start; Developer teammates receive only their assigned artifacts (PBI, relevant design docs, requirements).
+- Q: What are the explicit PBI lifecycle states? A: 5 states: `draft` (coarse-grained) -> `refined` (implementation-ready) -> `in_progress` -> `review` -> `done`.
+- Q: Can Agent Teams teammates use specialist sub-agents from the catalog? A: Yes — teammates are full Claude Code sessions that load `.claude/agents/` automatically. They install sub-agent `.md` files from the catalog and use them via the Task tool. This is distinct from Agent Teams itself: teammates coordinate via shared task list and messaging, while sub-agents are ephemeral workers within a teammate's session.
+
+### 2026-02-21
+
+- Q: Can the user close Claude Code mid-Sprint and resume later? A: Full resume — all project state is persisted to disk and the project resumes on the next session.
+- Q: What happens if the shell script is run when a project already exists? A: Auto-resume — the script resumes the existing project automatically.
+- Q: How does the user access the TUI dashboard during a Sprint? A: Always visible — the dashboard is shown persistently alongside the conversation.
+- Q: What happens if a Developer agent fails mid-implementation? A: Auto-recover — the Scrum Master detects the failure, reassigns the PBI to a new Developer agent, and work resumes.

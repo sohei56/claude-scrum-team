@@ -95,7 +95,7 @@ tests/                   # bats-core test suite
   fixtures/              # Test data
   test_helper/           # bats-support, bats-assert (submodules)
 .design/                 # Design documents (governed by catalog.md)
-specs/                   # Feature specifications
+docs/                    # Project documentation
 ```
 
 ## Key Files
@@ -104,7 +104,7 @@ specs/                   # Feature specifications
 - `agents/developer.md` — Teammate template (spawned per Sprint)
 - `.design/catalog.md` — Design document type reference (read-only in working dirs)
 - `.design/catalog-config.json` — Editable list of enabled spec IDs
-- `specs/001-ai-scrum-team/` — Feature specification and design docs
+- `docs/` — Project documentation (requirements, architecture, data model, contracts, quickstart)
 
 ## Pull Request Process
 

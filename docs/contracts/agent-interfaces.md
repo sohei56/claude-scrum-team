@@ -1,6 +1,5 @@
 # Agent Interface Contracts
 
-**Branch**: `001-ai-scrum-team` | **Date**: 2026-02-26
 
 Defines the interface contracts between agents in the system. Each agent
 has inputs (what it receives), outputs (what it produces), and

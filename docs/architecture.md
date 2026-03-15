@@ -1,6 +1,14 @@
-# Research: AI-Powered Scrum Team
+# Architecture: AI-Powered Scrum Team
 
-**Branch**: `001-ai-scrum-team` | **Date**: 2026-02-26 | **Spec**: [spec.md](spec.md)
+## Overview
+
+This document records the nine key architecture decisions (R1-R9) that
+shape the claude-scrum-team system. R1 establishes Agent Teams with
+Delegate mode as the orchestration model. R2-R3 define the TUI dashboard
+and testing strategy. R4-R5 cover state persistence and the shell script
+entry point. R6-R7 introduce Skills for ceremony execution and Hooks for
+Sprint cycle enforcement. R8 governs design documents via the catalog
+system. R9 decides on sub-agent installation for specialist capabilities.
 
 ## R1: Agent Orchestration — Claude Code Agent Teams in Delegate Mode
 
@@ -75,11 +83,11 @@ Reference: [sinjorjob/claude-code-agent-teams-dashboard](https://github.com/sinj
 - `scrum-start.sh` launches tmux with two panes: Claude Code (main) +
   `python dashboard/app.py` (side). Falls back to status line only.
 - Four panels (FR-014): Sprint Overview, PBI Progress Board,
-  Communication Log, File Change Log. See agent-interfaces.md for
+  Communication Log, File Change Log. See [contracts/agent-interfaces.md](contracts/agent-interfaces.md) for
   widget details and source files.
 - Status line (`scripts/statusline.sh`): compact 3-line supplementary
   view, always active.
-- Data flow: Hooks → `.scrum/*.json` → watchdog → Textual panels.
+- Data flow: Hooks -> `.scrum/*.json` -> watchdog -> Textual panels.
 - Dependencies: Python 3.9+, `textual`, `watchdog`, tmux (optional).
 - Exit codes: `0` normal, `1` CLI missing, `2` Agent Teams off,
   `3` Python/TUI missing.
@@ -178,7 +186,7 @@ agent.
 - MUST check for `pip`/`pip3`. If missing, print actionable guidance
   (ensurepip, system package manager, venv example).
 - MUST NOT create venvs automatically — only provide guidance.
-- See agent-interfaces.md § setup-user.sh for full error message spec.
+- See [contracts/agent-interfaces.md](contracts/agent-interfaces.md) § setup-user.sh for full error message spec.
 
 ---
 
@@ -223,18 +231,18 @@ execute.
   data dependencies and side effects explicit and testable.
   ```markdown
   ## Inputs (required state)
-  - `state.json` → `phase` (must be `sprint_planning`)
-  - `backlog.json` → `items[]` (PBIs with `status: refined`)
-  - `sprint.json` → `id`, `goal`, `pbi_ids`
+  - `state.json` -> `phase` (must be `sprint_planning`)
+  - `backlog.json` -> `items[]` (PBIs with `status: refined`)
+  - `sprint.json` -> `id`, `goal`, `pbi_ids`
 
   ## Outputs (files/keys updated)
-  - `sprint.json` → `developers[]` (populated with spawned teammates)
-  - `state.json` → `phase` (transitions to `design`)
-  - `backlog.json` → `items[].implementer_id`, `items[].reviewer_id` (round-robin)
+  - `sprint.json` -> `developers[]` (populated with spawned teammates)
+  - `state.json` -> `phase` (transitions to `design`)
+  - `backlog.json` -> `items[].implementer_id`, `items[].reviewer_id` (round-robin)
   ```
 
 - Each Skill declares Inputs, Outputs, preconditions, steps, exit
-  criteria, and variables. See agent-interfaces.md § Skill Inputs/Outputs
+  criteria, and variables. See [contracts/agent-interfaces.md](contracts/agent-interfaces.md) § Skill Inputs/Outputs
   Reference for the full I/O table.
 
 - **`spawn-teammates`**: Reproducible teammate creation during Sprint
@@ -281,10 +289,10 @@ prompt-only management:
 **Layer 1 — State File**:
 - `.scrum/state.json` contains the `phase` field with valid transitions:
   ```
-  new → requirements_sprint → backlog_created → sprint_planning
-    → design → implementation → review → sprint_review
-    → retrospective → sprint_planning (next Sprint)
-    → integration_sprint → complete
+  new -> requirements_sprint -> backlog_created -> sprint_planning
+    -> design -> implementation -> review -> sprint_review
+    -> retrospective -> sprint_planning (next Sprint)
+    -> integration_sprint -> complete
   ```
 - Phase transitions are performed by the Scrum Master via Skill execution
   (not arbitrary writes).

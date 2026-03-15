@@ -1,8 +1,5 @@
 # Data Model: AI-Powered Scrum Team
 
-**Branch**: `001-ai-scrum-team` | **Date**: 2026-02-26
-**Source**: [spec.md](spec.md) Key Entities + [research.md](research.md) R2, R4, R8
-
 All state persists as JSON files in `.scrum/` at the user's project root.
 One file per concern. Files are read/written by the Scrum Master agent and
 read (selectively) by Developer teammates.
@@ -26,11 +23,11 @@ read (selectively) by Developer teammates.
 ### State Transitions: `phase`
 
 ```
-new → requirements_sprint → backlog_created → sprint_planning
-  → design → implementation → review → sprint_review
-  → retrospective → sprint_planning (next Sprint)
-  → integration_sprint → backlog_created (defect-fix loop)
-                        → complete
+new -> requirements_sprint -> backlog_created -> sprint_planning
+  -> design -> implementation -> review -> sprint_review
+  -> retrospective -> sprint_planning (next Sprint)
+  -> integration_sprint -> backlog_created (defect-fix loop)
+                        -> complete
 ```
 
 Valid phases:
@@ -64,7 +61,7 @@ Valid phases:
 
 ## Entity: PBI (Product Backlog Item)
 
-**Embedded in**: `backlog.json` → `items[]`
+**Embedded in**: `backlog.json` -> `items[]`
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -88,7 +85,7 @@ Valid phases:
 ### State Transitions: `status`
 
 ```
-draft → refined → in_progress → review → done
+draft -> refined -> in_progress -> review -> done
 ```
 
 - `draft` — coarse-grained (e.g., "User Management"). Created during initial backlog creation.
@@ -470,32 +467,32 @@ Cross-review results for a PBI. Created during the Review phase (FR-009).
 
 ```
 state.json
-  └── current_sprint_id → sprint.json.id
+  └── current_sprint_id -> sprint.json.id
 
 backlog.json
-  └── items[].sprint_id → sprint.json.id
-  └── items[].implementer_id → sprint.json.developers[].id
-  └── items[].reviewer_id → sprint.json.developers[].id
-  └── items[].design_doc_paths[] → .design/specs/{category}/{id}-{slug}.md
-  └── items[].review_doc_path → reviews/<pbi-id>-review.md
-  └── items[].parent_pbi_id → items[].id (self-reference)
-  └── items[].depends_on_pbi_ids[] → items[].id (cross-reference)
+  └── items[].sprint_id -> sprint.json.id
+  └── items[].implementer_id -> sprint.json.developers[].id
+  └── items[].reviewer_id -> sprint.json.developers[].id
+  └── items[].design_doc_paths[] -> .design/specs/{category}/{id}-{slug}.md
+  └── items[].review_doc_path -> reviews/<pbi-id>-review.md
+  └── items[].parent_pbi_id -> items[].id (self-reference)
+  └── items[].depends_on_pbi_ids[] -> items[].id (cross-reference)
 
 sprint.json
-  └── pbi_ids[] → backlog.json.items[].id
-  └── developers[].assigned_work.implement[] → backlog.json.items[].id
-  └── developers[].assigned_work.review[] → backlog.json.items[].id
+  └── pbi_ids[] -> backlog.json.items[].id
+  └── developers[].assigned_work.implement[] -> backlog.json.items[].id
+  └── developers[].assigned_work.review[] -> backlog.json.items[].id
 
 improvements.json
-  └── entries[].sprint_id → sprint-history.json.sprints[].id
+  └── entries[].sprint_id -> sprint-history.json.sprints[].id
 
 communications.json
-  └── messages[].sender_id → sprint.json.developers[].id | "scrum-master"
-  └── messages[].recipient_id → sprint.json.developers[].id | "scrum-master" | null
+  └── messages[].sender_id -> sprint.json.developers[].id | "scrum-master"
+  └── messages[].recipient_id -> sprint.json.developers[].id | "scrum-master" | null
 
 dashboard.json
-  └── events[].agent_id → sprint.json.developers[].id
-  └── events[].pbi_id → backlog.json.items[].id
+  └── events[].agent_id -> sprint.json.developers[].id
+  └── events[].pbi_id -> backlog.json.items[].id
 
 test-results.json
   (standalone — no foreign key references; read by completion-gate.sh and dashboard)
