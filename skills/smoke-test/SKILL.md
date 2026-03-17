@@ -121,24 +121,49 @@ Check if the Playwright MCP server is available by looking for it in
 
 **If not available:**
 
-Record the browser category as `status: "skipped"` with
-`runner_command: "playwright MCP not configured"`.
+1. Record the browser category as `status: "skipped"` with
+   `runner_command: "playwright MCP not configured"`.
+2. **Warn the user explicitly** — display a visible warning message:
+
+   > ⚠️ **Browser E2E tests skipped**: Playwright MCP server is not
+   > configured. Browser-level testing (page navigation, form submission,
+   > visual verification) will not be performed.
+   >
+   > To enable browser E2E testing, add the Playwright MCP server to
+   > `.mcp.json` in your project root:
+   >
+   > ```json
+   > {
+   >   "mcpServers": {
+   >     "playwright": {
+   >       "command": "npx",
+   >       "args": ["@anthropic-ai/mcp-playwright"]
+   >     }
+   >   }
+   > }
+   > ```
+   >
+   > See: https://github.com/anthropics/mcp-playwright
 
 ### 6. Compute overall status
 
 After all categories are recorded:
 
 1. If ANY category has `status: "failed"` → set `overall_status: "failed"`
-2. If ALL non-skipped categories have `status: "passed"` → set `overall_status: "passed"`
+2. If ALL non-skipped categories have `status: "passed"`:
+   - If ANY category has `status: "skipped"` → set `overall_status: "passed_with_skips"`
+   - If NO category has `status: "skipped"` → set `overall_status: "passed"`
 3. Update `updated_at` with the current timestamp
 4. Write the final `.scrum/test-results.json`
 
 ### 7. Report results to Scrum Master
 
 Send a message to the Scrum Master via Agent Teams with:
-- Overall status (passed/failed)
+- Overall status (passed/failed/passed_with_skips)
 - Summary per category: `unit: 15/15 passed`, `smoke: 7/8 failed`
 - First 3 error details for any failed category
+- **For each skipped category**: include the reason it was skipped and how
+  to enable it (e.g., "browser: skipped — Playwright MCP not configured")
 
 Reference: FR-013
 

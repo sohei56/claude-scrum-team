@@ -155,7 +155,7 @@ EOF
     ;;
 
   integration_sprint)
-    # test-results.json must exist with overall_status: "passed"
+    # test-results.json must exist with overall_status: "passed" or "passed_with_skips"
     if [ ! -f "$TEST_RESULTS_FILE" ]; then
       block_stop "Integration Sprint: .scrum/test-results.json does not exist. Run the smoke-test skill before stopping."
     fi
@@ -163,7 +163,7 @@ EOF
     overall_status="$(jq -r '.overall_status // "unknown"' "$TEST_RESULTS_FILE" 2>/dev/null || echo "unknown")"
 
     case "$overall_status" in
-      passed)
+      passed|passed_with_skips)
         allow_stop
         ;;
       failed)
@@ -175,7 +175,7 @@ EOF
         block_stop "Integration Sprint: automated tests are still ${overall_status}. Wait for smoke-test to complete before stopping."
         ;;
       *)
-        block_stop "Integration Sprint: test-results.json has unexpected overall_status '${overall_status}'. Expected 'passed'."
+        block_stop "Integration Sprint: test-results.json has unexpected overall_status '${overall_status}'. Expected 'passed' or 'passed_with_skips'."
         ;;
     esac
     ;;
