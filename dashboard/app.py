@@ -317,6 +317,7 @@ class TestResultsPanel(Static):
 
     STATUS_STYLES = {
         "passed": "[bold green]PASSED[/bold green]",
+        "passed_with_skips": "[bold yellow]PASSED (with skips)[/bold yellow]",
         "failed": "[bold red]FAILED[/bold red]",
         "running": "[bold yellow]RUNNING[/bold yellow]",
         "pending": "[bold dim]PENDING[/bold dim]",

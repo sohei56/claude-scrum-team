@@ -140,9 +140,10 @@ skill's step 1 handles the transition — no extra action needed.
 3. **Integration Sprint**: When Product Goal achieved →
    - Spawn 1-2 Developer teammates for testing
    - Delegate `smoke-test` skill to testing teammates
-   - Wait for `.scrum/test-results.json` → `overall_status: "passed"`
+   - Wait for `.scrum/test-results.json` → `overall_status: "passed"` or `"passed_with_skips"`
+   - If `passed_with_skips`: inform the user which test categories were skipped
    - If tests fail: assign Developers to fix, re-run `smoke-test`
-   - **Block UAT until all automated tests pass**
+   - **Block UAT until all automated tests pass** (skipped categories do not block)
    - Proceed to UAT
    - **Defect consolidation** (if defects found):
      - Collect ALL defects from the user — keep asking until they confirm "that's all"

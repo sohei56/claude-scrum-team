@@ -44,6 +44,10 @@ disable-model-invocation: false
 
 4. **Quality gate — review test results**: Read `.scrum/test-results.json`.
    - If `overall_status: "passed"`: proceed to step 5.
+   - If `overall_status: "passed_with_skips"`: inform the user which test
+     categories were skipped and why. Proceed to step 5, but note the
+     skipped categories in the UAT checklist so the user can manually
+     verify those areas.
    - If `overall_status: "failed"`:
      - Review the `errors` array for each failed category
      - Self-review: check for related issues in adjacent code/endpoints
@@ -117,7 +121,7 @@ Reference: FR-013
 
 ## Exit Criteria
 
-- `.scrum/test-results.json` exists with `overall_status: "passed"`
+- `.scrum/test-results.json` exists with `overall_status: "passed"` or `"passed_with_skips"`
 - All detectable test categories executed or explicitly skipped
 - User acceptance testing completed with feedback collected
 - User has confirmed release-ready OR new PBIs created for remaining work

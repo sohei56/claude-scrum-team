@@ -414,12 +414,12 @@ Levels: `INFO`, `WARN`, `ERROR`.
 
 Tracks automated test execution results during the Integration Sprint.
 Written by Developer teammates running the `smoke-test` skill.
-The Scrum Master blocks UAT until `overall_status` is `"passed"`.
+The Scrum Master blocks UAT until `overall_status` is `"passed"` or `"passed_with_skips"`.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `categories` | TestCategory[] | Results per test category |
-| `overall_status` | enum | `"pending"`, `"running"`, `"passed"`, `"failed"` |
+| `overall_status` | enum | `"pending"`, `"running"`, `"passed"`, `"passed_with_skips"`, `"failed"` |
 | `started_at` | ISO 8601 string | When testing began |
 | `updated_at` | ISO 8601 string | Last update timestamp |
 
@@ -446,7 +446,7 @@ The Scrum Master blocks UAT until `overall_status` is `"passed"`.
 
 ### Rules
 - Created by Developer teammates during the Integration Sprint via `smoke-test` skill.
-- The `completion-gate.sh` hook blocks session stop during `integration_sprint` phase unless `overall_status` is `"passed"`.
+- The `completion-gate.sh` hook blocks session stop during `integration_sprint` phase unless `overall_status` is `"passed"` or `"passed_with_skips"`.
 - The Scrum Master reads this file to decide whether to proceed to UAT.
 - Categories with `status: "skipped"` do not block the overall status.
 
