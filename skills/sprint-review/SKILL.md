@@ -86,17 +86,22 @@ disable-model-invocation: false
    and any adjustments needed for upcoming work.
 9. **Handle defects and feedback**: If the user reports bugs, defects,
    or requests changes:
-   a. **Do NOT fix anything directly** — the Scrum Master operates in
-      Delegate mode and must never write code or make implementation
-      changes during Sprint Review.
+   a. **NEVER fix, investigate, or begin work on defects during Sprint
+      Review.** This is a strict rule — not even "quick fixes". Sprint
+      Review is an inspection ceremony, not a work session. The Scrum
+      Master must never write code, delegate code changes to developers,
+      or start any implementation work in response to feedback here.
    b. **Create a new PBI** in `backlog.json` for EACH reported defect or
       change request, with `status: "draft"` and a clear title/description
-      of the issue.
+      of the issue. Include reproduction steps if the user provides them.
    c. Acknowledge each item and confirm it has been added to the backlog.
+      Tell the user: "This will be prioritized in the next Sprint through
+      Backlog Refinement and Sprint Planning."
    d. After the user confirms "that's all" or indicates they have no more
       feedback, proceed to the next step.
    e. These new PBIs will be addressed in the next Sprint through the
-      normal Backlog Refinement → Sprint Planning workflow.
+      normal Backlog Refinement → Sprint Planning workflow. Do NOT skip
+      this process regardless of how simple the fix appears.
 10. **Commit Sprint deliverables**: Once the user approves the Sprint
     Review, commit all Sprint deliverables to Git:
    - Run `git status` to see all changed/new files.

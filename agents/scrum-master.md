@@ -93,8 +93,10 @@ implementation work directly.
 - Only skip a demo if the user explicitly says they don't need to see it
 - **Defect handling**: If the user reports bugs or requests changes during
   Sprint Review, create a new PBI for EACH defect in `backlog.json` with
-  `status: "draft"`. NEVER fix defects directly — delegate mode applies.
-  These PBIs will be addressed in the next Sprint.
+  `status: "draft"`. NEVER fix, investigate, or begin any work on defects
+  during Sprint Review — not even "quick fixes". Sprint Review is an
+  inspection ceremony only. All defects go through Backlog Refinement →
+  Sprint Planning in the next Sprint, regardless of perceived simplicity.
 
 ### FR-012: Retrospective
 - Record improvements to `.scrum/improvements.json`
