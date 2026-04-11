@@ -237,40 +237,20 @@ cat > "$settings_file" << 'SETTINGS_EOF'
 SETTINGS_EOF
 echo "  Written settings.json with hook configuration."
 
-# --- Configure Playwright MCP for web projects ---
-# Detect if this is a web project and add Playwright MCP for browser E2E testing
-is_web_project=false
+# --- Configure Playwright MCP for browser E2E testing ---
+# Always configure Playwright MCP if npx is available. The smoke-test skill
+# gracefully skips browser E2E when Playwright MCP is not in .mcp.json,
+# so adding it unconditionally is safe — it only activates during
+# Integration Sprint when a running app is detected.
 
-if [ -f "$TARGET_DIR/package.json" ]; then
-  # Check for start/dev scripts indicating a web app
-  if grep -qE '"(start|dev|serve)"' "$TARGET_DIR/package.json" 2>/dev/null; then
-    is_web_project=true
-  fi
-fi
-
-# Check for other web framework indicators
-if [ "$is_web_project" = false ]; then
-  if [ -f "$TARGET_DIR/manage.py" ] || \
-     [ -f "$TARGET_DIR/next.config.js" ] || \
-     [ -f "$TARGET_DIR/next.config.mjs" ] || \
-     [ -f "$TARGET_DIR/next.config.ts" ] || \
-     [ -f "$TARGET_DIR/nuxt.config.ts" ] || \
-     [ -f "$TARGET_DIR/nuxt.config.js" ] || \
-     [ -d "$TARGET_DIR/pages" ] || \
-     [ -d "$TARGET_DIR/app" ]; then
-    is_web_project=true
-  fi
-fi
-
-if [ "$is_web_project" = true ]; then
+if command -v npx >/dev/null 2>&1; then
   echo ""
-  echo "Web project detected — configuring Playwright MCP for browser E2E testing..."
+  echo "Configuring Playwright MCP for browser E2E testing..."
   mcp_file="$TARGET_DIR/.mcp.json"
 
   if [ -f "$mcp_file" ]; then
     # Merge playwright entry into existing .mcp.json if not already present
     if ! grep -q "playwright" "$mcp_file" 2>/dev/null; then
-      # Add playwright server to existing mcpServers
       tmp_mcp="$(mktemp)"
       if jq '.mcpServers.playwright = {"type": "stdio", "command": "npx", "args": ["@anthropic-ai/mcp-playwright"]}' "$mcp_file" > "$tmp_mcp" 2>/dev/null; then
         mv "$tmp_mcp" "$mcp_file"
@@ -282,7 +262,6 @@ if [ "$is_web_project" = true ]; then
       echo "  Playwright MCP already configured in .mcp.json"
     fi
   else
-    # Create new .mcp.json with playwright
     cat > "$mcp_file" << 'MCP_EOF'
 {
   "mcpServers": {
@@ -298,7 +277,8 @@ MCP_EOF
   fi
 else
   echo ""
-  echo "Non-web project detected — skipping Playwright MCP configuration."
+  echo "Note: npx not found — skipping Playwright MCP configuration."
+  echo "  Install Node.js to enable browser E2E testing in Integration Sprint."
 fi
 
 # --- Configure status line ---
