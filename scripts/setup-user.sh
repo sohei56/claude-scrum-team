@@ -138,6 +138,7 @@ cat > "$settings_file" << 'SETTINGS_EOF'
     ],
     "PreToolUse": [
       {
+        "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",

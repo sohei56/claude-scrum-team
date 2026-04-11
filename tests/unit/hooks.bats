@@ -454,3 +454,31 @@ teardown() {
   run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/quality-gate.sh'"
   assert_success
 }
+
+# ---------------------------------------------------------------------------
+# settings.json template validation
+# ---------------------------------------------------------------------------
+
+@test "setup-user.sh generates PreToolUse with Write|Edit matcher" {
+  skip "requires full prerequisites (claude, python, textual, watchdog)"
+  setup_temp_dir
+  cd "$TEMP_DIR"
+  git init --quiet
+  mkdir -p .scrum
+
+  run bash "$PROJECT_ROOT/scripts/setup-user.sh"
+  assert_success
+
+  # PreToolUse hook must have a matcher field
+  run jq -r '.hooks.PreToolUse[0].matcher' .claude/settings.json
+  assert_output "Write|Edit"
+}
+
+@test "setup-user.sh settings.json template includes Write|Edit matcher for PreToolUse" {
+  # Validate the heredoc template source directly — no prereqs required
+  run grep -A1 '"PreToolUse"' "$PROJECT_ROOT/scripts/setup-user.sh"
+  assert_success
+  # The matcher line must appear somewhere after PreToolUse in the file
+  run grep '"matcher": "Write|Edit"' "$PROJECT_ROOT/scripts/setup-user.sh"
+  assert_success
+}
