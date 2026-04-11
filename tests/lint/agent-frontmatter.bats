@@ -120,3 +120,99 @@ extract_frontmatter() {
   assert_success
   assert_output "project"
 }
+
+# ---------------------------------------------------------------------------
+# code-reviewer.md
+# ---------------------------------------------------------------------------
+
+@test "code-reviewer.md has valid YAML frontmatter" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/code-reviewer.md' | yq '.' > /dev/null 2>&1"
+  assert_success
+}
+
+@test "code-reviewer.md has required name field" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/code-reviewer.md' | yq -r '.name'"
+  assert_success
+  assert_output "code-reviewer"
+}
+
+@test "code-reviewer.md has tools restricted to read-only" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/code-reviewer.md' | yq '.tools | length'"
+  assert_success
+  assert_output "4"
+}
+
+@test "code-reviewer.md has maxTurns field" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/code-reviewer.md' | yq -r '.maxTurns'"
+  assert_success
+  assert_output "50"
+}
+
+# ---------------------------------------------------------------------------
+# security-reviewer.md
+# ---------------------------------------------------------------------------
+
+@test "security-reviewer.md has valid YAML frontmatter" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/security-reviewer.md' | yq '.' > /dev/null 2>&1"
+  assert_success
+}
+
+@test "security-reviewer.md has required name field" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/security-reviewer.md' | yq -r '.name'"
+  assert_success
+  assert_output "security-reviewer"
+}
+
+@test "security-reviewer.md has tools restricted to read-only" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/security-reviewer.md' | yq '.tools | length'"
+  assert_success
+  assert_output "4"
+}
+
+@test "security-reviewer.md has maxTurns field" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/security-reviewer.md' | yq -r '.maxTurns'"
+  assert_success
+  assert_output "50"
+}
+
+# ---------------------------------------------------------------------------
+# tdd-guide.md
+# ---------------------------------------------------------------------------
+
+@test "tdd-guide.md has valid YAML frontmatter" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/tdd-guide.md' | yq '.' > /dev/null 2>&1"
+  assert_success
+}
+
+@test "tdd-guide.md has required name field" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/tdd-guide.md' | yq -r '.name'"
+  assert_success
+  assert_output "tdd-guide"
+}
+
+@test "tdd-guide.md has model set to haiku" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/tdd-guide.md' | yq -r '.model'"
+  assert_success
+  assert_output "haiku"
+}
+
+# ---------------------------------------------------------------------------
+# build-error-resolver.md
+# ---------------------------------------------------------------------------
+
+@test "build-error-resolver.md has valid YAML frontmatter" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/build-error-resolver.md' | yq '.' > /dev/null 2>&1"
+  assert_success
+}
+
+@test "build-error-resolver.md has required name field" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/build-error-resolver.md' | yq -r '.name'"
+  assert_success
+  assert_output "build-error-resolver"
+}
+
+@test "build-error-resolver.md has model set to haiku" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/build-error-resolver.md' | yq -r '.model'"
+  assert_success
+  assert_output "haiku"
+}
