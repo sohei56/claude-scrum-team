@@ -1,0 +1,8 @@
+[project]
+name = "mcp-openai"
+version = "0.3.0"
+description = "MCP Server: codex app-server経由でOpenAIモデルを呼び出すゲートウェイ"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp[cli]>=1.0,<2.0",
+]
