@@ -456,6 +456,37 @@ teardown() {
 }
 
 # ---------------------------------------------------------------------------
+# stop-failure.sh
+# ---------------------------------------------------------------------------
+
+@test "stop-failure.sh logs rate_limit failure to dashboard.json" {
+  mkdir -p .scrum
+
+  local event_json
+  event_json='{"hook_event_name":"StopFailure","reason":"rate_limit","agent_id":"dev-001"}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/stop-failure.sh'"
+  assert_success
+
+  [ -f ".scrum/dashboard.json" ]
+  jq -e '.events[-1].type == "stop_failure"' .scrum/dashboard.json
+  jq -e '.events[-1].detail | test("rate_limit")' .scrum/dashboard.json
+}
+
+@test "stop-failure.sh logs authentication_failed to dashboard.json" {
+  mkdir -p .scrum
+
+  local event_json
+  event_json='{"hook_event_name":"StopFailure","reason":"authentication_failed","agent_id":"scrum-master"}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/stop-failure.sh'"
+  assert_success
+
+  [ -f ".scrum/dashboard.json" ]
+  jq -e '.events[-1].type == "stop_failure"' .scrum/dashboard.json
+}
+
+# ---------------------------------------------------------------------------
 # settings.json template validation
 # ---------------------------------------------------------------------------
 
