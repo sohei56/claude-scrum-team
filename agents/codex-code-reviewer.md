@@ -47,7 +47,7 @@ Read **all** provided files in full:
 2. Source code files
 3. `requirements.md`
 
-Collect the contents into variables for prompt assembly.
+Keep all file contents in working memory; you will reference them in Step 3.
 
 ### Step 2 — Build the System Prompt
 
@@ -155,7 +155,9 @@ If Codex responds with `STATUS: needs_info`:
 
 ### Step 6 — Return Result
 
-Return the Codex response verbatim. Do not edit or reformat the review output.
+The MCP server strips the `STATUS:` marker line and returns the review text
+in the `response` field of the JSON result. Return this `response` value as
+your output. Do not edit or reformat the review content.
 
 ## Fallback Behavior
 
