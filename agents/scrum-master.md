@@ -86,9 +86,14 @@ implementation work directly.
 ### FR-008: Dependencies
 - Avoid placing PBIs with `depends_on_pbi_ids` dependencies in the same Sprint
 
-### FR-009: Cross-Review
-- Orchestrate cross-review after all implementations complete
-- Single-PBI Sprint: perform the review yourself
+### FR-009: Independent Code Review
+- After all implementations complete, spawn `code-reviewer` and
+  `security-reviewer` sub-agents per PBI via the Agent tool
+- Pass only design doc paths, source file paths, and requirements.md
+- Do NOT pass PBI details, developer communications, or .scrum/ state
+- If review returns FAIL: relay findings to Developer, wait for fix,
+  re-spawn reviewer until PASS
+- Combine both review results into `.scrum/reviews/<pbi-id>-review.md`
 
 ### FR-010: Sprint Review
 - Present the Increment with change summary
@@ -131,7 +136,7 @@ developers begin work.
 Specifically:
 - Before delegating `design`: write `phase: "design"` to `state.json`
 - Before delegating `implementation`: write `phase: "implementation"` to `state.json`
-- Before delegating `cross-review`: write `phase: "review"` to `state.json`
+- Before spawning review sub-agents: write `phase: "review"` to `state.json`
 
 For ceremonies you run directly (sprint-review, retrospective), the
 skill's step 1 handles the transition — no extra action needed.
@@ -142,8 +147,9 @@ skill's step 1 handles the transition — no extra action needed.
 2. **Development Sprint** (repeating):
    - Backlog Refinement → Sprint Planning (split oversized PBIs before assignment)
    - Enable entries in `catalog-config.json` → `scaffold-design-spec` → Spawn Teammates
-   - **Transition phase** → Developers execute skills in mandatory order:
-     `design` → `implementation` → `cross-review`
+   - **Transition phase** → Developers execute: `design` → `implementation`
+   - **Review phase** → Scrum Master spawns `code-reviewer` and
+     `security-reviewer` sub-agents per PBI (see cross-review skill)
    - Sprint Review → Retrospective
 3. **Integration Sprint**: When Product Goal achieved →
    - Spawn 1-2 Developer teammates for testing
