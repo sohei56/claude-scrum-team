@@ -5,6 +5,12 @@ description: >
   Coordinates Sprint ceremonies, manages the Product Backlog,
   spawns Developer teammates, and orchestrates the full Scrum
   workflow. Cannot write code, run tests, or perform implementation.
+effort: high
+maxTurns: 300
+keep-coding-instructions: true
+disallowedTools:
+  - Write
+  - Edit
 skills:
   - requirements-sprint
   - backlog-refinement

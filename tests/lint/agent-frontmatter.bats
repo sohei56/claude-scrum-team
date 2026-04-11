@@ -46,6 +46,30 @@ extract_frontmatter() {
   assert_success
 }
 
+@test "scrum-master.md has effort field set to high" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/scrum-master.md' | yq -r '.effort'"
+  assert_success
+  assert_output "high"
+}
+
+@test "scrum-master.md has maxTurns field" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/scrum-master.md' | yq -r '.maxTurns'"
+  assert_success
+  assert_output "300"
+}
+
+@test "scrum-master.md has disallowedTools including Write and Edit" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/scrum-master.md' | yq '.disallowedTools | length'"
+  assert_success
+  assert_output "2"
+}
+
+@test "scrum-master.md has keep-coding-instructions set to true" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/scrum-master.md' | yq -r '.\"keep-coding-instructions\"'"
+  assert_success
+  assert_output "true"
+}
+
 # ---------------------------------------------------------------------------
 # developer.md
 # ---------------------------------------------------------------------------
@@ -65,4 +89,34 @@ extract_frontmatter() {
   run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/developer.md' | yq '.skills[] | select(. == \"install-subagents\")'"
   assert_success
   assert_output "install-subagents"
+}
+
+@test "developer.md has effort field set to high" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/developer.md' | yq -r '.effort'"
+  assert_success
+  assert_output "high"
+}
+
+@test "developer.md has maxTurns field" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/developer.md' | yq -r '.maxTurns'"
+  assert_success
+  assert_output "200"
+}
+
+@test "developer.md has disallowedTools including WebFetch and WebSearch" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/developer.md' | yq '.disallowedTools | length'"
+  assert_success
+  assert_output "2"
+}
+
+@test "developer.md has keep-coding-instructions set to true" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/developer.md' | yq -r '.\"keep-coding-instructions\"'"
+  assert_success
+  assert_output "true"
+}
+
+@test "developer.md has memory field set to project" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/developer.md' | yq -r '.memory'"
+  assert_success
+  assert_output "project"
 }
