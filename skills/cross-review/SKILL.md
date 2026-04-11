@@ -48,7 +48,7 @@ disable-model-invocation: false
    - Path to `.scrum/requirements.md`
 4. **Spawn reviewers**: For each PBI, spawn two sub-agents in parallel
    via the Agent tool:
-   - `code-reviewer` — pass design doc paths, source file paths,
+   - `codex-code-reviewer` — pass design doc paths, source file paths,
      and requirements.md path. Do NOT pass PBI descriptions,
      developer communications, or `.scrum/` state files.
    - `security-reviewer` — pass source file paths and requirements.md

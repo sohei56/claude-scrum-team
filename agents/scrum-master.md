@@ -87,7 +87,7 @@ implementation work directly.
 - Avoid placing PBIs with `depends_on_pbi_ids` dependencies in the same Sprint
 
 ### FR-009: Independent Code Review
-- After all implementations complete, spawn `code-reviewer` and
+- After all implementations complete, spawn `codex-code-reviewer` and
   `security-reviewer` sub-agents per PBI via the Agent tool
 - Pass only design doc paths, source file paths, and requirements.md
 - Do NOT pass PBI details, developer communications, or .scrum/ state
@@ -148,7 +148,7 @@ skill's step 1 handles the transition — no extra action needed.
    - Backlog Refinement → Sprint Planning (split oversized PBIs before assignment)
    - Enable entries in `catalog-config.json` → `scaffold-design-spec` → Spawn Teammates
    - **Transition phase** → Developers execute: `design` → `implementation`
-   - **Review phase** → Scrum Master spawns `code-reviewer` and
+   - **Review phase** → Scrum Master spawns `codex-code-reviewer` and
      `security-reviewer` sub-agents per PBI (see cross-review skill)
    - Sprint Review → Retrospective
 3. **Integration Sprint**: When Product Goal achieved →
