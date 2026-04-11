@@ -454,3 +454,81 @@ teardown() {
   run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/quality-gate.sh'"
   assert_success
 }
+
+# ---------------------------------------------------------------------------
+# stop-failure.sh
+# ---------------------------------------------------------------------------
+
+@test "stop-failure.sh logs rate_limit failure to dashboard.json" {
+  mkdir -p .scrum
+
+  local event_json
+  event_json='{"hook_event_name":"StopFailure","reason":"rate_limit","agent_id":"dev-001"}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/stop-failure.sh'"
+  assert_success
+
+  [ -f ".scrum/dashboard.json" ]
+  jq -e '.events[-1].type == "stop_failure"' .scrum/dashboard.json
+  jq -e '.events[-1].detail | test("rate_limit")' .scrum/dashboard.json
+}
+
+@test "stop-failure.sh logs authentication_failed to dashboard.json" {
+  mkdir -p .scrum
+
+  local event_json
+  event_json='{"hook_event_name":"StopFailure","reason":"authentication_failed","agent_id":"scrum-master"}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/stop-failure.sh'"
+  assert_success
+
+  [ -f ".scrum/dashboard.json" ]
+  jq -e '.events[-1].type == "stop_failure"' .scrum/dashboard.json
+}
+
+# ---------------------------------------------------------------------------
+# settings.json template validation
+# ---------------------------------------------------------------------------
+
+@test "setup-user.sh generates PreToolUse with Write|Edit matcher" {
+  skip "requires full prerequisites (claude, python, textual, watchdog)"
+  setup_temp_dir
+  cd "$TEMP_DIR"
+  git init --quiet
+  mkdir -p .scrum
+
+  run bash "$PROJECT_ROOT/scripts/setup-user.sh"
+  assert_success
+
+  # PreToolUse hook must have a matcher field
+  run jq -r '.hooks.PreToolUse[0].matcher' .claude/settings.json
+  assert_output "Write|Edit"
+}
+
+@test "setup-user.sh settings.json template includes Write|Edit matcher for PreToolUse" {
+  # Validate the heredoc template source directly — no prereqs required
+  run grep -A1 '"PreToolUse"' "$PROJECT_ROOT/scripts/setup-user.sh"
+  assert_success
+  # The matcher line must appear somewhere after PreToolUse in the file
+  run grep '"matcher": "Write|Edit"' "$PROJECT_ROOT/scripts/setup-user.sh"
+  assert_success
+}
+
+@test "setup-user.sh settings.json template includes PostCompact hook" {
+  run grep -q '"PostCompact"' "$PROJECT_ROOT/scripts/setup-user.sh"
+  assert_success
+  run grep -q 'session-context.sh' "$PROJECT_ROOT/scripts/setup-user.sh"
+  assert_success
+}
+
+@test "setup-user.sh settings.json template includes StopFailure hook" {
+  run grep -q '"StopFailure"' "$PROJECT_ROOT/scripts/setup-user.sh"
+  assert_success
+  run grep -q 'stop-failure.sh' "$PROJECT_ROOT/scripts/setup-user.sh"
+  assert_success
+}
+
+@test "setup-user.sh settings.json template includes FileChanged hook" {
+  run grep -q '"FileChanged"' "$PROJECT_ROOT/scripts/setup-user.sh"
+  assert_success
+}

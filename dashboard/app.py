@@ -100,7 +100,7 @@ def read_json(path: Path) -> dict | list | None:
     try:
         if path.exists():
             return json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError):
         pass
     return None
 

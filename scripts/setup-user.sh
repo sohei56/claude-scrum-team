@@ -80,24 +80,6 @@ else
   echo "  catalog-config.json already exists — preserving project configuration"
 fi
 
-# --- Clone sub-agent catalog (categories/ only via sparse checkout) ---
-subagents_dir="$TARGET_DIR/.claude/subagents-catalog"
-if [ -d "$subagents_dir/.git" ]; then
-  echo "Updating sub-agent catalog..."
-  git -C "$subagents_dir" pull --ff-only 2>/dev/null || echo "  Warning: catalog update failed — using existing copy." >&2
-else
-  echo "Cloning sub-agent catalog (awesome-claude-code-subagents)..."
-  if git clone --filter=blob:none --no-checkout --depth 1 \
-       git@github.com:VoltAgent/awesome-claude-code-subagents.git "$subagents_dir" 2>/dev/null && \
-     git -C "$subagents_dir" sparse-checkout set categories 2>/dev/null && \
-     git -C "$subagents_dir" checkout 2>/dev/null; then
-    :
-  else
-    echo "  Warning: catalog clone failed — sub-agents will be unavailable." >&2
-    rm -rf "$subagents_dir"
-  fi
-fi
-
 # --- Configure settings.json ---
 echo "Configuring $TARGET_DIR/.claude/settings.json..."
 
@@ -122,7 +104,8 @@ cat > "$settings_file" << 'SETTINGS_EOF'
       "Grep",
       "Agent",
       "WebFetch",
-      "WebSearch"
+      "WebSearch",
+      "mcp__openai__openai_chat"
     ]
   },
   "hooks": {
@@ -138,6 +121,7 @@ cat > "$settings_file" << 'SETTINGS_EOF'
     ],
     "PreToolUse": [
       {
+        "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",
@@ -214,46 +198,60 @@ cat > "$settings_file" << 'SETTINGS_EOF'
           }
         ]
       }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/session-context.sh"
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/stop-failure.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/dashboard-event.sh"
+          }
+        ]
+      }
+    ],
+    "FileChanged": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/dashboard-event.sh"
+          }
+        ]
+      }
     ]
   }
 }
 SETTINGS_EOF
 echo "  Written settings.json with hook configuration."
 
-# --- Configure Playwright MCP for web projects ---
-# Detect if this is a web project and add Playwright MCP for browser E2E testing
-is_web_project=false
+# --- Configure Playwright MCP for browser E2E testing ---
+# Always configure Playwright MCP if npx is available. The smoke-test skill
+# gracefully skips browser E2E when Playwright MCP is not in .mcp.json,
+# so adding it unconditionally is safe — it only activates during
+# Integration Sprint when a running app is detected.
 
-if [ -f "$TARGET_DIR/package.json" ]; then
-  # Check for start/dev scripts indicating a web app
-  if grep -qE '"(start|dev|serve)"' "$TARGET_DIR/package.json" 2>/dev/null; then
-    is_web_project=true
-  fi
-fi
-
-# Check for other web framework indicators
-if [ "$is_web_project" = false ]; then
-  if [ -f "$TARGET_DIR/manage.py" ] || \
-     [ -f "$TARGET_DIR/next.config.js" ] || \
-     [ -f "$TARGET_DIR/next.config.mjs" ] || \
-     [ -f "$TARGET_DIR/next.config.ts" ] || \
-     [ -f "$TARGET_DIR/nuxt.config.ts" ] || \
-     [ -f "$TARGET_DIR/nuxt.config.js" ] || \
-     [ -d "$TARGET_DIR/pages" ] || \
-     [ -d "$TARGET_DIR/app" ]; then
-    is_web_project=true
-  fi
-fi
-
-if [ "$is_web_project" = true ]; then
+if command -v npx >/dev/null 2>&1; then
   echo ""
-  echo "Web project detected — configuring Playwright MCP for browser E2E testing..."
+  echo "Configuring Playwright MCP for browser E2E testing..."
   mcp_file="$TARGET_DIR/.mcp.json"
 
   if [ -f "$mcp_file" ]; then
     # Merge playwright entry into existing .mcp.json if not already present
     if ! grep -q "playwright" "$mcp_file" 2>/dev/null; then
-      # Add playwright server to existing mcpServers
       tmp_mcp="$(mktemp)"
       if jq '.mcpServers.playwright = {"type": "stdio", "command": "npx", "args": ["@anthropic-ai/mcp-playwright"]}' "$mcp_file" > "$tmp_mcp" 2>/dev/null; then
         mv "$tmp_mcp" "$mcp_file"
@@ -265,7 +263,6 @@ if [ "$is_web_project" = true ]; then
       echo "  Playwright MCP already configured in .mcp.json"
     fi
   else
-    # Create new .mcp.json with playwright
     cat > "$mcp_file" << 'MCP_EOF'
 {
   "mcpServers": {
@@ -281,7 +278,59 @@ MCP_EOF
   fi
 else
   echo ""
-  echo "Non-web project detected — skipping Playwright MCP configuration."
+  echo "Note: npx not found — skipping Playwright MCP configuration."
+  echo "  Install Node.js to enable browser E2E testing in Integration Sprint."
+fi
+
+# --- Configure Codex MCP for cross-model code review ---
+# Codex MCP enables the codex-code-reviewer agent to delegate code review
+# to OpenAI models. When codex is not installed, the agent falls back to
+# Claude-based review automatically.
+
+if command -v codex >/dev/null 2>&1; then
+  echo ""
+  echo "Configuring Codex MCP for cross-model code review..."
+
+  # Copy MCP server files
+  mcp_server_dir="$TARGET_DIR/.mcp-servers/mcp-openai"
+  mkdir -p "$mcp_server_dir"
+  cp "$PROJECT_ROOT/.mcp-servers/mcp-openai/server.py" "$mcp_server_dir/"
+  cp "$PROJECT_ROOT/.mcp-servers/mcp-openai/codex_client.py" "$mcp_server_dir/"
+  cp "$PROJECT_ROOT/.mcp-servers/mcp-openai/pyproject.toml" "$mcp_server_dir/"
+  echo "  Copied mcp-openai server to .mcp-servers/mcp-openai/"
+
+  # Add openai entry to .mcp.json
+  mcp_file="$TARGET_DIR/.mcp.json"
+
+  if [ -f "$mcp_file" ]; then
+    if ! grep -q '"openai"' "$mcp_file" 2>/dev/null; then
+      tmp_mcp="$(mktemp)"
+      if jq '.mcpServers.openai = {"command": "uv", "args": ["run", "--directory", ".mcp-servers/mcp-openai", "python", "server.py"]}' "$mcp_file" > "$tmp_mcp" 2>/dev/null; then
+        mv "$tmp_mcp" "$mcp_file"
+      else
+        rm -f "$tmp_mcp"
+      fi
+      echo "  Added Codex MCP to existing .mcp.json"
+    else
+      echo "  Codex MCP already configured in .mcp.json"
+    fi
+  else
+    cat > "$mcp_file" << 'MCP_EOF'
+{
+  "mcpServers": {
+    "openai": {
+      "command": "uv",
+      "args": ["run", "--directory", ".mcp-servers/mcp-openai", "python", "server.py"]
+    }
+  }
+}
+MCP_EOF
+    echo "  Created .mcp.json with Codex MCP"
+  fi
+else
+  echo ""
+  echo "Note: codex not found — code review will use Claude fallback."
+  echo "  Install: npm i -g @openai/codex && codex login"
 fi
 
 # --- Configure status line ---
@@ -296,5 +345,4 @@ echo "  .claude/agents/     — Agent definitions"
 echo "  .claude/skills/     — Skill definitions"
 echo "  .claude/hooks/      — Hook scripts"
 echo "  .design/            — Design catalog and configuration"
-echo "  .claude/subagents-catalog/ — Sub-agent definitions (awesome-claude-code-subagents)"
 echo "  .claude/settings.json — Hook and status line configuration"
