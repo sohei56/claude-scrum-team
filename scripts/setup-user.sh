@@ -80,24 +80,6 @@ else
   echo "  catalog-config.json already exists — preserving project configuration"
 fi
 
-# --- Clone sub-agent catalog (categories/ only via sparse checkout) ---
-subagents_dir="$TARGET_DIR/.claude/subagents-catalog"
-if [ -d "$subagents_dir/.git" ]; then
-  echo "Updating sub-agent catalog..."
-  git -C "$subagents_dir" pull --ff-only 2>/dev/null || echo "  Warning: catalog update failed — using existing copy." >&2
-else
-  echo "Cloning sub-agent catalog (awesome-claude-code-subagents)..."
-  if git clone --filter=blob:none --no-checkout --depth 1 \
-       git@github.com:VoltAgent/awesome-claude-code-subagents.git "$subagents_dir" 2>/dev/null && \
-     git -C "$subagents_dir" sparse-checkout set categories 2>/dev/null && \
-     git -C "$subagents_dir" checkout 2>/dev/null; then
-    :
-  else
-    echo "  Warning: catalog clone failed — sub-agents will be unavailable." >&2
-    rm -rf "$subagents_dir"
-  fi
-fi
-
 # --- Configure settings.json ---
 echo "Configuring $TARGET_DIR/.claude/settings.json..."
 
@@ -331,5 +313,4 @@ echo "  .claude/agents/     — Agent definitions"
 echo "  .claude/skills/     — Skill definitions"
 echo "  .claude/hooks/      — Hook scripts"
 echo "  .design/            — Design catalog and configuration"
-echo "  .claude/subagents-catalog/ — Sub-agent definitions (awesome-claude-code-subagents)"
 echo "  .claude/settings.json — Hook and status line configuration"
