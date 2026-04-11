@@ -4,6 +4,13 @@ description: >
   Developer teammate — implements PBIs, produces design documents,
   writes tests, performs cross-review. Spawned per Sprint by the
   Scrum Master via Agent Teams.
+effort: high
+maxTurns: 200
+keep-coding-instructions: true
+memory: project
+disallowedTools:
+  - WebFetch
+  - WebSearch
 skills:
   - requirements-sprint
   - design
