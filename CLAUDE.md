@@ -4,13 +4,17 @@
 
 ```text
 scrum-start.sh           # Entry point — validates prereqs, launches tmux
-agents/                  # Scrum Master + Developer agent definitions
+agents/                  # Agent and sub-agent definitions
   scrum-master.md        # Team lead (Delegate mode)
   developer.md           # Developer teammate
+  code-reviewer.md       # Independent code review (spawned by Scrum Master)
+  security-reviewer.md   # Security vulnerability scanning (spawned by Scrum Master)
+  tdd-guide.md           # TDD workflow guidance (spawned by Developer)
+  build-error-resolver.md # Build error diagnosis (spawned by Developer)
 skills/                  # 14 Ceremony Skills (YAML frontmatter + Markdown)
   backlog-refinement/    # Refine PBIs from coarse to sprint-ready
   change-process/        # Manage changes to frozen design docs
-  cross-review/          # Cross-review between developers
+  cross-review/          # Independent code review via sub-agents
   design/                # Design phase — create design specs
   implementation/        # Implementation phase — build PBI features
   install-subagents/     # Install specialist sub-agents for PBI work
@@ -28,7 +32,7 @@ dashboard/               # Textual TUI dashboard (Python)
   app.py                 # Main TUI application
 scripts/                 # Setup and utility scripts
   lib/                   # Shared script helpers (prereq checks)
-  setup-user.sh          # Copies agents/skills/hooks/catalog to target project
+  setup-user.sh          # Copies agents/skills/hooks to target project
   setup-dev.sh           # Installs dev dependencies (bats, shellcheck, etc.)
   statusline.sh          # Claude Code status line script
 tests/                   # Test suites
