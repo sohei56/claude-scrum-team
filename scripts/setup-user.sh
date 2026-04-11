@@ -215,6 +215,40 @@ cat > "$settings_file" << 'SETTINGS_EOF'
           }
         ]
       }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/session-context.sh"
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/stop-failure.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/dashboard-event.sh"
+          }
+        ]
+      }
+    ],
+    "FileChanged": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/dashboard-event.sh"
+          }
+        ]
+      }
     ]
   }
 }

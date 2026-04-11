@@ -513,3 +513,22 @@ teardown() {
   run grep '"matcher": "Write|Edit"' "$PROJECT_ROOT/scripts/setup-user.sh"
   assert_success
 }
+
+@test "setup-user.sh settings.json template includes PostCompact hook" {
+  run grep -q '"PostCompact"' "$PROJECT_ROOT/scripts/setup-user.sh"
+  assert_success
+  run grep -q 'session-context.sh' "$PROJECT_ROOT/scripts/setup-user.sh"
+  assert_success
+}
+
+@test "setup-user.sh settings.json template includes StopFailure hook" {
+  run grep -q '"StopFailure"' "$PROJECT_ROOT/scripts/setup-user.sh"
+  assert_success
+  run grep -q 'stop-failure.sh' "$PROJECT_ROOT/scripts/setup-user.sh"
+  assert_success
+}
+
+@test "setup-user.sh settings.json template includes FileChanged hook" {
+  run grep -q '"FileChanged"' "$PROJECT_ROOT/scripts/setup-user.sh"
+  assert_success
+}
