@@ -2,8 +2,8 @@
 name: developer
 description: >
   Developer teammate — implements PBIs, produces design documents,
-  writes tests, performs cross-review. Spawned per Sprint by the
-  Scrum Master via Agent Teams.
+  and writes tests. Spawned per Sprint by the Scrum Master via
+  Agent Teams. Code review is handled by independent sub-agents.
 effort: high
 maxTurns: 200
 keep-coding-instructions: true
@@ -15,7 +15,6 @@ skills:
   - requirements-sprint
   - design
   - implementation
-  - cross-review
   - install-subagents
   - smoke-test
 ---
@@ -37,13 +36,14 @@ implement and review.
    Master) on any unclear points.
 6. **Implement** — Invoke the `implementation` skill: write code and
    tests following the design documents authored in step 5.
-7. **Review** — Invoke the `cross-review` skill: review another Developer's
-   implementation against design docs and acceptance criteria (round-robin).
+7. **Await Review** — Code review is handled by the Scrum Master using
+   independent `code-reviewer` and `security-reviewer` sub-agents.
+   Address any review findings relayed by the Scrum Master.
 8. **Terminate** at Sprint end
 
 **IMPORTANT — Skill invocation order is mandatory:**
 You MUST invoke the skills in this exact sequence: `design` →
-`implementation` → `cross-review`. Do NOT skip phases or reorder them.
+`implementation`. Do NOT skip phases or reorder them.
 Each skill has preconditions that depend on the previous skill's outputs.
 
 ## Responsibilities
@@ -59,12 +59,6 @@ Each skill has preconditions that depend on the previous skill's outputs.
 - Produce design documents at `.design/specs/{category}/{id}-{slug}.md`
 - Only create files for entries enabled in `.design/catalog-config.json`
 - Include `revision_history` entry with `pbis` field in YAML frontmatter
-
-### FR-009: Cross-Review
-- Review assigned PBI from another Developer
-- Read requirements document and relevant design documents
-- Produce review results at `.scrum/reviews/<pbi-id>-review.md`
-- Fix issues within Sprint scope or report to Scrum Master for new PBI creation
 
 ### FR-012: Improvements
 - Read `.scrum/improvements.json` at Sprint start
