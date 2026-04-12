@@ -252,14 +252,14 @@ execute.
   assigned round-robin (no self-review). In a single-PBI Sprint,
   the Scrum Master performs the review.
 
-- **`install-subagents`**: Reproducible sub-agent selection from the
-  awesome-claude-code-subagents catalog (FR-019). Developers invoke
-  after receiving PBI assignments. Graceful degradation if catalog
-  unavailable.
+- **`install-subagents`**: Reproducible sub-agent installation from
+  project-managed agent definitions (FR-019). Developers invoke after
+  receiving PBI assignments to install support sub-agents (`tdd-guide`,
+  `build-error-resolver`).
 
 - The Scrum Master preloads all 14 Skills via `skills:` frontmatter.
-  The Developer agent loads 6 Skills: `requirements-sprint`, `design`,
-  `implementation`, `cross-review`, `install-subagents`, and `smoke-test`.
+  The Developer agent loads 5 Skills: `requirements-sprint`, `design`,
+  `implementation`, `install-subagents`, and `smoke-test`.
 
 ### Alternatives Considered
 - **Prompt-only control**: Rejected — enormous prompt, not reproducible.
@@ -420,30 +420,53 @@ revision_history:
 
 ---
 
-## R9: Specialist Sub-Agents — Keep `.claude/agents/` (Not `.claude/skills/`)
+## R9: Project-Managed Specialist Sub-Agents
 
 ### Decision
-Install specialist sub-agents from the awesome-claude-code-subagents
-catalog into `.claude/agents/`, NOT `.claude/skills/`. The catalog format
-is inherently a subagent format, and the use case requires subagent
-capabilities (context isolation, model routing, tool sandboxing).
+Maintain specialist sub-agents as project-managed definitions in
+`agents/`, distributed to `.claude/agents/` by `setup-user.sh`. These
+sub-agents handle cross-review (code quality + security) and developer
+support (TDD guidance, build error resolution). Cross-review is
+performed by the Scrum Master spawning independent reviewer sub-agents,
+NOT by peer Developers reviewing each other's code.
 
 ### Rationale
-Catalog entries use subagent-specific frontmatter (`tools`, `model`) with
-4-11 KB system prompts designed for isolated sessions. Converting to
-Skills would cause context pollution, lose model routing and tool
-sandboxing, and require incompatible format restructuring.
-
-Developers need context-isolated task delegation — specialists work in
-their own context window and return a summary. This is what
-`.claude/agents/` subagents provide via the Task tool.
+- **Project-managed over external catalog**: The original design (R9-v1)
+  relied on the awesome-claude-code-subagents external catalog. This was
+  replaced because: (a) external catalog availability is unpredictable,
+  (b) agent definitions need project-specific customization (e.g.,
+  reading `.scrum/requirements.md` and design docs during review), and
+  (c) fewer moving parts improves reliability.
+- **Independent reviewer sub-agents over peer review**: Developer peer
+  review was replaced because: (a) Developers lack cross-PBI context
+  (each only sees their own assignment), (b) independent sub-agents can
+  read requirements and design docs without context window pressure on
+  the Developer, and (c) Codex cross-model review adds a second opinion
+  from a different AI model.
+- Sub-agents use the `tools` frontmatter field for tool sandboxing
+  (e.g., code-reviewer is read-only) and context isolation via the
+  Task tool.
 
 ### Alternatives Considered
-- **Skills with `context: fork`**: Roundabout; loses native `tools` field.
-- **Pre-install all entries**: 127+ entries would clutter `.claude/agents/`.
+- **External catalog (awesome-claude-code-subagents)**: Original R9-v1.
+  Rejected — unreliable availability, no project-specific customization.
+- **Developer peer review**: Original FR-009 model. Rejected — lacks
+  cross-PBI context and design-doc awareness.
+- **Skills instead of agents**: Rejected — sub-agents need context
+  isolation, model routing (`codex-code-reviewer`), and tool sandboxing.
 
 ### Key Technical Details
-- Installed via `install-subagents` Skill (R6) for reproducibility.
-- Invocation: Task tool auto-delegates based on `description` matching.
-- Runtime tracking: `sub_agents` records only actually used agents.
-- Catalog: `https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`
+- **Project-managed agents** (in `agents/`):
+  - `code-reviewer.md` — code quality and design compliance review
+  - `security-reviewer.md` — security vulnerability scanning
+  - `codex-code-reviewer.md` — cross-model review via OpenAI Codex MCP
+  - `tdd-guide.md` — TDD workflow guidance for Developers
+  - `build-error-resolver.md` — build error diagnosis for Developers
+- Distributed via `setup-user.sh` to `.claude/agents/`.
+- Cross-review flow: Scrum Master invokes `cross-review` Skill, which
+  spawns `code-reviewer` and `security-reviewer` (and optionally
+  `codex-code-reviewer`) as sub-agents via the Task tool.
+- Developer support: Developers invoke `tdd-guide` and
+  `build-error-resolver` directly via the Task tool during implementation.
+- Runtime tracking: `sprint.json` → `developers[].sub_agents` records
+  only actually used agents.

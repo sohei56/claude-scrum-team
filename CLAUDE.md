@@ -9,6 +9,7 @@ agents/                  # Agent and sub-agent definitions
   developer.md           # Developer teammate
   code-reviewer.md       # Independent code review (spawned by Scrum Master)
   security-reviewer.md   # Security vulnerability scanning (spawned by Scrum Master)
+  codex-code-reviewer.md # Cross-model code review via Codex MCP (spawned by Scrum Master)
   tdd-guide.md           # TDD workflow guidance (spawned by Developer)
   build-error-resolver.md # Build error diagnosis (spawned by Developer)
 skills/                  # 14 Ceremony Skills (YAML frontmatter + Markdown)
@@ -28,6 +29,8 @@ skills/                  # 14 Ceremony Skills (YAML frontmatter + Markdown)
   sprint-review/         # Sprint review ceremony
 hooks/                   # Claude Code hooks (phase gates, completion gates, quality gates, dashboard events, session context)
   lib/                   # Shared hook helpers (validation, logging)
+.mcp-servers/            # MCP server implementations
+  mcp-openai/            # OpenAI/Codex MCP bridge for cross-model code review
 dashboard/               # Textual TUI dashboard (Python)
   app.py                 # Main TUI application
 scripts/                 # Setup and utility scripts

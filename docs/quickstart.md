@@ -172,6 +172,11 @@ bats tests/lint/skill-frontmatter.bats
 - `agents/scrum-master.md` — Team lead in **Delegate mode** (coordination
   only). Preloads all 14 ceremony Skills.
 - `agents/developer.md` — Teammate template, spawned per Sprint.
+- `agents/code-reviewer.md` — Independent code review (spawned by Scrum Master during cross-review).
+- `agents/security-reviewer.md` — Security vulnerability scanning (spawned by Scrum Master during cross-review).
+- `agents/codex-code-reviewer.md` — Cross-model review via OpenAI Codex MCP (optional, spawned by Scrum Master).
+- `agents/tdd-guide.md` — TDD guidance (spawned by Developer during implementation).
+- `agents/build-error-resolver.md` — Build error diagnosis (spawned by Developer during implementation).
 
 ### Skills
 Markdown files in `.claude/skills/<name>/SKILL.md` encapsulating Scrum

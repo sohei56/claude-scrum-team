@@ -95,10 +95,10 @@ body. Below is the reference for all 14 Skills:
 | `backlog-refinement` | `backlog.json` → `items[]` with `status: draft`; `requirements.md`; count of existing `refined` PBIs (WIP check) | `backlog.json` → `items[].status: refined`, `acceptance_criteria`, `ux_change`, `design_doc_paths` (refined WIP capped at 6-12) |
 | `sprint-planning` | `state.json` → `phase: backlog_created \| retrospective`; `backlog.json` → refined PBIs | `sprint.json` (created); `backlog.json` → `items[].sprint_id`, `implementer_id`, `reviewer_id` (round-robin); oversized PBIs split into child PBIs with `parent_pbi_id` set; `state.json` → `phase: sprint_planning` |
 | `spawn-teammates` | `sprint.json` → `pbi_ids`, `developer_count`; `backlog.json` → assigned PBIs | `sprint.json` → `developers[]` (populated, `assigned_work.implement` + `assigned_work.review`), `status: "active"`; Agent Teams teammates spawned |
-| `install-subagents` | PBI assignment (task context); catalog URL | `.claude/agents/*.md` (installed); `sprint.json` → `developers[].sub_agents` (at runtime) |
+| `install-subagents` | PBI assignment (task context); project-managed agent definitions | `.claude/agents/*.md` (installed); `sprint.json` → `developers[].sub_agents` (at runtime) |
 | `design` | `state.json` → `phase: sprint_planning`; `sprint.json` → `developers[]`; `.design/catalog.md`; existing `.design/specs/**/*.md` (stubs already created by `scaffold-design-spec`); `requirements.md` (source requirements for reference) | `.design/specs/{category}/*.md` (populated with design content, `revision_history` incl. `pbis`); `backlog.json` → `items[].design_doc_paths`; `state.json` → `phase: design` |
 | `implementation` | `state.json` → `phase: design`; `sprint.json`; `.design/specs/**/*.md`; `requirements.md` | Source code; test files; `backlog.json` → `items[].status: in_progress`; `state.json` → `phase: implementation` |
-| `cross-review` | `state.json` → `phase: implementation`; `backlog.json` → all PBIs in current Sprint with `status: in_progress` complete; `requirements.md`; relevant `.design/specs/**/*.md` for each PBI | `sprint.json` → `status: "cross_review"`; `backlog.json` → `items[].status: in_progress → review → done`, `items[].review_doc_path` set; `reviews/<pbi-id>-review.md` (created); `reviewer_id` = `"scrum-master"` if single-PBI Sprint; `state.json` → `phase: review` |
+| `cross-review` | `state.json` → `phase: implementation`; `backlog.json` → all PBIs in current Sprint with `status: in_progress` complete; `requirements.md`; relevant `.design/specs/**/*.md` for each PBI; `agents/code-reviewer.md`, `agents/security-reviewer.md` available | `sprint.json` → `status: "cross_review"`; `backlog.json` → `items[].status: in_progress → review → done`, `items[].review_doc_path` set; `reviews/<pbi-id>-review.md` (created by reviewer sub-agents); `state.json` → `phase: review` |
 | `sprint-review` | `state.json` → `phase: review`; `sprint.json`; `backlog.json` | `sprint.json` → `status: "sprint_review"`; `sprint-history.json` → `sprints[]` (appended); `state.json` → `phase: sprint_review` |
 | `retrospective` | `state.json` → `phase: sprint_review`; `improvements.json` (existing improvements and `last_consolidation_sprint`); `sprint.json` → `id` (for consolidation check) | `improvements.json` → `entries[]` (appended), stale entries archived every 3 Sprints (`status: archived`, `archived_at` set, `last_consolidation_sprint` updated); `sprint.json` → `status: "complete"`; `state.json` → `phase: retrospective` |
 | `integration-sprint` | `state.json` → `phase: retrospective`; user confirmation | `.scrum/test-results.json` (structured test results from automated testing); `state.json` → `phase: integration_sprint → complete` |
@@ -126,11 +126,10 @@ body. Below is the reference for all 14 Skills:
 - `.design/specs/**/*.md` (read: all existing designs for consistency)
 - `.design/catalog.md` (read: to verify enabled entries)
 - `.scrum/improvements.json` (read at Sprint start)
-- Specialist sub-agent definitions from catalog (FR-019)
+- Project-managed support sub-agents (`tdd-guide`, `build-error-resolver`) via FR-019
 
 ### Outputs
 - `.design/specs/{category}/*.md` (during Design phase — only for enabled catalog entries)
-- `.scrum/reviews/<pbi-id>-review.md` (during Review phase)
 - Source code changes in user's project (during Implementation phase)
 - Test files in user's project (during Implementation phase)
 - Messages to Scrum Master (progress, issues, completion)
@@ -141,40 +140,56 @@ body. Below is the reference for all 14 Skills:
 |----|----------------|
 | FR-002 | (Requirements Sprint only) Elicit requirements from user |
 | FR-004 | Produce design documents; read all existing designs for consistency |
-| FR-009 | Cross-review other Developers' work |
 | FR-012 | Read improvement log at Sprint start, apply relevant improvements |
 | FR-017 | Ensure PBI meets Definition of Done |
-| FR-019 | Self-select and install specialist sub-agents from catalog |
+| FR-019 | Install support sub-agents (`tdd-guide`, `build-error-resolver`) from project-managed agents |
 
 ### Lifecycle
 1. Spawned by Scrum Master via `spawn-teammates` Skill
 2. Receives PBI assignment via Agent Teams task
 3. Reads `.scrum/improvements.json`, applies relevant improvements
-4. Invokes `install-subagents` Skill for sub-agent selection (FR-019)
+4. Invokes `install-subagents` Skill for support sub-agent installation (FR-019)
 5. Design phase: produces design document with `revision_history` entry
-6. Implementation phase: implements PBI, writes tests
-7. Review phase: reviews assigned PBI from another Developer (in a single-PBI Sprint, the Scrum Master performs the review instead)
-8. Terminates at Sprint end
+6. Implementation phase: implements PBI, writes tests (uses `tdd-guide` and `build-error-resolver` sub-agents as needed)
+7. Terminates at Sprint end (cross-review is handled by the Scrum Master via independent reviewer sub-agents — see FR-009)
 
 ---
 
-## Agent: Specialist Sub-Agent (via Task Tool)
+## Agent: Project-Managed Sub-Agents (via Task Tool)
 
-**Definition files**: Installed from awesome-claude-code-subagents catalog to `.claude/agents/`
-**Launch**: Developer invokes via Task tool (`Task(subagent_type="<agent-name>")`)
-**Role**: Ephemeral worker within a Developer's session
+**Definition files**: Project-managed in `agents/`, distributed to `.claude/agents/` by `setup-user.sh`
+**Launch**: Scrum Master or Developer invokes via Task tool (`Task(subagent_type="<agent-name>")`)
+**Role**: Ephemeral worker within the spawning agent's session
+
+### Reviewer Sub-Agents (spawned by Scrum Master during cross-review)
+
+| Agent | Purpose | Tools |
+|-------|---------|-------|
+| `code-reviewer` | Code quality, design compliance, best practices | Read, Grep, Glob, Bash (read-only) |
+| `security-reviewer` | Security vulnerability scanning (OWASP Top 10) | Read, Grep, Glob, Bash (read-only) |
+| `codex-code-reviewer` | Cross-model review via OpenAI Codex MCP | Read, Grep, Glob, Bash, mcp__openai__openai_chat |
+
+### Developer Support Sub-Agents (spawned by Developer during implementation)
+
+| Agent | Purpose | Tools |
+|-------|---------|-------|
+| `tdd-guide` | TDD workflow guidance (RED-GREEN-REFACTOR) | Read, Write, Edit, Bash, Grep |
+| `build-error-resolver` | Build error diagnosis and minimal fixes | Read, Write, Edit, Bash, Grep, Glob |
 
 ### Inputs
-- Task description from Developer (via Task tool prompt)
+- Task description from spawning agent (via Task tool prompt)
 - Project files in working directory
+- `.scrum/requirements.md` and `.design/specs/**/*.md` (reviewer sub-agents)
 
 ### Outputs
-- Task result returned to Developer
-- File modifications (if applicable)
+- Task result returned to spawning agent
+- `.scrum/reviews/<pbi-id>-review.md` (reviewer sub-agents)
+- File modifications (developer support sub-agents, if applicable)
 
 ### Responsibilities
-- Specialized work delegated by Developer (e.g., testing, documentation, code generation)
-- Reports only to the spawning Developer (no Agent Teams visibility)
+- Reviewer sub-agents: evaluate code against requirements and design docs, produce review reports
+- Developer support sub-agents: assist with TDD and build error resolution
+- Reports only to the spawning agent (no Agent Teams visibility)
 
 ### Runtime Tracking
 - Sub-agent names recorded in `sprint.json` → `developers[].sub_agents`
