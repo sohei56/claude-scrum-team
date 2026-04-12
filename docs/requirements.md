@@ -201,35 +201,42 @@ in real time.
 
 ---
 
-### User Story 5 - Dynamic Agent Capabilities (Priority: P5)
+### User Story 5 - Project-Managed Specialist Sub-Agents (Priority: P5)
 
-During Sprint Planning, each Developer teammate self-selects and
-installs appropriate specialist sub-agents from the awesome-claude-
-code-subagents catalog (`https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`)
-to handle their assigned tasks. The catalog contains sub-agent
-definition files (`.md` with YAML frontmatter) that are installed
-into the project's `.claude/agents/` directory. Since each
-Developer teammate is a full Claude Code session, it can use
-these sub-agents via the Task tool during implementation. This
-happens automatically without user involvement.
+The system provides project-managed specialist sub-agents that
+support the Scrum workflow. During cross-review, the Scrum Master
+spawns independent reviewer sub-agents (`code-reviewer`,
+`security-reviewer`, and optionally `codex-code-reviewer`) to
+evaluate each PBI's implementation against requirements and
+design documents. During implementation, Developer teammates
+install support sub-agents (`tdd-guide`, `build-error-resolver`)
+via the `install-subagents` Skill. All sub-agent definitions are
+maintained in the project's `agents/` directory and distributed
+to `.claude/agents/` by `setup-user.sh`. This happens
+automatically without user involvement.
 
-**Verification**: Observe Sprint Planning and verify each
-Developer teammate selects relevant specialist sub-agents from
-the catalog based on their assigned PBIs, and uses them via the
-Task tool during implementation.
+**Verification**: Observe cross-review and verify the Scrum Master
+spawns reviewer sub-agents that read requirements and design docs.
+Observe implementation and verify Developers use support sub-agents.
 
 **Acceptance Scenarios**:
 
-1. **Given** Sprint Planning assigns a PBI to a Developer teammate,
-   **When** the Developer prepares for implementation,
-   **Then** the Developer selects and installs relevant specialist
-   sub-agent definitions from the awesome-claude-code-subagents
-   catalog into `.claude/agents/`.
+1. **Given** all implementers have completed their work,
+   **When** the Scrum Master invokes the `cross-review` Skill,
+   **Then** independent reviewer sub-agents (`code-reviewer`,
+   `security-reviewer`) are spawned and review each PBI against
+   the requirements document and design documents.
 
-2. **Given** the catalog is unavailable or has no matching agents,
+2. **Given** OpenAI Codex MCP is configured,
+   **When** the Scrum Master invokes cross-review,
+   **Then** the `codex-code-reviewer` sub-agent is also spawned
+   for cross-model review. If Codex MCP is unavailable, review
+   proceeds with Claude-based reviewers only.
+
+3. **Given** Sprint Planning assigns a PBI to a Developer teammate,
    **When** the Developer prepares for implementation,
-   **Then** the Developer proceeds without specialist sub-agents
-   and no error is shown to the user.
+   **Then** the Developer installs support sub-agents (`tdd-guide`,
+   `build-error-resolver`) from project-managed definitions.
 
 ---
 
@@ -342,11 +349,14 @@ Task tool during implementation.
   implementation begins.
 
 - **FR-009**: Cross-review MUST occur within the same Sprint,
-  after all implementers complete their work. Reviewers MUST read
-  the requirements document and relevant design documents (both
-  current and previous Sprints). In a single-PBI Sprint, the Scrum
-  Master performs the review. Review issues MUST be either fixed
-  within the Sprint or logged as new PBIs.
+  after all implementers complete their work. The Scrum Master
+  MUST orchestrate cross-review by spawning independent reviewer
+  sub-agents (`code-reviewer`, `security-reviewer`, and optionally
+  `codex-code-reviewer`) via the Task tool. Reviewer sub-agents
+  MUST read the requirements document and relevant design documents
+  (both current and previous Sprints) to evaluate implementation
+  against the original specification. Review issues MUST be either
+  fixed within the Sprint or logged as new PBIs.
 
 - **FR-010**: At Sprint Review, the Scrum Master MUST present the
   Increment with a change summary. A live demo MUST be performed
@@ -410,13 +420,15 @@ Task tool during implementation.
   prerequisites and provide actionable error messages if any
   are missing.
 
-- **FR-019**: Developer teammates MUST self-select and install
-  appropriate specialist sub-agent definitions from the awesome-
-  claude-code-subagents catalog
-  (`https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`)
-  into `.claude/agents/` during Sprint Planning based on their
-  assigned tasks. Teammates use these sub-agents via the Task tool
-  during implementation.
+- **FR-019**: The system MUST provide project-managed specialist
+  sub-agent definitions (`code-reviewer`, `security-reviewer`,
+  `codex-code-reviewer`, `tdd-guide`, `build-error-resolver`) in
+  `.claude/agents/`, distributed by `setup-user.sh`. Developer
+  teammates invoke support sub-agents (`tdd-guide`,
+  `build-error-resolver`) via the Task tool during implementation.
+  Cross-review sub-agents (`code-reviewer`, `security-reviewer`,
+  `codex-code-reviewer`) are spawned by the Scrum Master during the
+  review phase (FR-009).
 
 - **FR-020**: The requirements document MUST be frozen during
   Development Sprints. Design documents MUST be frozen after the
@@ -532,10 +544,10 @@ Task tool during implementation.
   process-scoped by `scrum-start.sh` — users do NOT need to export
   it globally. Agent Teams is an experimental feature as of
   February 2026.
-- The awesome-claude-code-subagents catalog
-  (`https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`)
-  is publicly accessible and provides installable agent
-  configurations.
+- Specialist sub-agents (`code-reviewer`, `security-reviewer`,
+  `codex-code-reviewer`, `tdd-guide`, `build-error-resolver`) are
+  project-managed in the `agents/` directory and distributed by
+  `setup-user.sh`. No external catalog dependency.
 - The user's environment supports TUI rendering (standard terminal
   emulator with basic ANSI support).
 - Python 3.9+ is installed and available on the user's PATH.
@@ -554,12 +566,16 @@ Task tool during implementation.
 - Web-based dashboard
 - Multi-user / multi-PO support
 - Integration with external project management tools
-- Custom agent definitions by users (the awesome-claude-code-
-  subagents catalog at `https://github.com/VoltAgent/awesome-claude-code-subagents/tree/main`
-  is used instead)
+- Custom agent definitions by users (project-managed sub-agents
+  are provided instead)
 - Multiple Scrum Teams working on the same product
 
 ## Clarifications
+
+### 2026-04-12
+
+- Q: How does cross-review work now that it uses independent sub-agents instead of peer Developers? A: The Scrum Master invokes the `cross-review` Skill, which spawns `code-reviewer` and `security-reviewer` (and optionally `codex-code-reviewer`) as sub-agents via the Task tool. These reviewer sub-agents read requirements and design docs to evaluate implementation. This replaces the earlier model where Developer teammates reviewed each other's code. FR-009 and FR-019 updated accordingly.
+- Q: Where do specialist sub-agents come from? A: All sub-agents are project-managed in `agents/` and distributed by `setup-user.sh`. The external awesome-claude-code-subagents catalog dependency was removed. FR-019 and User Story 5 updated.
 
 ### 2026-02-26
 
