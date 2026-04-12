@@ -6,44 +6,37 @@ disable-model-invocation: false
 
 ## Inputs
 
-- `backlog.json` -> `items[]` with `status: draft`
-- `requirements.md` (source requirements for context)
-- Count of existing PBIs with `status: refined` (WIP check)
+- `backlog.json` → items with status: draft
+- `requirements.md`
+- Count of existing refined PBIs (WIP check)
 
 ## Outputs
 
-- `backlog.json` -> `items[].status: refined`
-- `backlog.json` -> `items[].acceptance_criteria` (non-empty array)
-- `backlog.json` -> `items[].ux_change` populated
-- `backlog.json` -> `items[].design_doc_paths` populated
-- Refined WIP capped at 6-12 (1-2 Sprints of capacity)
+- `backlog.json` → items[].status: refined, acceptance_criteria (non-empty), ux_change, design_doc_paths
 
 ## Preconditions
 
-- `state.json` exists with `phase: "backlog_created"` or `"retrospective"`
-- `backlog.json` exists and contains at least one item with `status: draft`
-- `requirements.md` exists and is readable
-- Current count of `refined` PBIs is below the WIP cap (12)
+- state.json phase: "backlog_created" or "retrospective"
+- backlog.json has ≥1 draft PBI
+- Refined PBI count < WIP cap 12
 
 ## Steps
 
-1. Read `backlog.json` and load all items.
-2. Count existing PBIs with `status: refined`. If refined PBIs >= 12, skip refinement entirely and exit early with a message indicating the WIP cap has been reached.
-3. For each PBI with `status: draft` (up to the WIP cap of 12 total refined):
-   a. Break the PBI into implementation-ready items (one per function/screen/API endpoint/component).
-   b. Fill `acceptance_criteria` with concrete, testable criteria.
-   c. Determine `ux_change` (boolean or description of user-facing changes).
-   d. Identify `design_doc_paths` (paths to relevant design documents that will need to be created or updated).
-4. Set each refined PBI's `status` to `refined`.
-5. Write updated items back to `backlog.json`.
-6. Report summary: number of PBIs refined, total refined WIP count.
+1. Read backlog.json
+2. Count refined PBIs. If ≥12→skip (WIP cap reached)
+3. Each draft PBI (up to WIP cap 12 total refined):
+   a. Break into implementation-ready items (per function/screen/API/component)
+   b. Fill acceptance_criteria: concrete, testable
+   c. Set ux_change (user-facing changes)
+   d. Set design_doc_paths (docs needing creation/update)
+4. Set status→"refined"
+5. Write backlog.json
+6. Report: count refined, total refined WIP
 
-Reference: FR-003
+Ref: FR-003
 
 ## Exit Criteria
 
-- All selected PBIs have `status: refined`
-- Every refined PBI has a non-empty `acceptance_criteria` array
-- Every refined PBI has `ux_change` populated
-- Every refined PBI has `design_doc_paths` populated
-- Total count of `refined` PBIs is within the 6-12 WIP range
+- All selected PBIs status: refined
+- Every refined PBI: non-empty acceptance_criteria, ux_change set, design_doc_paths set
+- Total refined PBIs within 6-12 range

@@ -6,78 +6,45 @@ disable-model-invocation: false
 
 ## Inputs
 
-- `state.json` -> `phase: sprint_planning | design`
-- `sprint.json` -> `developers[]` (developer assignments)
-- `.design/catalog.md` (reference list of design document types — read-only)
-- `.design/catalog-config.json` (list of enabled spec IDs)
-- Existing `.design/specs/**/*.md` stubs (created by scaffold-design-spec skill)
-- `requirements.md` (source requirements for reference)
+- state.json → phase: sprint_planning | design
+- sprint.json → developer assignments
+- `.design/specs/**/*.md` stubs (from scaffold-design-spec)
+- `.design/catalog.md` (read-only), catalog-config.json
+- requirements.md
 
 ## Outputs
 
-- Populated design documents (architecture, internals) with detailed content
-- Populated user-facing documentation (README feature specs, API reference,
-  usage guides) as `.design/specs/docs/*.md` entries
-- `revision_history` entries in each document including `pbis` field
-- `backlog.json` -> `items[].design_doc_paths` updated with paths to all
-  design and documentation files
-- `state.json` -> `phase: design`
+- Populated design docs (architecture, internals)
+- User-facing docs (README specs, API ref, usage guides) at `.design/specs/docs/*.md`
+- revision_history entries with pbis field
+- backlog.json → items[].design_doc_paths updated
+- state.json → phase: design
 
 ## Preconditions
 
-- `state.json` exists with `phase: sprint_planning` or `design`
-- `sprint.json` exists with developer assignments
-- `.design/specs/**/*.md` stub files exist (created by scaffold-design-spec)
-- `backlog.json` exists with PBIs assigned to the current Sprint
-- `requirements.md` exists for reference
+- state.json phase: sprint_planning or design
+- sprint.json with developer assignments
+- Stub files exist
+- backlog.json, requirements.md exist
 
 ## Steps
 
-1. Transition `state.json` to `phase: design` (if not already set by the Scrum Master).
-2. Each Developer MUST read ALL existing design documents and user-facing
-   documentation from previous Sprints before writing their own. This ensures
-   consistency across the system's design and prevents contradictions or
-   duplicated patterns.
-3. Developers populate their assigned stubs with detailed content — both
-   architecture/design specs AND user-facing documentation:
-   - **Design documents**: Replace placeholder sections (Overview, Design
-     Details, Constraints, References) with substantive technical content.
-     Design must align with `requirements.md` and existing designs.
-   - **User-facing documentation** (`.design/specs/docs/*.md`): Author
-     README feature descriptions, API reference, usage guides, CLI
-     documentation, and configuration reference for all PBIs that introduce
-     or change public interfaces or user-visible behavior. Write from the
-     user's perspective — explain what the feature does, how to use it,
-     parameters, return values, and include examples.
-4. If any requirements or design decisions are unclear during authoring, the
-   Developer MUST raise the question to the Scrum Master, who will consult
-   the Product Owner (user) for clarification. Do NOT guess or make
-   assumptions on ambiguous points — wait for the PO's answer before
-   proceeding with that section.
-5. Each document receives a `revision_history` entry with:
-   - `sprint`: current Sprint ID
-   - `author`: developer ID who wrote the content
-   - `date`: today's date
-   - `summary`: description of design decisions or documentation authored
-   - `pbis`: array of PBI IDs addressed by this document
-6. Update `backlog.json` -> `items[].design_doc_paths` with the file paths
-   of all design and documentation files each PBI relates to.
-7. Verify all assigned design stubs and user-facing documentation files have
-   been populated with substantive content before considering the phase
-   complete. Every documentation file must correspond to an enabled entry
-   in `.design/catalog-config.json` — do not create documentation for spec IDs
-  not listed in the enabled array.
+1. state.json → phase: design (if not set by SM)
+2. **Read ALL existing design docs + user-facing docs first** (consistency, prevent contradictions)
+3. Populate assigned stubs:
+   - **Design docs**: Replace placeholders with technical content. Align with requirements.md + existing designs
+   - **User-facing docs** (docs/*.md): For PBIs changing public interfaces/user-visible behavior→write README, API ref, usage guides, examples
+4. Unclear requirements→raise to SM→SM consults PO. Do NOT guess (wait for answer)
+5. Add revision_history entry: sprint, author, date, summary, pbis
+6. Update backlog.json → items[].design_doc_paths
+7. Verify all assigned stubs + user-facing docs have substantive content. Only for entries enabled in catalog-config.json
 
-Reference: FR-004
+Ref: FR-004
 
 ## Exit Criteria
 
-- All design stubs assigned to this Sprint are populated with substantive
-  content (no remaining placeholder text)
-- User-facing documentation is authored for all PBIs that introduce or change
-  public interfaces or user-visible behavior
-- Every populated document has a `revision_history` entry for the current
-  Sprint with `author`, `date`, `summary`, and `pbis` fields
-- `backlog.json` -> `items[].design_doc_paths` is set for every PBI in the
-  Sprint (includes both design and documentation paths)
-- `state.json` phase is `design`
+- All Sprint-assigned stubs populated (no placeholder text remaining)
+- User-facing docs authored for PBIs changing public interfaces
+- All docs have revision_history (author, date, summary, pbis)
+- backlog.json design_doc_paths set for every Sprint PBI
+- state.json phase: design

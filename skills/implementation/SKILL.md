@@ -6,86 +6,48 @@ disable-model-invocation: false
 
 ## Inputs
 
-- `state.json` -> `phase: design | implementation`
-- `sprint.json` (current Sprint with developer assignments)
-- `.design/specs/**/*.md` (populated design documents and user-facing docs)
-- `requirements.md` (source requirements for reference)
+- state.json → phase: design | implementation
+- sprint.json (developer assignments)
+- `.design/specs/**/*.md` (design docs + user-facing docs)
+- requirements.md
 
 ## Outputs
 
-- Source code files implementing the PBIs
-- Test files (unit tests for implemented code)
-- `backlog.json` -> `items[].status: in_progress`
-- `state.json` -> `phase: implementation`
+- Source code + test files
+- backlog.json → items[].status: in_progress
+- state.json → phase: implementation
 
 ## Preconditions
 
-- `state.json` exists with `phase: design` or `implementation`
-- `sprint.json` exists with developer assignments
-- Design documents in `.design/specs/**/*.md` are populated (design phase is
-  complete), including user-facing documentation
-- `requirements.md` exists for reference
-- `backlog.json` exists with PBIs assigned to the current Sprint
+- state.json phase: design or implementation
+- sprint.json with developer assignments
+- Design docs populated
+- requirements.md, backlog.json exist
 
 ## Steps
 
-1. Transition `state.json` to `phase: implementation` (if not already set by the Scrum Master).
-2. Each Developer reads the improvement log (if it exists from prior
-   retrospectives) and applies any relevant improvements to their workflow
-   and coding practices.
-3. Each Developer reads the design documents AND user-facing documentation
-   authored during the design phase. The implementation must match what was
-   documented — the docs serve as a secondary specification.
-4. Developers implement their assigned PBIs following the design documents:
-   - Implement source code according to the design specifications.
-   - Follow existing code conventions and patterns in the repository.
-5. Write unit tests for all implemented code:
-   - Tests must cover the acceptance criteria defined in the PBI.
-   - Tests must be runnable and passing.
-6. Ensure code passes the project's linter/formatter:
-   - Run linting and formatting checks.
-   - Fix any violations before marking implementation as complete.
-7. **Build verification** (mandatory before marking implementation complete):
-   - Start the application using the project's start command (check
-     `package.json` scripts, `Makefile`, `docker-compose.yml`, `manage.py`,
-     `cargo run`, etc.).
-   - Confirm the application starts without errors.
-   - Run the full test suite (unit tests at minimum).
-   - If the build or tests fail, fix the issues before proceeding.
-   - Stop the application after verification.
-   - This step prevents build errors from reaching Sprint Review.
-8. **Update design documents** to reflect any implementation deviations:
-   - Compare the actual implementation against the design documents in
-     `.design/specs/**/*.md` and any user-facing documentation.
-   - If the implementation diverged from the original design (e.g., changed
-     API parameters, different data structures, altered behavior, new
-     endpoints), update the design documents to match what was actually built.
-   - If user-facing documentation (README, API docs, usage guides) was
-     authored during the design phase, update it to reflect the current
-     implementation.
-   - This step is mandatory — code reviewers will use these documents as the
-     source of truth during cross-review. Outdated documents cause reviewers
-     to flag correct implementations as regressions.
-9. Update `backlog.json` → `items[].status` to `in_progress` for each PBI
-   being implemented. Use this command (replace `pbi-001` with your PBI ID):
+1. state.json → phase: implementation (if not set by SM)
+2. Read improvements.json→apply relevant improvements
+3. Read design docs + user-facing docs→implementation must match (docs = secondary spec)
+4. Implement PBIs: source code per design specs, follow existing code conventions
+5. Write unit tests: cover all acceptance criteria, runnable + passing
+6. Linter/formatter pass→fix violations
+7. **Build verification (mandatory)**: Start app→confirm no errors→run full test suite→fix failures→stop app. Prevents build errors reaching Sprint Review
+8. **Update design docs**: Implementation diverged from design→update docs + user-facing docs to match actual build. Reviewers use docs as source of truth→outdated docs cause false findings
+9. Update backlog.json status:
    ```bash
    jq '(.items[] | select(.id == "pbi-001")).status = "in_progress"' .scrum/backlog.json > .scrum/backlog.json.tmp && mv .scrum/backlog.json.tmp .scrum/backlog.json
    ```
-   **You MUST run this command** — the TUI dashboard reads status from
-   `backlog.json` and will not update without it.
-10. Report progress to Scrum Master: summarize what was implemented, test
-    coverage, build verification results, and any blockers encountered.
+   **Must run** — TUI dashboard reads backlog.json
+10. Report to SM: implementation summary, test coverage, build verification results, blockers
 
-Reference: FR-017
+Ref: FR-017
 
 ## Exit Criteria
 
-- All PBIs in the Sprint have `status: in_progress` in `backlog.json`
-- Implementation is complete for all assigned PBIs (source code written per
-  design documents)
-- The application builds and starts successfully without errors
-- Unit tests are written for all implemented code
-- All tests pass
-- Code passes the project's linter/formatter checks
-- Design documents and user-facing documentation have been updated to match
-  the actual implementation (no stale or outdated docs)
+- All Sprint PBIs status: in_progress
+- Implementation matches design docs
+- App builds + starts successfully
+- Unit tests written + all pass
+- Linter/formatter pass
+- Design docs + user-facing docs match implementation (no stale docs)
