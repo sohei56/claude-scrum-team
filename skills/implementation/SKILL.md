@@ -45,15 +45,36 @@ disable-model-invocation: false
 6. Ensure code passes the project's linter/formatter:
    - Run linting and formatting checks.
    - Fix any violations before marking implementation as complete.
-7. Update `backlog.json` → `items[].status` to `in_progress` for each PBI
+7. **Build verification** (mandatory before marking implementation complete):
+   - Start the application using the project's start command (check
+     `package.json` scripts, `Makefile`, `docker-compose.yml`, `manage.py`,
+     `cargo run`, etc.).
+   - Confirm the application starts without errors.
+   - Run the full test suite (unit tests at minimum).
+   - If the build or tests fail, fix the issues before proceeding.
+   - Stop the application after verification.
+   - This step prevents build errors from reaching Sprint Review.
+8. **Update design documents** to reflect any implementation deviations:
+   - Compare the actual implementation against the design documents in
+     `.design/specs/**/*.md` and any user-facing documentation.
+   - If the implementation diverged from the original design (e.g., changed
+     API parameters, different data structures, altered behavior, new
+     endpoints), update the design documents to match what was actually built.
+   - If user-facing documentation (README, API docs, usage guides) was
+     authored during the design phase, update it to reflect the current
+     implementation.
+   - This step is mandatory — code reviewers will use these documents as the
+     source of truth during cross-review. Outdated documents cause reviewers
+     to flag correct implementations as regressions.
+9. Update `backlog.json` → `items[].status` to `in_progress` for each PBI
    being implemented. Use this command (replace `pbi-001` with your PBI ID):
    ```bash
    jq '(.items[] | select(.id == "pbi-001")).status = "in_progress"' .scrum/backlog.json > .scrum/backlog.json.tmp && mv .scrum/backlog.json.tmp .scrum/backlog.json
    ```
    **You MUST run this command** — the TUI dashboard reads status from
    `backlog.json` and will not update without it.
-8. Report progress to Scrum Master: summarize what was implemented, test
-   coverage, and any blockers encountered.
+10. Report progress to Scrum Master: summarize what was implemented, test
+    coverage, build verification results, and any blockers encountered.
 
 Reference: FR-017
 
@@ -62,7 +83,9 @@ Reference: FR-017
 - All PBIs in the Sprint have `status: in_progress` in `backlog.json`
 - Implementation is complete for all assigned PBIs (source code written per
   design documents)
-- Implementation matches the user-facing documentation authored in design phase
+- The application builds and starts successfully without errors
 - Unit tests are written for all implemented code
 - All tests pass
 - Code passes the project's linter/formatter checks
+- Design documents and user-facing documentation have been updated to match
+  the actual implementation (no stale or outdated docs)
