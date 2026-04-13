@@ -24,16 +24,17 @@ disable-model-invocation: false
 
 ## Steps
 
-1. **Transition state (first action)**: state.json → phase: "sprint_planning" (TUI reflects immediately)
-2. Propose Sprint Goal→user approval before proceeding
-3. Select refined PBIs. Avoid dependent PBIs in same Sprint (FR-008)
-4. **Evaluate + split oversized PBIs**: Too large→create child PBIs (status: "refined", parent_pbi_id set, split acceptance_criteria, copy design_doc_paths/ux_change)→remove parent from Sprint→replace with children→user confirmation
-5. developer_count = min(selected PBI count, 6). **1 Developer = 1 PBI (hard constraint).** >6 PBIs→select 6, defer rest
-6. Assign implementers: format `dev-001-s{N}`, `dev-002-s{N}` (zero-pad mandatory, -s{N} suffix mandatory, no short forms)
-7. Assign reviewers: round-robin (no self-review). Single-PBI Sprint→reviewer_id: "scrum-master"
-8. Create sprint.json
-9. Update backlog.json: sprint_id, implementer_id, reviewer_id
-10. **Present Sprint summary + options**:
+1. **Uncommitted file check (mandatory)**: Run `git status`→uncommitted changes exist→warn user with file list→user must choose: commit now, stash, or proceed anyway→resolve before continuing
+2. **Transition state**: state.json → phase: "sprint_planning" (TUI reflects immediately)
+3. Propose Sprint Goal→user approval before proceeding
+4. Select refined PBIs. Avoid dependent PBIs in same Sprint (FR-008)
+5. **Evaluate + split oversized PBIs**: Too large→create child PBIs (status: "refined", parent_pbi_id set, split acceptance_criteria, copy design_doc_paths/ux_change)→remove parent from Sprint→replace with children→user confirmation
+6. developer_count = min(selected PBI count, 6). **1 Developer = 1 PBI (hard constraint).** >6 PBIs→select 6, defer rest
+7. Assign implementers: format `dev-001-s{N}`, `dev-002-s{N}` (zero-pad mandatory, -s{N} suffix mandatory, no short forms)
+8. Assign reviewers: round-robin (no self-review). Single-PBI Sprint→reviewer_id: "scrum-master"
+9. Create sprint.json
+10. Update backlog.json: sprint_id, implementer_id, reviewer_id
+11. **Present Sprint summary + options**:
     - 1. Start Sprint
     - 2. Adjust Sprint Goal
     - 3. Change PBI selection
@@ -41,7 +42,7 @@ disable-model-invocation: false
     - 5. View backlog
     - 6. Other
     → Wait for user selection
-11. **On "Start Sprint"**: Enable catalog-config.json entries→run scaffold-design-spec→spawn-teammates
+12. **On "Start Sprint"**: Enable catalog-config.json entries→run scaffold-design-spec→spawn-teammates
 
 Ref: FR-004, FR-005, FR-006, FR-007, FR-008
 
