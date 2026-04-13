@@ -35,14 +35,14 @@ disable-model-invocation: false
    ```bash
    jq '(.items[] | select(.id == "pbi-001")).status = "review"' .scrum/backlog.json > .scrum/backlog.json.tmp && mv .scrum/backlog.json.tmp .scrum/backlog.json
    ```
-3. **Pre-review build verification**: Start app→all tests pass. Fail→Developer fix first. Do NOT review non-building code
+3. **Pre-review build verification**: Start app→all tests pass. Fail→`TaskGet` Developer status→terminated? re-spawn (Teammate Liveness Protocol)→then relay fix request. Do NOT review non-building code
 4. Collect review inputs per PBI: design_doc_paths, source paths, requirements.md path
 5. **Spawn 2 sub-agents per PBI in parallel (Agent tool)**:
    - `codex-code-reviewer` → design doc paths + source paths + requirements.md. Do NOT pass PBI descriptions, dev communications, .scrum/ state
    - `security-reviewer` → source paths + requirements.md
 6. Collect results from both
 7. **Doc-implementation consistency check**: Compare design docs + user-facing docs vs actual code. Mismatch→send Developer to update docs (not code)
-8. **Handle FAIL**: Relay findings to Developer→fix→re-spawn failing reviewer(s)→repeat until both PASS
+8. **Handle FAIL**: `TaskGet` Developer status→terminated? re-spawn (Teammate Liveness Protocol). Relay findings to Developer→fix→re-spawn failing reviewer(s)→repeat until both PASS
 9. Write `.scrum/reviews/<pbi-id>-review.md` (combined code + security review)
 10. Both PASS→status: done:
     ```bash
