@@ -1,0 +1,70 @@
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "filesystem": {
+      "denyRead": [
+        "~/.ssh",
+        "~/.aws",
+        "~/.gnupg",
+        "~/.gpg",
+        "~/.kube",
+        "~/.docker/config.json",
+        "~/.npmrc",
+        "~/.netrc",
+        "~/.password-store",
+        "~/.terraform.d/credentials.tfrc.json",
+        "~/.azure",
+        "~/.config/gcloud",
+        "~/.config/gh/hosts.yml",
+        "~/Library/Keychains",
+        "~/Documents",
+        "~/Desktop",
+        "~/Downloads",
+        "~/Pictures"
+      ],
+      "allowRead": [
+        ".",
+        "~/.config/gh"
+      ]
+    }
+  },
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "WebSearch",
+      "WebFetch",
+      "Bash",
+      "Bash(codex *)",
+      "mcp__github__get_file_contents",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(rm -r *)",
+      "Bash(rm ./.claude/*)",
+      "Bash(cd *)",
+      "Bash(git reset --hard*)",
+      "Bash(git checkout -- *)",
+      "Bash(git restore .*)",
+      "Bash(git clean*)",
+      "Bash(git branch -D *)",
+      "Bash(git stash drop*)",
+      "Edit(.claude/settings.json)",
+      "Write(.claude/settings.json)",
+      "Edit(.claude/hooks/*)",
+      "Write(.claude/hooks/*)",
+      "Read(*.secrets/*)",
+      "Bash(*.secrets/*)",
+      "mcp__github__merge_pull_request"
+    ]
+  }
+}
