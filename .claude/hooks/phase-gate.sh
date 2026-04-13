@@ -1,1 +1,0 @@
-../../hooks/phase-gate.sh

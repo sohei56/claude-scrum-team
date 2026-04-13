@@ -1,1 +1,0 @@
-../../hooks/dashboard-event.sh

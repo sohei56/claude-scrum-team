@@ -1,1 +1,0 @@
-../../hooks/session-context.sh
