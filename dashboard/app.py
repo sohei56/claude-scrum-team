@@ -297,8 +297,12 @@ class PBIProgressBoard(DataTable):
             status_display = f"[{color}]{status}[/{color}]" if color else status
 
             self.add_row(
-                str(pbi_id), title, status_display,
-                str(impl), str(reviewer), key=str(pbi_id),
+                str(pbi_id),
+                title,
+                status_display,
+                str(impl),
+                str(reviewer),
+                key=str(pbi_id),
             )
 
         # Scroll to the last row so the latest PBI is visible
