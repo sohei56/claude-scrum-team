@@ -167,7 +167,7 @@ body. Below is the reference for all 14 Skills:
 |-------|---------|-------|
 | `code-reviewer` | Code quality, design compliance, best practices | Read, Grep, Glob, Bash (read-only) |
 | `security-reviewer` | Security vulnerability scanning (OWASP Top 10) | Read, Grep, Glob, Bash (read-only) |
-| `codex-code-reviewer` | Cross-model review via OpenAI Codex MCP | Read, Grep, Glob, Bash, mcp__openai__openai_chat |
+| `codex-code-reviewer` | Cross-model review via OpenAI Codex CLI | Read, Grep, Glob, Bash |
 
 ### Developer Support Sub-Agents (spawned by Developer during implementation)
 

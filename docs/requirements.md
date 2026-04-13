@@ -227,10 +227,10 @@ Observe implementation and verify Developers use support sub-agents.
    `security-reviewer`) are spawned and review each PBI against
    the requirements document and design documents.
 
-2. **Given** OpenAI Codex MCP is configured,
+2. **Given** OpenAI Codex CLI is installed,
    **When** the Scrum Master invokes cross-review,
    **Then** the `codex-code-reviewer` sub-agent is also spawned
-   for cross-model review. If Codex MCP is unavailable, review
+   for cross-model review. If Codex CLI is unavailable, review
    proceeds with Claude-based reviewers only.
 
 3. **Given** Sprint Planning assigns a PBI to a Developer teammate,

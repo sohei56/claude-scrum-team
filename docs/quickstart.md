@@ -174,7 +174,7 @@ bats tests/lint/skill-frontmatter.bats
 - `agents/developer.md` — Teammate template, spawned per Sprint.
 - `agents/code-reviewer.md` — Independent code review (spawned by Scrum Master during cross-review).
 - `agents/security-reviewer.md` — Security vulnerability scanning (spawned by Scrum Master during cross-review).
-- `agents/codex-code-reviewer.md` — Cross-model review via OpenAI Codex MCP (optional, spawned by Scrum Master).
+- `agents/codex-code-reviewer.md` — Cross-model review via OpenAI Codex CLI (optional, spawned by Scrum Master).
 - `agents/tdd-guide.md` — TDD guidance (spawned by Developer during implementation).
 - `agents/build-error-resolver.md` — Build error diagnosis (spawned by Developer during implementation).
 

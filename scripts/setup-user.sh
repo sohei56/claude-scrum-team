@@ -105,7 +105,7 @@ cat > "$settings_file" << 'SETTINGS_EOF'
       "Agent",
       "WebFetch",
       "WebSearch",
-      "mcp__openai__openai_chat"
+      "Bash(codex *)"
     ]
   },
   "hooks": {
@@ -282,51 +282,13 @@ else
   echo "  Install Node.js to enable browser E2E testing in Integration Sprint."
 fi
 
-# --- Configure Codex MCP for cross-model code review ---
-# Codex MCP enables the codex-code-reviewer agent to delegate code review
-# to OpenAI models. When codex is not installed, the agent falls back to
-# Claude-based review automatically.
+# --- Check Codex CLI for cross-model code review ---
+# The codex-code-reviewer agent calls `codex review` directly via CLI.
+# When codex is not installed, the agent falls back to Claude-based review.
 
 if command -v codex >/dev/null 2>&1; then
   echo ""
-  echo "Configuring Codex MCP for cross-model code review..."
-
-  # Copy MCP server files
-  mcp_server_dir="$TARGET_DIR/.mcp-servers/mcp-openai"
-  mkdir -p "$mcp_server_dir"
-  cp "$PROJECT_ROOT/.mcp-servers/mcp-openai/server.py" "$mcp_server_dir/"
-  cp "$PROJECT_ROOT/.mcp-servers/mcp-openai/codex_client.py" "$mcp_server_dir/"
-  cp "$PROJECT_ROOT/.mcp-servers/mcp-openai/pyproject.toml" "$mcp_server_dir/"
-  echo "  Copied mcp-openai server to .mcp-servers/mcp-openai/"
-
-  # Add openai entry to .mcp.json
-  mcp_file="$TARGET_DIR/.mcp.json"
-
-  if [ -f "$mcp_file" ]; then
-    if ! grep -q '"openai"' "$mcp_file" 2>/dev/null; then
-      tmp_mcp="$(mktemp)"
-      if jq '.mcpServers.openai = {"command": "uv", "args": ["run", "--directory", ".mcp-servers/mcp-openai", "python", "server.py"]}' "$mcp_file" > "$tmp_mcp" 2>/dev/null; then
-        mv "$tmp_mcp" "$mcp_file"
-      else
-        rm -f "$tmp_mcp"
-      fi
-      echo "  Added Codex MCP to existing .mcp.json"
-    else
-      echo "  Codex MCP already configured in .mcp.json"
-    fi
-  else
-    cat > "$mcp_file" << 'MCP_EOF'
-{
-  "mcpServers": {
-    "openai": {
-      "command": "uv",
-      "args": ["run", "--directory", ".mcp-servers/mcp-openai", "python", "server.py"]
-    }
-  }
-}
-MCP_EOF
-    echo "  Created .mcp.json with Codex MCP"
-  fi
+  echo "Codex CLI detected — cross-model code review enabled."
 else
   echo ""
   echo "Note: codex not found — code review will use Claude fallback."

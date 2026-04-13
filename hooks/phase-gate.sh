@@ -138,6 +138,14 @@ get_target_path() {
 hook_event="$(cat)"
 
 tool_name="$(echo "$hook_event" | jq -r '.tool_name // empty')"
+
+# Fast path: only Write/Edit tools are gated. All others→allow immediately.
+# This avoids reading state.json, catalog.md, catalog-config.json on every
+# Read/Grep/Glob/Bash call — the biggest hook overhead source.
+if [ "$tool_name" != "Write" ] && [ "$tool_name" != "Edit" ]; then
+  allow
+fi
+
 tool_input="$(echo "$hook_event" | jq -c '.tool_input // {}')"
 
 # If state file does not exist, allow everything (project not initialized)
@@ -165,48 +173,35 @@ fi
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
+# From here: only Write/Edit tools reach this code (fast path above).
+# ---------------------------------------------------------------------------
+
+# No target path determinable (e.g. Bash tool) — allow
+if [ -z "$target_path" ]; then
+  allow
+fi
+
 # Source code gating: only implementation and review phases allow source edits
-# ---------------------------------------------------------------------------
-
-if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
-  if [ -n "$target_path" ] && is_source_file "$target_path"; then
-    case "$phase" in
-      implementation|review)
-        # Allowed — these are the only phases where source code may be modified
-        ;;
-      *)
-        deny "$phase phase: source code changes are not allowed. Work on source code is only permitted during implementation and review phases. If you found a defect, report it to the Scrum Master to create a PBI."
-        ;;
-    esac
-  fi
+if is_source_file "$target_path"; then
+  case "$phase" in
+    implementation|review) ;;
+    *) deny "$phase phase: source code changes not allowed. Only permitted during implementation/review." ;;
+  esac
 fi
 
-# ---------------------------------------------------------------------------
-# Catalog governance: catalog.md is read-only in working directories
-# ---------------------------------------------------------------------------
+# Catalog governance: catalog.md is read-only
+case "$target_path" in
+  .design/catalog.md)
+    deny "catalog.md is read-only. Update .design/catalog-config.json instead." ;;
+esac
 
-if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
-  if [ -n "$target_path" ]; then
-    case "$target_path" in
-      .design/catalog.md)
-        deny "catalog.md is read-only. It is managed in claude-scrum-team and must not be modified in working directories. To control which specs are active, update .design/catalog-config.json instead."
-        ;;
-    esac
+# Design spec governance: require catalog entry + enabled config
+if is_design_spec_path "$target_path"; then
+  if ! has_catalog_entry "$target_path"; then
+    deny "Cannot write '$target_path' — no matching entry in .design/catalog.md."
   fi
-fi
-
-# ---------------------------------------------------------------------------
-# Design spec governance: all phases require catalog entry + enabled config
-# ---------------------------------------------------------------------------
-
-if [ "$tool_name" = "Write" ] || [ "$tool_name" = "Edit" ]; then
-  if [ -n "$target_path" ] && is_design_spec_path "$target_path"; then
-    if ! has_catalog_entry "$target_path"; then
-      deny "Cannot write to '$target_path' — no matching entry found in .design/catalog.md. Only documents listed in the catalog may be created."
-    fi
-    if ! is_enabled_in_config "$target_path"; then
-      deny "Cannot write to '$target_path' — spec is not enabled in .design/catalog-config.json. Add its ID to the enabled array first."
-    fi
+  if ! is_enabled_in_config "$target_path"; then
+    deny "Cannot write '$target_path' — not enabled in .design/catalog-config.json."
   fi
 fi
 

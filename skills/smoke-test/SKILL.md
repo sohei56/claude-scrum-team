@@ -49,6 +49,13 @@ None detected→status: "skipped", runner_command: "none detected"
 
 Each runner: execute→capture exit code + output→parse pass/fail counts→record TestCategory (name, status, total, passed, failed, skipped, errors (max 10), runner_command, executed_at)→append to test-results.json→update updated_at
 
+**Token efficiency**: Pipe test output through failure filter to minimize context consumption:
+```bash
+# Run tests, capture only summary + failures (not full passing test output)
+<runner_command> 2>&1 | tail -n 50  # Last 50 lines typically contain summary + failures
+```
+For large test suites (>100 tests), use `grep -A 5 'FAIL\|Error\|✗\|FAILED'` to extract failure details only. Record full pass/fail counts from exit code + summary line, not from reading every test result line.
+
 ### 4. HTTP smoke testing
 
 1. Find start command (package.json/Makefile/docker-compose etc)
@@ -60,6 +67,8 @@ Each runner: execute→capture exit code + output→parse pass/fail counts→rec
 7. Record TestCategory name: "smoke"
 
 No start command→smoke status: "skipped"
+
+**Token efficiency**: Use `-s -o /dev/null -w '%{http_code}'` with curl to capture status codes only, not response bodies. Log only failing endpoints (non-2xx/3xx).
 
 ### 5. Browser E2E (if Playwright MCP available)
 

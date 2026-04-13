@@ -10,10 +10,6 @@
     "context7": {
       "command": "npx",
       "args": ["-y", "@upstash/context7-mcp"]
-    },
-    "openai": {
-      "command": "uv",
-      "args": ["run", "--directory", ".mcp-servers/mcp-openai", "python", "server.py"]
     }
   }
 }

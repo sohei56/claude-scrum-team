@@ -32,9 +32,18 @@ disable-model-invocation: false
 
 Ref: FR-012
 
+### 7. Session reset recommendation
+
+After Sprint deliverables are committed and Retrospective is complete, recommend session reset to the user:
+
+> "Sprint N complete. All state persisted to .scrum/ JSON files. Recommend `/clear` or session restart to free context for next Sprint. Session-context hook will restore phase automatically on restart."
+
+**Rationale**: Scrum Master context accumulates across phases (requirements, design discussions, review findings). By Sprint end, context is near capacity. All durable state lives in `.scrum/` files — session-context.sh restores phase on restart.
+
 ## Exit Criteria
 
 - ≥1 improvement recorded (all fields set)
 - If consolidation due→archived + last_consolidation_sprint updated
 - state.json phase: "retrospective"
 - sprint.json status: "complete"
+- Session reset recommended to user
