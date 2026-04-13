@@ -139,10 +139,10 @@ class SprintOverview(Static):
             sprint_status = sprint.get("status") or "?"
 
             # PBI IDs: from pbi_ids[] (spec) or pbis[] objects (agent)
-            pbi_ids = sprint.get("pbi_ids") or []
+            pbi_ids = [str(x) for x in (sprint.get("pbi_ids") or [])]
             sprint_pbis = sprint.get("pbis") or []
             if not pbi_ids and sprint_pbis:
-                pbi_ids = [p.get("id", "?") for p in sprint_pbis if isinstance(p, dict)]
+                pbi_ids = [str(p.get("id", "?")) for p in sprint_pbis if isinstance(p, dict)]
             pbi_count = len(pbi_ids)
 
             # Count done PBIs: from backlog (spec) or inline pbis (agent)
@@ -155,7 +155,7 @@ class SprintOverview(Static):
                 for item in get_backlog_items(backlog):
                     if not isinstance(item, dict):
                         continue
-                    if item.get("id") in pbi_ids and item.get("status") == "done":
+                    if str(item.get("id", "")) in pbi_ids and item.get("status") == "done":
                         done_count += 1
 
             # Developer count: from developer_count, developers[], or pbis[]
@@ -193,7 +193,7 @@ class SprintOverview(Static):
                     did = d.get("id", "?")
                     status = d.get("status", "?")
                     impl = d.get("assigned_work", {}).get("implement", [])
-                    dev_parts.append(f"{did}:{status}({','.join(impl)})")
+                    dev_parts.append(f"{did}:{status}({','.join(str(i) for i in impl)})")
                 lines.append(f"[bold]Agents:[/bold] {' | '.join(dev_parts)}")
             elif sprint_pbis:
                 dev_parts = []
@@ -267,8 +267,8 @@ class PBIProgressBoard(DataTable):
         for item in items:
             if not isinstance(item, dict):
                 continue
-            pbi_id = item.get("id", "?")
-            title = item.get("title", "Untitled")[:35]
+            pbi_id = str(item.get("id") or "?")
+            title = str(item.get("title") or "Untitled")[:35]
             raw_status = item.get("status", "?")
             # Normalize status to canonical form
             status = STATUS_NORMALIZE.get(raw_status, raw_status)
@@ -296,7 +296,14 @@ class PBIProgressBoard(DataTable):
             color = STATUS_COLORS.get(status, "")
             status_display = f"[{color}]{status}[/{color}]" if color else status
 
-            self.add_row(pbi_id, title, status_display, impl, reviewer, key=pbi_id)
+            self.add_row(
+                str(pbi_id),
+                title,
+                status_display,
+                str(impl),
+                str(reviewer),
+                key=str(pbi_id),
+            )
 
         # Scroll to the last row so the latest PBI is visible
         if self.row_count:
@@ -359,6 +366,8 @@ class TestResultsPanel(Static):
             if status == "failed":
                 errors = cat.get("errors", [])
                 for err in errors[:3]:
+                    if not isinstance(err, dict):
+                        continue
                     test_name = err.get("test_name", "?")
                     message = err.get("message", "?")
                     lines.append(f"    [red]- {test_name}: {message}[/red]")
@@ -402,8 +411,8 @@ class CommunicationLog(RichLog):
             try:
                 dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
                 ts_short = dt.strftime("%H:%M:%S")
-            except (ValueError, AttributeError):
-                ts_short = ts[:8]
+            except (ValueError, AttributeError, TypeError):
+                ts_short = str(ts)[:8]
 
             role_str = f" ({role})" if role else ""
             recipient_str = f" → {recipient}" if recipient != "all" else ""
@@ -446,8 +455,8 @@ class WorkLog(RichLog):
             try:
                 dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
                 ts_short = dt.strftime("%H:%M:%S")
-            except (ValueError, AttributeError):
-                ts_short = ts[:8]
+            except (ValueError, AttributeError, TypeError):
+                ts_short = str(ts)[:8]
 
             if evt_type == "file_changed" and file_path:
                 color = {"created": "green", "modified": "yellow", "deleted": "red"}.get(change, "")
