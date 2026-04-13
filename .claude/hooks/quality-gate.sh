@@ -1,0 +1,1 @@
+../../hooks/quality-gate.sh

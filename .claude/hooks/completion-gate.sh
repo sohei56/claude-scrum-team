@@ -1,0 +1,1 @@
+../../hooks/completion-gate.sh
