@@ -4,6 +4,7 @@ description: >
   Developer teammate — implements PBIs, produces design documents,
   and writes tests. Spawned per Sprint by the Scrum Master via
   Agent Teams. Code review is handled by independent sub-agents.
+model: opus
 effort: high
 maxTurns: 200
 keep-coding-instructions: true

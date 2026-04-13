@@ -459,7 +459,7 @@ NOT by peer Developers reviewing each other's code.
 - **Project-managed agents** (in `agents/`):
   - `code-reviewer.md` — code quality and design compliance review
   - `security-reviewer.md` — security vulnerability scanning
-  - `codex-code-reviewer.md` — cross-model review via OpenAI Codex MCP
+  - `codex-code-reviewer.md` — cross-model review via OpenAI Codex CLI
   - `tdd-guide.md` — TDD workflow guidance for Developers
   - `build-error-resolver.md` — build error diagnosis for Developers
 - Distributed via `setup-user.sh` to `.claude/agents/`.

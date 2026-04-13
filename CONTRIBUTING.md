@@ -104,7 +104,7 @@ docs/                    # Project documentation
 - `agents/developer.md` — Teammate template (spawned per Sprint)
 - `agents/code-reviewer.md` — Independent code review sub-agent
 - `agents/security-reviewer.md` — Security vulnerability scanning sub-agent
-- `agents/codex-code-reviewer.md` — Cross-model review via Codex MCP
+- `agents/codex-code-reviewer.md` — Cross-model review via Codex CLI
 - `agents/tdd-guide.md` — TDD workflow guidance sub-agent
 - `agents/build-error-resolver.md` — Build error diagnosis sub-agent
 - `.design/catalog.md` — Design document type reference (read-only in working dirs)

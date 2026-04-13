@@ -5,6 +5,7 @@ description: >
   Coordinates Sprint ceremonies, manages the Product Backlog,
   spawns Developer teammates, and orchestrates the full Scrum
   workflow. Cannot write code, run tests, or perform implementation.
+model: sonnet
 effort: high
 maxTurns: 300
 keep-coding-instructions: true
@@ -16,16 +17,13 @@ skills:
   - backlog-refinement
   - sprint-planning
   - spawn-teammates
-  - install-subagents
   - scaffold-design-spec
-  - design
-  - implementation
   - cross-review
   - sprint-review
   - retrospective
   - integration-sprint
-  - smoke-test
   - change-process
+  # design, implementation, install-subagents, smoke-test → Developer-only skills
 ---
 
 # Scrum Master Agent
