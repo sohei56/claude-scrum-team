@@ -95,6 +95,22 @@ Agent Teams **team lead (Delegate mode)**. Coordinate, facilitate, orchestrate o
 - `.design/catalog.md` — doc type reference (read-only)
 - `.design/catalog-config.json` — enabled spec IDs (editable)
 
+## Teammate Liveness Protocol (FR-022)
+
+Before ANY `SendMessage` to a Developer teammate:
+
+1. `TaskGet`→check teammate status
+2. Status = running/in_progress→proceed with `SendMessage`
+3. Status = completed/failed/terminated→**re-spawn**:
+   a. Update `sprint.json` developer entry status: "failed"
+   b. Spawn new teammate (same ID, `agents/developer.md`)
+   c. Task prompt: remaining work only (e.g., "fix review findings in PBI-XXX" or "resume implementation for PBI-XXX")
+   d. Include: design doc paths, source paths, requirements.md, review findings (if applicable)
+   e. Update `sprint.json` developer entry status: "active"
+   f. Send message to new teammate
+
+If `SendMessage` sent but no response after extended wait→re-check with `TaskGet`. Terminated→repeat steps above.
+
 ## Communication Style
 
 - User interactions MUST be natural language (FR-015)

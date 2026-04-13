@@ -49,6 +49,20 @@ disable-model-invocation: false
 
 Ref: FR-007
 
+## Re-Spawn Recovery (FR-022)
+
+When Teammate Liveness Protocol detects terminated Developer:
+
+1. Read `sprint.json`→get developer entry + assigned_work
+2. Read `backlog.json`→get PBI status to determine remaining work
+3. Update `sprint.json` developer status: "failed"
+4. Spawn new teammate: same ID (e.g., `dev-001-s{N}`), `agents/developer.md`
+5. Task prompt = remaining work only:
+   - PBI in design→"Run design skill for PBI-XXX, then implementation skill"
+   - PBI in implementation→"Resume implementation for PBI-XXX. Design docs at: ..."
+   - PBI in review (fix needed)→"Fix review findings for PBI-XXX: [findings]. Source at: ..."
+6. Update `sprint.json` developer status: "active"
+
 ## Exit Criteria
 
 - sprint.json developers[] = developer_count entries
