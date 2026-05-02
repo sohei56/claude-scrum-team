@@ -320,11 +320,19 @@ Observe implementation and verify Developers use support sub-agents.
   PBIs SHOULD be limited to 1-2 Sprints of capacity (6-12 PBIs)
   to avoid over-refinement of items that may change.
 
-- **FR-004**: Each Development Sprint MUST include a Design phase
-  where Developers produce design documents for their assigned
-  PBIs before implementation begins. Developers MUST read all
-  existing design documents from previous Sprints to ensure
-  consistency.
+- **FR-004**: Each Development Sprint MUST drive each assigned PBI
+  through the `pbi-pipeline` skill (the Developer is the conductor;
+  it does not write code itself). The pipeline runs a Design phase
+  (sub-agent `pbi-designer` authoring `.scrum/pbi/<pbi-id>/design/design.md`,
+  reviewed by `codex-design-reviewer`) followed by an Impl+UT phase
+  (`pbi-implementer` and `pbi-ut-author` writing source/tests in
+  parallel, reviewed by `codex-impl-reviewer` and `codex-ut-reviewer`).
+  The PBI design doc MUST cover: Scope, Components, Business Logic,
+  Interfaces, Catalog Updates, Test Strategy Hints. catalog spec
+  updates happen as a side-effect of `pbi-designer` and MUST acquire
+  `flock(2)` on `.scrum/locks/catalog-<spec_id>.lock` to prevent
+  parallel write contention. Developers MUST read all existing design
+  documents (catalog specs in `docs/design/specs/`) for consistency.
 
 - **FR-005**: The Scrum Master MUST propose Sprint Goals scoped at
   a granularity that is easy for the PO to review. Sprint Goals
@@ -348,15 +356,25 @@ Observe implementation and verify Developers use support sub-agents.
   implementers MUST agree on interface contracts before
   implementation begins.
 
-- **FR-009**: Cross-review MUST occur within the same Sprint,
-  after all implementers complete their work. The Scrum Master
-  MUST orchestrate cross-review by spawning independent reviewer
-  sub-agents (`code-reviewer`, `security-reviewer`, and optionally
-  `codex-code-reviewer`) via the Task tool. Reviewer sub-agents
-  MUST read the requirements document and relevant design documents
-  (both current and previous Sprints) to evaluate implementation
-  against the original specification. Review issues MUST be either
-  fixed within the Sprint or logged as new PBIs.
+- **FR-009**: Code review operates in two layers. **Layer 1
+  (per-PBI, in-pipeline)**: each Round of `pbi-pipeline` spawns
+  `codex-impl-reviewer` (against implementation source only) and
+  `codex-ut-reviewer` (against test files + coverage report only)
+  in parallel. These reviewers receive only the PBI design doc and
+  their respective source set — never the opposing artifact —
+  enforcing black-box UT discipline. Verdicts (PASS/FAIL with
+  structured findings) feed the pipeline's deterministic termination
+  gates (success / stagnation / divergence / hard cap N=5). **Layer
+  2 (Sprint-end cross-review)**: after all per-PBI pipelines reach
+  `phase: complete`, the Scrum Master runs the `cross-review` skill
+  which spawns `code-reviewer`, `security-reviewer`, and optionally
+  `codex-code-reviewer` for cross-cutting integration / security
+  perspective. Per-PBI review files at
+  `.scrum/pbi/<pbi-id>/{impl,ut}/review-r{last}.md` are read for
+  context but NOT re-evaluated. Review issues MUST be either fixed
+  within the Sprint or logged as new PBIs. Codex reviewers fall back
+  to Claude review when the `codex` CLI is unavailable; warning is
+  logged and Sprint-end cross-review compensates.
 
 - **FR-010**: At Sprint Review, the Scrum Master MUST present the
   Increment with a change summary. A live demo MUST be performed
@@ -406,11 +424,18 @@ Observe implementation and verify Developers use support sub-agents.
   consults user, user approves, documents are updated, all
   Developers are notified.
 
-- **FR-017**: A PBI meets the Definition of Done when: design
-  document is produced and reviewed before implementation begins,
-  implementation follows the design document, unit tests are
-  written and pass, existing tests pass (no regressions), code
-  passes linter and formatter, and cross-review is completed.
+- **FR-017**: A PBI meets the Definition of Done when its
+  `pbi-pipeline` reaches `phase: complete`. The pipeline's success
+  gate requires ALL of: `codex-impl-reviewer` verdict PASS,
+  `codex-ut-reviewer` verdict PASS, test failures = 0, test exec
+  errors = 0, uncaught exceptions = 0, C0 coverage ≥ `c0_threshold`
+  (default 100%), C1 coverage ≥ `c1_threshold` (default 100%; the
+  threshold may only be relaxed via `.scrum/config.json` for
+  partial-C1 languages — ad-hoc relaxation is forbidden), and every
+  pragma exclusion has a recorded justification (`reason_source !=
+  "missing"` in `pragma-audit-r{n}.json`). Existing tests must
+  continue to pass (no regressions); linter/formatter must pass.
+  The Sprint-end `cross-review` (FR-009 Layer 2) MUST also complete.
 
 - **FR-018**: The system MUST be launchable via a shell script
   (`scrum-start.sh`) that the user runs from the CLI. The
@@ -421,14 +446,27 @@ Observe implementation and verify Developers use support sub-agents.
   are missing.
 
 - **FR-019**: The system MUST provide project-managed specialist
-  sub-agent definitions (`code-reviewer`, `security-reviewer`,
-  `codex-code-reviewer`, `tdd-guide`, `build-error-resolver`) in
-  `.claude/agents/`, distributed by `setup-user.sh`. Developer
-  teammates invoke support sub-agents (`tdd-guide`,
-  `build-error-resolver`) via the Task tool during implementation.
-  Cross-review sub-agents (`code-reviewer`, `security-reviewer`,
-  `codex-code-reviewer`) are spawned by the Scrum Master during the
-  review phase (FR-009).
+  sub-agent definitions in `.claude/agents/`, distributed by
+  `setup-user.sh`. Two scopes:
+
+  **PBI Pipeline sub-agents (required, spawned by Developer)**:
+  `pbi-designer`, `pbi-implementer`, `pbi-ut-author`,
+  `codex-design-reviewer`, `codex-impl-reviewer`, `codex-ut-reviewer`.
+  These are verified by the `install-subagents` skill at PBI start;
+  any missing required sub-agent BLOCKS the pipeline.
+
+  **Sprint-end cross-review sub-agents (spawned by Scrum Master)**:
+  `code-reviewer`, `security-reviewer`, `codex-code-reviewer`. Used
+  by the `cross-review` skill (FR-009 Layer 2).
+
+  **Optional support sub-agents**: `tdd-guide`, `build-error-resolver`
+  remain available but are deprioritized — the Developer no longer
+  writes code directly, so they are rarely invoked.
+
+  Path-level constraints on PBI Pipeline sub-agents are enforced by
+  `hooks/pre-tool-use-path-guard.sh`: `pbi-ut-author` cannot Read /
+  Write / Edit implementation paths; `pbi-implementer` cannot Write /
+  Edit test paths.
 
 - **FR-020**: The requirements document MUST be frozen during
   Development Sprints. Design documents MUST be frozen after the
