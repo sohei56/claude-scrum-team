@@ -50,6 +50,11 @@ for skill_dir in "$PROJECT_ROOT/skills"/*/; do
   if [ -f "$skill_dir/SKILL.md" ]; then
     cp "$skill_dir/SKILL.md" "$TARGET_DIR/.claude/skills/$skill_name/"
   fi
+  # Copy references/ subdirectory if present (pbi-pipeline pattern)
+  if [ -d "$skill_dir/references" ]; then
+    mkdir -p "$TARGET_DIR/.claude/skills/$skill_name/references"
+    cp "$skill_dir/references/"*.md "$TARGET_DIR/.claude/skills/$skill_name/references/" 2>/dev/null || true
+  fi
 done
 
 # --- Copy hook scripts ---
@@ -68,13 +73,28 @@ for lib_file in "$PROJECT_ROOT/hooks/lib/"*.sh; do
   fi
 done
 
+# --- Copy PBI Pipeline configuration template ---
+# Provide .scrum-config.example.json so users can copy it to .scrum/config.json
+# and adapt to their project's test_runner / coverage_tool. Only copies if the
+# example template is missing in the target.
+if [ -f "$PROJECT_ROOT/.scrum-config.example.json" ] && [ ! -f "$TARGET_DIR/.scrum-config.example.json" ]; then
+  cp "$PROJECT_ROOT/.scrum-config.example.json" "$TARGET_DIR/"
+  echo "  Copied .scrum-config.example.json (copy to .scrum/config.json and adapt)"
+fi
+
+# --- Copy contract JSON Schemas (PBI Pipeline artifacts) ---
+if [ -d "$PROJECT_ROOT/docs/contracts" ]; then
+  mkdir -p "$TARGET_DIR/docs/contracts"
+  cp "$PROJECT_ROOT/docs/contracts/"*.schema.json "$TARGET_DIR/docs/contracts/" 2>/dev/null || true
+fi
+
 # --- Copy design catalog ---
-echo "Copying design catalog to $TARGET_DIR/.design/..."
-mkdir -p "$TARGET_DIR/.design"
-cp "$PROJECT_ROOT/.design/catalog.md" "$TARGET_DIR/.design/"
+echo "Copying design catalog to $TARGET_DIR/docs/design/..."
+mkdir -p "$TARGET_DIR/docs/design"
+cp "$PROJECT_ROOT/docs/design/catalog.md" "$TARGET_DIR/docs/design/"
 # Copy default catalog config if none exists yet (preserve existing project config)
-if [ ! -f "$TARGET_DIR/.design/catalog-config.json" ]; then
-  cp "$PROJECT_ROOT/.design/catalog-config.json" "$TARGET_DIR/.design/"
+if [ ! -f "$TARGET_DIR/docs/design/catalog-config.json" ]; then
+  cp "$PROJECT_ROOT/docs/design/catalog-config.json" "$TARGET_DIR/docs/design/"
   echo "  Created default catalog-config.json"
 else
   echo "  catalog-config.json already exists — preserving project configuration"
@@ -126,6 +146,15 @@ cat > "$settings_file" << 'SETTINGS_EOF'
           {
             "type": "command",
             "command": ".claude/hooks/phase-gate.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/pre-tool-use-path-guard.sh"
           }
         ]
       }
@@ -306,5 +335,5 @@ echo "Project configured at: $TARGET_DIR"
 echo "  .claude/agents/     — Agent definitions"
 echo "  .claude/skills/     — Skill definitions"
 echo "  .claude/hooks/      — Hook scripts"
-echo "  .design/            — Design catalog and configuration"
+echo "  docs/design/            — Design catalog and configuration"
 echo "  .claude/settings.json — Hook and status line configuration"

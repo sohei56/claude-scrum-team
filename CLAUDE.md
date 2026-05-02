@@ -6,18 +6,24 @@
 scrum-start.sh           # Entry point — validates prereqs, launches tmux
 agents/                  # Agent and sub-agent definitions
   scrum-master.md        # Team lead (Delegate mode)
-  developer.md           # Developer teammate
+  developer.md           # Developer teammate (PBI pipeline conductor)
   code-reviewer.md       # Independent code review (spawned by Scrum Master)
   security-reviewer.md   # Security vulnerability scanning (spawned by Scrum Master)
-  codex-code-reviewer.md # Cross-model code review via Codex CLI (spawned by Scrum Master)
-  tdd-guide.md           # TDD workflow guidance (spawned by Developer)
-  build-error-resolver.md # Build error diagnosis (spawned by Developer)
+  codex-code-reviewer.md # Cross-model code review via Codex CLI (Sprint-end)
+  pbi-designer.md        # PBI design author (spawned by Developer)
+  pbi-implementer.md     # Implementation author — no test writes (spawned by Developer)
+  pbi-ut-author.md       # Black-box test author — no impl reads (spawned by Developer)
+  codex-design-reviewer.md  # Critical design review (spawned by Developer)
+  codex-impl-reviewer.md    # Critical impl review — no test visibility (spawned by Developer)
+  codex-ut-reviewer.md      # Critical UT review — no impl visibility (spawned by Developer)
+  tdd-guide.md           # TDD workflow guidance (legacy; deprioritized)
+  build-error-resolver.md # Build error diagnosis (legacy; deprioritized)
 skills/                  # 14 Ceremony Skills (YAML frontmatter + Markdown)
   backlog-refinement/    # Refine PBIs from coarse to sprint-ready
   change-process/        # Manage changes to frozen design docs
-  cross-review/          # Independent code review via sub-agents
-  design/                # Design phase — create design specs
-  implementation/        # Implementation phase — build PBI features
+  cross-review/          # Sprint-end cross-cutting quality gate
+  pbi-pipeline/          # PBI conductor pipeline (orchestrator + references/)
+  pbi-escalation-handler/ # SM-side escalation handler
   install-subagents/     # Install specialist sub-agents for PBI work
   integration-sprint/    # Product-wide QA and integration testing
   requirements-sprint/   # Elicit requirements from user
@@ -42,7 +48,7 @@ tests/                   # Test suites
   integration/           # Script composition tests
   fixtures/              # Test data (JSON fixtures for validation)
 docs/                    # Project documentation (requirements, architecture, data model, contracts)
-.design/                 # Design document governance
+docs/design/                 # Design document governance
   catalog.md             # Immutable document type reference (read-only)
   catalog-config.json    # Editable list of enabled spec IDs
 .scrum/                  # Runtime state (JSON, gitignored)
@@ -88,11 +94,19 @@ sh /path/to/claude-scrum-team/scrum-start.sh
 
 - Scrum Master agent operates in **Delegate mode** — coordinates only, never writes code
 - All state persisted to `.scrum/` JSON files for resume capability
-- Design documents governed by `.design/catalog.md` (read-only type reference) + `.design/catalog-config.json` (editable enabled list)
+- Design documents governed by `docs/design/catalog.md` (read-only type reference) + `docs/design/catalog-config.json` (editable enabled list)
 - Developer teammates named with Sprint suffix: `dev-001-s{N}`
-- PBI status flow: `draft → refined → in_progress → review → done`
+- PBI status flow: `draft → refined → in_progress → review → done | blocked`
 - Sprint status flow: `planning → active → cross_review → sprint_review → complete`
-- Phase flow: `new → requirements_sprint → backlog_created → sprint_planning → design → implementation → review → sprint_review → retrospective → sprint_planning (next Sprint) | integration_sprint → backlog_created (defect-fix loop) | complete`
+- Phase flow: `new → requirements_sprint → backlog_created → sprint_planning → pbi_pipeline_active → review → sprint_review → retrospective → sprint_planning (next Sprint) | integration_sprint → backlog_created (defect-fix loop) | complete`
+- PBI development flows through the `pbi-pipeline` skill: the
+  Developer is a conductor that spawns specialized sub-agents per
+  Round (design → impl+UT → review). State per PBI lives at
+  `.scrum/pbi/<pbi-id>/`. UT is black-box (UT author cannot read impl
+  source). Termination is deterministic via composite gates
+  (success/stagnation/divergence/hard cap). Coverage measured by real
+  tooling (C0/C1 100% by default; partial-C1 languages declare relaxed
+  threshold in `.scrum/config.json`).
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

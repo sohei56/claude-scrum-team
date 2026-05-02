@@ -34,7 +34,25 @@ disable-model-invocation: false
 8. Assign reviewers: round-robin (no self-review). Single-PBI Sprint→reviewer_id: "scrum-master"
 9. Create sprint.json
 10. Update backlog.json: sprint_id, implementer_id, reviewer_id
-11. **Present Sprint summary + options**:
+11. **Catalog Target Assignment** (PBI Pipeline parallel-safety):
+
+    For each PBI in the sprint:
+    1. Read PBI description + requirements to identify catalog spec
+       paths it will touch (entries enabled in catalog-config.json).
+    2. Record in backlog.json items[].catalog_targets[]:
+       ```bash
+       jq --arg id "$PBI_ID" --argjson targets "$TARGETS_JSON" \
+         '(.items[] | select(.id == $id)).catalog_targets = $targets' \
+         .scrum/backlog.json > .scrum/backlog.json.tmp \
+         && mv .scrum/backlog.json.tmp .scrum/backlog.json
+       ```
+    3. **Conflict check**: For PBIs with overlapping catalog_targets in
+       this sprint, ensure they are NOT assigned to different
+       developers in parallel. Either sequence them on one developer,
+       or split the PBI to remove overlap.
+    4. If overlap unavoidable → note in sprint.json that runtime flock
+       will arbitrate (Layer 2 of catalog-contention defense).
+12. **Present Sprint summary + options**:
     - 1. Start Sprint
     - 2. Adjust Sprint Goal
     - 3. Change PBI selection
@@ -42,7 +60,7 @@ disable-model-invocation: false
     - 5. View backlog
     - 6. Other
     → Wait for user selection
-12. **On "Start Sprint"**: Enable catalog-config.json entries→run scaffold-design-spec→spawn-teammates
+13. **On "Start Sprint"**: Enable catalog-config.json entries→run scaffold-design-spec→spawn-teammates
 
 Ref: FR-004, FR-005, FR-006, FR-007, FR-008
 

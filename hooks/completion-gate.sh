@@ -180,6 +180,40 @@ EOF
     esac
     ;;
 
+  pbi_pipeline_active)
+    # All active PBI pipelines must be either 'complete' or 'escalated'.
+    # Escalated PBIs additionally require a recorded resolution.
+    active_pipelines="$(jq -r '.active_pbi_pipelines[]?' "$STATE_FILE" 2>/dev/null)"
+    blocked_pipelines=""
+    while IFS= read -r pbi_id; do
+      [ -z "$pbi_id" ] && continue
+      pbi_state_file=".scrum/pbi/$pbi_id/state.json"
+      if [ ! -f "$pbi_state_file" ]; then
+        blocked_pipelines="${blocked_pipelines}${blocked_pipelines:+, }${pbi_id} (no state.json)"
+        continue
+      fi
+      pbi_phase="$(jq -r '.phase // "unknown"' "$pbi_state_file" 2>/dev/null || echo unknown)"
+      case "$pbi_phase" in
+        complete) ;;
+        escalated)
+          if [ ! -f ".scrum/pbi/$pbi_id/escalation-resolution.md" ]; then
+            blocked_pipelines="${blocked_pipelines}${blocked_pipelines:+, }${pbi_id} (escalated, no resolution)"
+          fi
+          ;;
+        *)
+          blocked_pipelines="${blocked_pipelines}${blocked_pipelines:+, }${pbi_id} (phase: ${pbi_phase})"
+          ;;
+      esac
+    done <<EOF
+$active_pipelines
+EOF
+
+    if [ -n "$blocked_pipelines" ]; then
+      block_stop "PBI Pipeline phase: pipelines incomplete or unresolved: ${blocked_pipelines}. All PBI pipelines must be 'complete' or 'escalated' (with resolution recorded) before stopping."
+    fi
+    allow_stop
+    ;;
+
   *)
     # Other phases: allow stop
     allow_stop

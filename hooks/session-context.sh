@@ -33,6 +33,17 @@ if validate_json_file "$STATE_FILE" "phase" 2>/dev/null; then
     context="${context} Active Sprint: ${sprint_id} (${sprint_type}, ${sprint_status}). Sprint Goal: ${sprint_goal}."
   fi
 
+  # PBI Pipeline awareness: surface active PBI pipelines so spawned sub-agents
+  # know which PBI(s) are in flight. Full env propagation (SCRUM_PBI_ID) is
+  # not possible via this hook — sub-agent prompts must include the PBI id
+  # explicitly. This addition is informational for the agent reading context.
+  if [ "$phase" = "pbi_pipeline_active" ]; then
+    active_pipelines="$(jq -r '.active_pbi_pipelines // [] | join(", ")' "$STATE_FILE" 2>/dev/null)"
+    if [ -n "$active_pipelines" ]; then
+      context="${context} Active PBI pipelines: ${active_pipelines}."
+    fi
+  fi
+
   log_hook "session-context" "INFO" "Session started in phase: ${phase}"
 
   # Output additionalContext JSON

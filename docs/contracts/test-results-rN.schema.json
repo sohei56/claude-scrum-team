@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PBI Pipeline Test Results (per Round)",
+  "type": "object",
+  "required": ["round", "pbi_id", "tool", "tool_version", "executed_at", "totals", "failures"],
+  "properties": {
+    "round": {"type": "integer", "minimum": 1},
+    "pbi_id": {"type": "string"},
+    "tool": {"type": "string"},
+    "tool_version": {"type": "string"},
+    "executed_at": {"type": "string", "format": "date-time"},
+    "totals": {
+      "type": "object",
+      "required": ["tests", "passed", "failed", "exec_errors", "uncaught_exceptions", "skipped"],
+      "properties": {
+        "tests": {"type": "integer"},
+        "passed": {"type": "integer"},
+        "failed": {"type": "integer"},
+        "exec_errors": {"type": "integer"},
+        "uncaught_exceptions": {"type": "integer"},
+        "skipped": {"type": "integer"}
+      }
+    },
+    "failures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["test_id", "type", "file_path", "line", "message"],
+        "properties": {
+          "test_id": {"type": "string"},
+          "type": {"enum": ["assertion", "exec_error", "uncaught_exception", "timeout"]},
+          "file_path": {"type": "string"},
+          "line": {"type": "integer"},
+          "message": {"type": "string"},
+          "stack_trace": {"type": "string"}
+        }
+      }
+    }
+  }
+}

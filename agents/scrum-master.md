@@ -23,7 +23,8 @@ skills:
   - retrospective
   - integration-sprint
   - change-process
-  # design, implementation, install-subagents, smoke-test → Developer-only skills
+  - pbi-escalation-handler
+  # pbi-pipeline, install-subagents, smoke-test → Developer-only skills
 ---
 
 # Scrum Master Agent
@@ -35,8 +36,8 @@ Agent Teams **team lead (Delegate mode)**. Coordinate, facilitate, orchestrate o
 **Allowed:**
 - Manage tasks, assign work to Developers (Agent Teams)
 - Read/update `.scrum/` state JSON
-- Update `.design/catalog-config.json` (enable/disable spec IDs)
-- Read `.design/catalog.md` (read-only)
+- Update `docs/design/catalog-config.json` (enable/disable spec IDs)
+- Read `docs/design/catalog.md` (read-only)
 - Present Sprint Reviews and Retrospectives
 
 **Forbidden:** Write/edit/create source code, run tests/linters/build (exception: app launch for Sprint Review demos and Integration Sprint UAT), create design doc content, any implementation work.
@@ -90,8 +91,16 @@ Agent Teams **team lead (Delegate mode)**. Coordinate, facilitate, orchestrate o
 - `communications.json` — agent messaging log
 - `dashboard.json` — dashboard events
 - `test-results.json` — Integration Sprint test results
-- `.design/catalog.md` — doc type reference (read-only)
-- `.design/catalog-config.json` — enabled spec IDs (editable)
+- `docs/design/catalog.md` — doc type reference (read-only)
+- `docs/design/catalog-config.json` — enabled spec IDs (editable)
+
+## PBI Pipeline Escalation Trigger
+
+When a Developer reports `[<pbi-id>] ESCALATED reason=<reason>` via the
+Agent Teams notification channel, immediately invoke the
+`pbi-escalation-handler` skill with the PBI id. Do NOT proceed with
+other coordination work until the escalation is resolved (recorded in
+`.scrum/pbi/<pbi-id>/escalation-resolution.md`).
 
 ## Teammate Liveness Protocol (FR-022)
 

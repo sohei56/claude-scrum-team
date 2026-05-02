@@ -1,0 +1,20 @@
+{
+  "test_runner": {
+    "command": "pytest",
+    "args": ["--tb=short", "-q"],
+    "results_format": "junit",
+    "results_path_template": ".scrum/pbi/{pbi_id}/metrics/test-results-r{round}.xml"
+  },
+  "coverage_tool": {
+    "command": "coverage",
+    "run_args": ["run", "--branch", "--source=src", "-m", "pytest"],
+    "report_args": ["json", "-o"],
+    "report_path_template": ".scrum/pbi/{pbi_id}/metrics/coverage-r{round}.json",
+    "supports_branch": true
+  },
+  "pragma_pattern": "pragma: no cover",
+  "path_guard": {
+    "impl_globs": ["src/**", "lib/**"],
+    "test_globs": ["tests/**", "**/*_test.py"]
+  }
+}

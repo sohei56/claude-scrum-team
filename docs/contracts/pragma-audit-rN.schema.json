@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PBI Pipeline Pragma Audit (per Round)",
+  "type": "object",
+  "required": ["round", "pbi_id", "audited_at", "exclusions"],
+  "properties": {
+    "round": {"type": "integer", "minimum": 1},
+    "pbi_id": {"type": "string"},
+    "audited_at": {"type": "string", "format": "date-time"},
+    "exclusions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file_path", "line", "code_excerpt", "reason_source"],
+        "properties": {
+          "file_path": {"type": "string"},
+          "line": {"type": "integer"},
+          "code_excerpt": {"type": "string"},
+          "reason_text": {"type": ["string", "null"]},
+          "reason_source": {"enum": ["comment_above", "comment_inline", "missing"]}
+        }
+      }
+    }
+  }
+}

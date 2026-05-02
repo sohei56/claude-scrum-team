@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # phase-gate.sh — PreToolUse hook
 # Gates tools by current Scrum phase and enforces design catalog governance.
-# Reads .scrum/state.json for the current phase, .design/catalog.md for
-# document type validation, .design/catalog-config.json for enablement state,
+# Reads .scrum/state.json for the current phase, docs/design/catalog.md for
+# document type validation, docs/design/catalog-config.json for enablement state,
 # and the hook event JSON (Claude Code PreToolUse payload) from stdin.
 # Outputs a permissionDecision JSON object.
 set -euo pipefail
@@ -12,8 +12,8 @@ HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$HOOK_DIR/lib/validate.sh"
 
 STATE_FILE=".scrum/state.json"
-CATALOG_FILE=".design/catalog.md"
-CONFIG_FILE=".design/catalog-config.json"
+CATALOG_FILE="docs/design/catalog.md"
+CONFIG_FILE="docs/design/catalog-config.json"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -38,29 +38,29 @@ ask() {
 }
 
 # Check whether a file path targets source code (not metadata / config).
-# Source files live outside .scrum/, .design/, docs/, agents/, skills/,
+# Source files live outside .scrum/, docs/, agents/, skills/,
 # hooks/, scripts/, dashboard/, tests/, and common dot-directories.
 is_source_file() {
   local path="$1"
   case "$path" in
-    .scrum/*|.design/*|docs/*|agents/*|skills/*|hooks/*|scripts/*|dashboard/*|tests/*) return 1 ;;
+    .scrum/*|docs/*|agents/*|skills/*|hooks/*|scripts/*|dashboard/*|tests/*) return 1 ;;
     .git/*|.claude/*|.github/*) return 1 ;;
     *.md|*.json|*.yaml|*.yml|*.toml|*.cfg|*.ini|*.editorconfig|LICENSE*|.gitignore|.gitmodules|.shellcheckrc) return 1 ;;
     *) return 0 ;;
   esac
 }
 
-# Check whether a target path is under .design/specs/
+# Check whether a target path is under docs/design/specs/
 is_design_spec_path() {
   local path="$1"
   case "$path" in
-    .design/specs/*) return 0 ;;
+    docs/design/specs/*) return 0 ;;
     *) return 1 ;;
   esac
 }
 
 # Check whether a spec ID exists in catalog.md (any table row).
-# Design spec files follow the pattern: .design/specs/{category}/{id}-{slug}.md
+# Design spec files follow the pattern: docs/design/specs/{category}/{id}-{slug}.md
 # We extract the ID prefix (e.g. "S-001") and look for it in catalog.md.
 has_catalog_entry() {
   local path="$1"
@@ -181,27 +181,64 @@ if [ -z "$target_path" ]; then
   allow
 fi
 
-# Source code gating: only implementation and review phases allow source edits
+# ---------------------------------------------------------------------------
+# pbi_pipeline_active phase: agent-specific path gating
+# ---------------------------------------------------------------------------
+if [ "$phase" = "pbi_pipeline_active" ]; then
+  agent_name="$(echo "$hook_event" | jq -r '.agent_name // empty')"
+
+  case "$agent_name" in
+    pbi-designer)
+      # catalog.md is always read-only — fall through to the catalog.md rule below
+      case "$target_path" in
+        docs/design/catalog.md) ;;
+        *)
+          # pbi-designer may write anywhere else (specs, .scrum/pbi/, src/, etc.)
+          allow
+          ;;
+      esac
+      ;;
+    pbi-implementer|pbi-ut-author)
+      # Deny writes to docs/design/specs/; allow everything else
+      if is_design_spec_path "$target_path"; then
+        deny "pbi_pipeline_active phase: $agent_name cannot write to docs/design/specs/. Only pbi-designer may write specs."
+      fi
+      allow
+      ;;
+    codex-design-reviewer|codex-impl-reviewer|codex-ut-reviewer)
+      # Reviewers may only write to .scrum/pbi/*
+      case "$target_path" in
+        .scrum/pbi/*) allow ;;
+        *) deny "pbi_pipeline_active phase: $agent_name may only write to .scrum/pbi/." ;;
+      esac
+      ;;
+    *)
+      # Unknown agents fall through to existing gating rules below
+      ;;
+  esac
+fi
+
+# Source code gating: only implementation, review, and pbi_pipeline_active phases allow source edits
 if is_source_file "$target_path"; then
   case "$phase" in
-    implementation|review) ;;
+    implementation|review|pbi_pipeline_active) ;;
     *) deny "$phase phase: source code changes not allowed. Only permitted during implementation/review." ;;
   esac
 fi
 
 # Catalog governance: catalog.md is read-only
 case "$target_path" in
-  .design/catalog.md)
-    deny "catalog.md is read-only. Update .design/catalog-config.json instead." ;;
+  docs/design/catalog.md)
+    deny "catalog.md is read-only. Update docs/design/catalog-config.json instead." ;;
 esac
 
 # Design spec governance: require catalog entry + enabled config
 if is_design_spec_path "$target_path"; then
   if ! has_catalog_entry "$target_path"; then
-    deny "Cannot write '$target_path' — no matching entry in .design/catalog.md."
+    deny "Cannot write '$target_path' — no matching entry in docs/design/catalog.md."
   fi
   if ! is_enabled_in_config "$target_path"; then
-    deny "Cannot write '$target_path' — not enabled in .design/catalog-config.json."
+    deny "Cannot write '$target_path' — not enabled in docs/design/catalog-config.json."
   fi
 fi
 

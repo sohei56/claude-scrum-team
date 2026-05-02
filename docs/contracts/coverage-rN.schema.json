@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PBI Pipeline Coverage Report (per Round)",
+  "type": "object",
+  "required": ["round", "pbi_id", "tool", "tool_version", "measured_at", "totals", "files"],
+  "properties": {
+    "round": {"type": "integer", "minimum": 1},
+    "pbi_id": {"type": "string"},
+    "tool": {"type": "string"},
+    "tool_version": {"type": "string"},
+    "measured_at": {"type": "string", "format": "date-time"},
+    "totals": {
+      "type": "object",
+      "required": ["c0", "c1"],
+      "properties": {
+        "c0": {
+          "type": "object",
+          "required": ["covered", "total", "percent"],
+          "properties": {
+            "covered": {"type": "integer"},
+            "total": {"type": "integer"},
+            "percent": {"type": "number"}
+          }
+        },
+        "c1": {
+          "type": "object",
+          "required": ["covered", "total", "percent", "supported"],
+          "properties": {
+            "covered": {"type": "integer"},
+            "total": {"type": "integer"},
+            "percent": {"type": "number"},
+            "supported": {"type": "boolean"}
+          }
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "c0", "c1", "uncovered_lines", "uncovered_branches", "pragma_excluded_lines"],
+        "properties": {
+          "path": {"type": "string"},
+          "c0": {"$ref": "#/properties/totals/properties/c0"},
+          "c1": {"$ref": "#/properties/totals/properties/c1"},
+          "uncovered_lines": {"type": "array", "items": {"type": "integer"}},
+          "uncovered_branches": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["line", "from", "to", "condition"],
+              "properties": {
+                "line": {"type": "integer"},
+                "from": {"type": "integer"},
+                "to": {"type": "integer"},
+                "condition": {"type": "string"}
+              }
+            }
+          },
+          "pragma_excluded_lines": {"type": "array", "items": {"type": "integer"}}
+        }
+      }
+    }
+  }
+}

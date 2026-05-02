@@ -161,7 +161,7 @@ For detailed setup instructions, see [quickstart.md](docs/quickstart.md).
 | `dashboard/app.py` | Textual TUI with real-time panels |
 | `scripts/` | Status line, user setup, contributor setup |
 | `.scrum/` | Runtime state (JSON, gitignored) |
-| `.design/` | Design documents governed by `catalog.md` (read-only) + `catalog-config.json` (enabled list) |
+| `docs/design/` | Design documents governed by `catalog.md` (read-only) + `catalog-config.json` (enabled list) |
 | `agents/` sub-agents | Project-managed specialist sub-agents: `code-reviewer`, `security-reviewer`, `codex-code-reviewer`, `tdd-guide`, `build-error-resolver` |
 | `.mcp-servers/` | MCP server implementations (OpenAI/Codex bridge for cross-model review) |
 

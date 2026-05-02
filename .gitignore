@@ -1,6 +1,9 @@
 # Runtime state (not committed)
 .scrum/
 
+# Git worktrees (project-local)
+.worktrees/
+
 # Claude Code local settings (user-specific)
 .claude/settings.local.json
 .claude/recovery/

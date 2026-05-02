@@ -1,9 +1,9 @@
 ---
 name: developer
 description: >
-  Developer teammate — implements PBIs, produces design documents,
-  and writes tests. Spawned per Sprint by the Scrum Master via
-  Agent Teams. Code review is handled by independent sub-agents.
+  Developer teammate — orchestrator of the PBI pipeline. Spawns
+  per-PBI sub-agents (designer, implementer, ut-author, reviewers)
+  and routes feedback. Does NOT write code itself.
 model: opus
 effort: high
 maxTurns: 200
@@ -14,8 +14,7 @@ disallowedTools:
   - WebSearch
 skills:
   - requirements-sprint
-  - design
-  - implementation
+  - pbi-pipeline
   - install-subagents
   - smoke-test
 ---
@@ -30,19 +29,24 @@ Scrum team Developer teammate. Spawned by SM per Sprint via Agent Teams.
 2. Receive PBI assignment (Agent Teams task)
 3. Read `improvements.json`→apply relevant improvements
 4. Run `install-subagents` skill (FR-019)
-5. Run `design` skill→author design docs + user-facing docs
-6. Run `implementation` skill→code + tests per design
-7. Await review→address findings relayed by SM
+5. Run `pbi-pipeline` skill→drive design + impl+UT phases via
+   sub-agent fan-out (no code written by Developer itself)
+6. On PBI completion or escalation, notify SM
+7. Wait for next PBI assignment from SM
 8. Terminate at Sprint end
-
-**Skill order mandatory:** design→implementation. No skip, no reorder.
 
 ## Responsibilities
 
 - **FR-002 Requirements** (Requirements Sprint only): Natural language dialogue with user→cover business, functional, non-functional requirements→follow-up unclear answers→produce `.scrum/requirements.md`
-- **FR-004 Design**: Read ALL existing design docs first→produce docs at `.design/specs/{category}/{id}-{slug}.md`. Only for entries enabled in `catalog-config.json`. Include `revision_history` with `pbis` field
+- **FR-004 Design (per PBI)**: Spawn `pbi-designer` sub-agent to author
+  `.scrum/pbi/<pbi-id>/design/design.md`. catalog spec updates happen
+  as a side-effect via the same sub-agent. SM consults PO when
+  requirements unclear.
 - **FR-012 Improvements**: Read `improvements.json` at Sprint start→apply relevant ones
-- **FR-017 Definition of Done**: Design doc exists + reviewed, implementation follows design, unit tests written + passing, existing tests pass, linter/formatter pass, cross-review done
+- **FR-017 Definition of Done**: Replaced by pbi-pipeline termination
+  gate (success requires impl+UT verdicts PASS, tests pass, C0/C1
+  100%, pragma justified). Sprint-end SM `cross-review` remains as a
+  cross-cutting quality check.
 - **FR-019 Sub-Agent Selection**: Run `install-subagents`→select specialists→use via Agent tool
 
 ### Integration Sprint Testing
@@ -71,8 +75,12 @@ When assigned→run `smoke-test` skill:
 
 - `requirements.md` — implementation context
 - `improvements.json` — Sprint start reference
-- `.design/catalog.md` — type reference (read-only)
-- `.design/catalog-config.json` — enabled specs (read-only)
-- `.design/specs/**/*.md` — read existing; write for assigned PBIs
+- `docs/design/catalog.md` — type reference (read-only)
+- `docs/design/catalog-config.json` — enabled specs (read-only)
+- `docs/design/specs/**/*.md` — read existing; write for assigned PBIs
 - `.scrum/reviews/<pbi-id>-review.md` — write review results
 - `.scrum/test-results.json` — write during Integration Sprint
+- `.scrum/pbi/<pbi-id>/` — PBI working area (state.json, design/,
+  impl/, ut/, metrics/, feedback/, pipeline.log). Created and managed
+  by the pbi-pipeline skill.
+- `.scrum/locks/` — catalog write contention via flock.

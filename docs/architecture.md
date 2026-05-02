@@ -144,7 +144,7 @@ All project state persists as JSON files (one file per concern) in a
   `improvements.json`, `communications.json`, `dashboard.json`,
   `requirements.md`
 - Subdirectories: `.scrum/reviews/` (cross-review results)
-- Design documents: `.design/specs/{category}/` (governed by `.design/catalog.md`)
+- Design documents: `docs/design/specs/{category}/` (governed by `docs/design/catalog.md`)
 - The Scrum Master reads state at Sprint start (fresh context per Sprint).
 - Developer teammates receive only their assigned artifacts.
 
@@ -321,12 +321,12 @@ prompt-only management:
 
 ---
 
-## R8: Design Documents — `.design/catalog.md` Governance
+## R8: Design Documents — `docs/design/catalog.md` Governance
 
 ### Decision
-Design documents are governed by `.design/catalog.md`. No design
+Design documents are governed by `docs/design/catalog.md`. No design
 document may be created unless its spec type is listed and enabled in
-the catalog. Design files live at `.design/specs/{category}/{id}-{slug}.md`
+the catalog. Design files live at `docs/design/specs/{category}/{id}-{slug}.md`
 following the catalog's existing governance rules.
 
 The catalog provides a richer taxonomy than a simple hierarchy:
@@ -347,13 +347,13 @@ The catalog provides a richer taxonomy than a simple hierarchy:
 - **Catalog-first governance** prevents ad-hoc document proliferation.
   The Scrum Master enables catalog entries; Developers create only what
   the catalog allows.
-- Reuses the existing `.design/catalog.md` governance rules (enabled/
+- Reuses the existing `docs/design/catalog.md` governance rules (enabled/
   disabled status, catalog-first workflow, no undocumented specs).
 - PBIs reference design documents via `design_doc_paths: string[]`.
 
 ### Key Technical Details
 
-**Catalog** (`.design/catalog.md`):
+**Catalog** (`docs/design/catalog.md`):
 - Already exists with governance rules, categories, and entries.
 - Scrum Master enables entries during Sprint Planning.
 - Six governance rules apply: catalog-first, enabled = file required,
@@ -363,19 +363,19 @@ The catalog provides a richer taxonomy than a simple hierarchy:
 **Workflow**:
 1. Sprint Planning: Scrum Master reviews PBIs, determines which catalog
    entries need to be enabled.
-2. Scrum Master updates `.design/catalog.md` — flips entries to `enabled`
+2. Scrum Master updates `docs/design/catalog.md` — flips entries to `enabled`
    or adds new entries (default `disabled`, then flip).
 3. Scrum Master invokes `scaffold-design-spec` Skill — creates template
    stub files for all newly enabled entries (required frontmatter +
    placeholder sections).
 4. Design phase: Developers populate the stub files at
-   `.design/specs/{category}/{id}-{slug}.md` for enabled entries.
+   `docs/design/specs/{category}/{id}-{slug}.md` for enabled entries.
 5. Hook enforcement: `PreToolUse` hook denies `Write`/`Edit` under
-   `.design/specs/` if the target file has no enabled catalog entry.
+   `docs/design/specs/` if the target file has no enabled catalog entry.
 
 **Directory structure**:
 ```
-.design/
+docs/design/
   catalog.md                                        # Single source of truth
   specs/
     system-wide/S-001-system-architecture.md        # Enabled
@@ -405,7 +405,7 @@ revision_history:
     change_process: true
 ---
 ```
-- `catalog_id` links the document to its `.design/catalog.md` entry.
+- `catalog_id` links the document to its `docs/design/catalog.md` entry.
 - `revision_history` is mandatory. Each entry records sprint, author,
   date, summary, `pbis`, and optionally `change_process: true`.
 - Updates follow FR-020 freeze/Change Process and append to
@@ -413,7 +413,7 @@ revision_history:
 
 ### Alternatives Considered
 - **Separate `.scrum/designs/catalog.md`**: Rejected — duplicates
-  governance that `.design/catalog.md` already provides.
+  governance that `docs/design/catalog.md` already provides.
 - **No catalog (ad-hoc creation)**: Leads to document proliferation.
 - **One doc per PBI**: Too granular; redundant for related PBIs.
 - **Single monolithic doc**: Unwieldy as the project grows.
@@ -470,3 +470,55 @@ NOT by peer Developers reviewing each other's code.
   `build-error-resolver` directly via the Task tool during implementation.
 - Runtime tracking: `sprint.json` → `developers[].sub_agents` records
   only actually used agents.
+
+## R10: PBI Pipeline — Per-PBI Multi-Sub-Agent Workflow
+
+### Decision
+
+The Developer agent is a per-PBI pipeline conductor; it does not write
+code. Per assigned PBI it spawns six specialized sub-agents (`pbi-designer`,
+`codex-design-reviewer`, `pbi-implementer`, `pbi-ut-author`,
+`codex-impl-reviewer`, `codex-ut-reviewer`) over multiple Rounds of design
+and impl+UT phases. State flows through `.scrum/pbi/<pbi-id>/` artifacts.
+Termination uses deterministic composite gates (success / stagnation /
+divergence / hard cap). Coverage is measured by real tooling (C0/C1 100%
+by default).
+
+### Rationale
+
+- **Black-box UT**: `pbi-ut-author` cannot read implementation source
+  (enforced by `hooks/pre-tool-use-path-guard.sh`), so tests are written
+  against the design's interfaces only.
+- **Cross-model review**: Codex-based reviewers provide independent
+  critical review free of in-context anchoring; Claude fallback when
+  Codex CLI unavailable.
+- **Deterministic gates**: Stagnation detection uses exact
+  finding-signature equality across consecutive Rounds — no fuzzy
+  similarity heuristics. Anthropic + Ralph + GAN-derived composite
+  ensures convergence without infinite loops.
+- **Real-tool coverage**: C0/C1 thresholds are evaluated against
+  output from coverage.py / c8 / JaCoCo etc., not LLM estimates.
+
+### Alternatives Considered
+
+- **Single-session Developer (legacy)**: Rejected — no cross-model
+  review, UT writer biased by impl context, no enforced coverage gate.
+- **GAN-style rollback on divergence**: Deferred to future work; current
+  divergence gate escalates to SM instead.
+- **Heuristic stagnation (e.g. 80% finding-similarity)**: Rejected —
+  arbitrary threshold; replaced with deterministic finding-signature
+  equality.
+
+### Key Technical Details
+
+- Spec: `docs/superpowers/specs/2026-05-02-pbi-pipeline-design.md`
+- Skill: `skills/pbi-pipeline/` (orchestrator SKILL.md + 8 references)
+- SM-side escalation: `skills/pbi-escalation-handler/SKILL.md`
+- Path enforcement hook: `hooks/pre-tool-use-path-guard.sh`
+- Codex invocation: `hooks/lib/codex-invoke.sh`
+- Per-PBI state: `.scrum/pbi/<pbi-id>/state.json` and
+  `pipeline.log`
+- Catalog write contention: 3-layer defense (sprint-planning
+  pre-separation, runtime flock, mtime conflict detection).
+- TUI: dashboard PBI Pipeline pane reads
+  `dashboard.json.pbi_pipelines`.
