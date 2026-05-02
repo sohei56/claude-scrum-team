@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Current sprint state",
+  "type": "object",
+  "required": ["id", "status", "started_at"],
+  "additionalProperties": true,
+  "properties": {
+    "id": {"type": "string", "pattern": "^sprint-[0-9]+$"},
+    "goal": {"type": ["string", "null"]},
+    "type": {"enum": ["development", "integration"]},
+    "status": {
+      "enum": ["planning", "active", "cross_review", "sprint_review", "complete", "failed"]
+    },
+    "pbi_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^pbi-[0-9]+$"},
+      "uniqueItems": true
+    },
+    "developer_count": {"type": "integer", "minimum": 0},
+    "developers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^dev-[0-9]+-s[0-9]+$"},
+          "assigned_work": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "implement": {"type": "array", "items": {"type": "string", "pattern": "^pbi-[0-9]+$"}},
+              "review": {"type": "array", "items": {"type": "string", "pattern": "^pbi-[0-9]+$"}}
+            }
+          },
+          "status": {"enum": ["active", "failed"]},
+          "sub_agents": {"type": "array"},
+          "current_pbi": {"type": ["string", "null"], "pattern": "^pbi-[0-9]+$"},
+          "current_pbi_phase": {"enum": [null, "design", "impl_ut", "complete", "escalated"]}
+        }
+      }
+    },
+    "started_at": {"type": "string", "format": "date-time"},
+    "completed_at": {"type": ["string", "null"], "format": "date-time"}
+  }
+}
