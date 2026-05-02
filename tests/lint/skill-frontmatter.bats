@@ -9,8 +9,8 @@ setup() {
     sprint-planning
     spawn-teammates
     install-subagents
-    design
-    implementation
+    pbi-pipeline
+    pbi-escalation-handler
     cross-review
     sprint-review
     retrospective
