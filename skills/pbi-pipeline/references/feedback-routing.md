@@ -1,0 +1,91 @@
+# Feedback Routing Reference
+
+How the Developer (conductor) builds the per-Round feedback files for
+impl and UT agents after a FAIL judgment.
+
+## Routing matrix
+
+| Source | impl agent | UT agent |
+|---|---|---|
+| impl-reviewer findings | ✓ | – |
+| ut-reviewer findings | – | ✓ |
+| Test failures (assertion / exec error / uncaught) | ✓ | ✓ |
+| Coverage gap — branch unreachable from tests | – | ✓ |
+| Coverage gap — implementation dead code | ✓ | – |
+
+## Test failure framing (sent to both)
+
+- **For impl agent:** "Verify your code matches the design, assuming
+  tests are correct. If a test asserts behavior the design specifies
+  and your code violates it, fix the code."
+- **For UT agent:** "Verify your tests match the design's interface,
+  assuming impl is correct. If a test asserts behavior NOT in the
+  design (or stricter than designed), fix the test."
+
+## Dead-code detection (Developer-side)
+
+For each uncovered branch in `coverage-r{n}.json.files[].uncovered_branches`:
+
+- Read the source line. If it contains a known dead-code marker
+  (`raise NotImplementedError`, `panic!()`, `unreachable!()`,
+  `assert False`, constant-false comparison) → **route to impl** as
+  dead-code finding.
+- Otherwise → **route to UT** as missing-test finding.
+- If you can't tell → **route to both** (low-cost: each agent will
+  no-op if not its concern).
+
+## Feedback file template — `feedback/impl-r{n+1}.md`
+
+````markdown
+# Impl Feedback for Round {n+1}
+
+## impl-reviewer findings (Round {n})
+
+{For each Critical/High finding from impl/review-r{n}.md, list:}
+- [{severity}] {file}:{lines} — {description}
+
+## Test failures (Round {n})
+
+{For each failure in test-results-r{n}.json.failures, list:}
+- {test_id}: {type} — {message}
+  Framing: Verify your code matches the design. If the test asserts
+  behavior the design specifies and your code violates it, fix the code.
+
+## Implementation dead-code warnings
+
+{For each branch routed to impl, list:}
+- {file}:{line} — {dead-code marker found}: consider removing the
+  unreachable branch.
+````
+
+## Feedback file template — `feedback/ut-r{n+1}.md`
+
+````markdown
+# UT Feedback for Round {n+1}
+
+## ut-reviewer findings (Round {n})
+
+{For each Critical/High finding from ut/review-r{n}.md, list:}
+- [{severity}] {file}:{lines} — {description}
+
+## Test failures (Round {n})
+
+{Same list as impl FB but with UT-side framing:}
+- {test_id}: {type} — {message}
+  Framing: Verify your tests match the design interface. If the test
+  asserts behavior NOT in the design (or stricter than designed),
+  fix the test.
+
+## Coverage gaps (need new tests)
+
+{For each uncovered branch routed to UT, list:}
+- {file}:{line} (branch from line {from} to line {to}, condition
+  {condition}) — add a test that exercises this branch.
+
+## Pragma exclusions to revisit
+
+{For each pragma exclusion with reason_source == "missing" in
+pragma-audit-r{n}.json, list:}
+- {file}:{line} — exclusion has no inline-comment reason. Either
+  remove the exclusion (and add a test) or add a justifying reason.
+````
