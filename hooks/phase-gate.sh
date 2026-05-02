@@ -181,10 +181,47 @@ if [ -z "$target_path" ]; then
   allow
 fi
 
-# Source code gating: only implementation and review phases allow source edits
+# ---------------------------------------------------------------------------
+# pbi_pipeline_active phase: agent-specific path gating
+# ---------------------------------------------------------------------------
+if [ "$phase" = "pbi_pipeline_active" ]; then
+  agent_name="$(echo "$hook_event" | jq -r '.agent_name // empty')"
+
+  case "$agent_name" in
+    pbi-designer)
+      # catalog.md is always read-only — fall through to the catalog.md rule below
+      case "$target_path" in
+        docs/design/catalog.md) ;;
+        *)
+          # pbi-designer may write anywhere else (specs, .scrum/pbi/, src/, etc.)
+          allow
+          ;;
+      esac
+      ;;
+    pbi-implementer|pbi-ut-author)
+      # Deny writes to docs/design/specs/; allow everything else
+      if is_design_spec_path "$target_path"; then
+        deny "pbi_pipeline_active phase: $agent_name cannot write to docs/design/specs/. Only pbi-designer may write specs."
+      fi
+      allow
+      ;;
+    codex-design-reviewer|codex-impl-reviewer|codex-ut-reviewer)
+      # Reviewers may only write to .scrum/pbi/*
+      case "$target_path" in
+        .scrum/pbi/*) allow ;;
+        *) deny "pbi_pipeline_active phase: $agent_name may only write to .scrum/pbi/." ;;
+      esac
+      ;;
+    *)
+      # Unknown agents fall through to existing gating rules below
+      ;;
+  esac
+fi
+
+# Source code gating: only implementation, review, and pbi_pipeline_active phases allow source edits
 if is_source_file "$target_path"; then
   case "$phase" in
-    implementation|review) ;;
+    implementation|review|pbi_pipeline_active) ;;
     *) deny "$phase phase: source code changes not allowed. Only permitted during implementation/review." ;;
   esac
 fi
