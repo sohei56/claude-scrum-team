@@ -6,12 +6,30 @@ description: >
 disable-model-invocation: false
 ---
 
+## Role (post pbi-pipeline introduction)
+
+Sprint-end cross-cutting quality gate. The PBI Pipeline already runs
+per-PBI impl + UT reviews via codex-impl-reviewer / codex-ut-reviewer.
+This `cross-review` complements that by:
+
+- Catching cross-PBI integration issues
+- Independent security perspective (security-reviewer)
+- Final code-reviewer pass with full Sprint context
+
+Do NOT duplicate per-PBI quality work; assume per-PBI Pass criteria
+already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
+`ut/review-r{last}.md` for prior context).
+
 ## Inputs
 
 - state.json → phase: implementation | review
 - backlog.json → all Sprint PBIs with implementation complete
 - requirements.md + design docs per PBI
 - agents/code-reviewer.md, agents/security-reviewer.md
+- Per-PBI pipeline final reviews (read for context, NOT re-evaluated):
+  - `.scrum/pbi/<pbi-id>/impl/review-r{last}.md`
+  - `.scrum/pbi/<pbi-id>/ut/review-r{last}.md`
+  - `.scrum/pbi/<pbi-id>/metrics/coverage-r{last}.json`
 
 ## Outputs
 
