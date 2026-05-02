@@ -16,19 +16,51 @@ disable-model-invocation: false
 - Confirmation of available sub-agents
 - sprint.json → developers[].sub_agents (runtime: actually-used agents only)
 
+## Required Sub-Agents (PBI Pipeline)
+
+Verify these 6 sub-agents exist with valid YAML frontmatter at
+`.claude/agents/<name>.md`:
+
+- `pbi-designer`
+- `pbi-implementer`
+- `pbi-ut-author`
+- `codex-design-reviewer`
+- `codex-impl-reviewer`
+- `codex-ut-reviewer`
+
+Missing required → BLOCK (escalate to SM, do not proceed to PBI work).
+
+## Optional Sub-Agents
+
+- `tdd-guide` — lower priority since Developer no longer writes code
+  directly.
+- `build-error-resolver` — lower priority since Codex reviewers catch
+  most build issues.
+
+Missing optional → log warning, proceed.
+
 ## Steps
 
 1. Analyze PBI→determine specialist needs
-2. Read `.claude/agents/`→identify available sub-agents:
-   - `tdd-guide` — test-first guidance
-   - `build-error-resolver` — build/test failure diagnosis
-   - Note: code-reviewer/security-reviewer = SM scope (not for Developers)
-3. Verify definition files exist with valid YAML frontmatter
-4. During implementation→invoke via `Agent(subagent_type="<name>")`. Record only actually-used agents in sprint.json
+2. Verify ALL required sub-agents exist:
+   ```bash
+   for name in pbi-designer pbi-implementer pbi-ut-author \
+               codex-design-reviewer codex-impl-reviewer codex-ut-reviewer; do
+     [ -f ".claude/agents/$name.md" ] || { echo "MISSING REQUIRED: $name"; exit 1; }
+   done
+   ```
+3. Verify YAML frontmatter on each (yq eval '.name' or equivalent).
+4. Verify optional sub-agents (`tdd-guide`, `build-error-resolver`);
+   log warning if missing.
+5. During pbi-pipeline execution→invoke via
+   `Agent(subagent_type="<name>")`. Record only actually-used agents in
+   sprint.json.
 
 ## Graceful Degradation
 
-Sub-agent files missing→proceed without. Sub-agents are optional enhancements.
+- Required sub-agent files missing → BLOCK (cannot proceed; SM must
+  install them).
+- Optional sub-agent files missing → proceed with warning.
 
 Ref: FR-019
 
