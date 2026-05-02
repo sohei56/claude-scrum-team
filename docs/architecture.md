@@ -470,3 +470,55 @@ NOT by peer Developers reviewing each other's code.
   `build-error-resolver` directly via the Task tool during implementation.
 - Runtime tracking: `sprint.json` → `developers[].sub_agents` records
   only actually used agents.
+
+## R10: PBI Pipeline — Per-PBI Multi-Sub-Agent Workflow
+
+### Decision
+
+The Developer agent is a per-PBI pipeline conductor; it does not write
+code. Per assigned PBI it spawns six specialized sub-agents (`pbi-designer`,
+`codex-design-reviewer`, `pbi-implementer`, `pbi-ut-author`,
+`codex-impl-reviewer`, `codex-ut-reviewer`) over multiple Rounds of design
+and impl+UT phases. State flows through `.scrum/pbi/<pbi-id>/` artifacts.
+Termination uses deterministic composite gates (success / stagnation /
+divergence / hard cap). Coverage is measured by real tooling (C0/C1 100%
+by default).
+
+### Rationale
+
+- **Black-box UT**: `pbi-ut-author` cannot read implementation source
+  (enforced by `hooks/pre-tool-use-path-guard.sh`), so tests are written
+  against the design's interfaces only.
+- **Cross-model review**: Codex-based reviewers provide independent
+  critical review free of in-context anchoring; Claude fallback when
+  Codex CLI unavailable.
+- **Deterministic gates**: Stagnation detection uses exact
+  finding-signature equality across consecutive Rounds — no fuzzy
+  similarity heuristics. Anthropic + Ralph + GAN-derived composite
+  ensures convergence without infinite loops.
+- **Real-tool coverage**: C0/C1 thresholds are evaluated against
+  output from coverage.py / c8 / JaCoCo etc., not LLM estimates.
+
+### Alternatives Considered
+
+- **Single-session Developer (legacy)**: Rejected — no cross-model
+  review, UT writer biased by impl context, no enforced coverage gate.
+- **GAN-style rollback on divergence**: Deferred to future work; current
+  divergence gate escalates to SM instead.
+- **Heuristic stagnation (e.g. 80% finding-similarity)**: Rejected —
+  arbitrary threshold; replaced with deterministic finding-signature
+  equality.
+
+### Key Technical Details
+
+- Spec: `docs/superpowers/specs/2026-05-02-pbi-pipeline-design.md`
+- Skill: `skills/pbi-pipeline/` (orchestrator SKILL.md + 8 references)
+- SM-side escalation: `skills/pbi-escalation-handler/SKILL.md`
+- Path enforcement hook: `hooks/pre-tool-use-path-guard.sh`
+- Codex invocation: `hooks/lib/codex-invoke.sh`
+- Per-PBI state: `.scrum/pbi/<pbi-id>/state.json` and
+  `pipeline.log`
+- Catalog write contention: 3-layer defense (sprint-planning
+  pre-separation, runtime flock, mtime conflict detection).
+- TUI: dashboard PBI Pipeline pane reads
+  `dashboard.json.pbi_pipelines`.

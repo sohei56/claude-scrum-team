@@ -40,6 +40,24 @@ The setup script copies agent definitions and Skills to your project's
 `.claude/` directory, configures the status line dashboard, and sets up
 hooks. It NEVER modifies your global `~/.claude/` settings.
 
+### Configure PBI Pipeline coverage tooling
+
+The Developer agent runs the `pbi-pipeline` skill per assigned PBI,
+which measures C0/C1 test coverage with real tooling per Round. Copy
+the example config and adapt to your project's stack:
+
+```bash
+cp .scrum-config.example.json .scrum/config.json
+$EDITOR .scrum/config.json   # set test_runner and coverage_tool
+```
+
+For partial-C1 languages (Go, Rust, Bash), set `c1_threshold` in
+`.scrum/config.json`. Ad-hoc relaxation is forbidden — the threshold
+must be declared in config.
+
+See `docs/MIGRATION-pbi-pipeline.md` if you are upgrading from the
+legacy single-session design + implementation flow.
+
 If tmux is available, `scrum-start.sh` creates a split layout:
 - **Main pane**: `claude --agent scrum-master` (interactive session in
   **Delegate mode** — the Scrum Master focuses exclusively on coordination
