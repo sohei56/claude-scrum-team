@@ -74,7 +74,7 @@ Valid phases:
 | `sprint_id` | string \| null | Sprint this PBI is assigned to, null if in backlog |
 | `implementer_id` | string \| null | Developer teammate assigned to implement |
 | `reviewer_id` | string \| null | Reviewer ID: a Developer teammate (round-robin) or `"scrum-master"` (single-PBI Sprint) |
-| `design_doc_paths` | string[] | Paths to design documents relative to project root (e.g., `.design/specs/ui/S-030-login.md`) |
+| `design_doc_paths` | string[] | Paths to design documents relative to project root (e.g., `docs/design/specs/ui/S-030-login.md`) |
 | `review_doc_path` | string \| null | Path to review results relative to `.scrum/` |
 | `depends_on_pbi_ids` | string[] | IDs of PBIs that must be completed before this one (used by FR-008) |
 | `ux_change` | boolean | Whether this PBI involves UX changes (determines live demo in FR-010) |
@@ -204,13 +204,13 @@ during the Requirements Sprint (FR-002). Frozen during Development Sprints
 
 ## Entity: DesignCatalogConfig
 
-**File**: `.design/catalog-config.json`
+**File**: `docs/design/catalog-config.json`
 **Owner**: Scrum Master (read/write)
 **Readers**: Developer teammates (read-only), phase-gate.sh, scaffold-design-spec skill
-**Reference**: `.design/catalog.md` (read-only document type catalog)
+**Reference**: `docs/design/catalog.md` (read-only document type catalog)
 
 Controls which design spec types are active for the project. The full list
-of recognized document types lives in `.design/catalog.md` (read-only,
+of recognized document types lives in `docs/design/catalog.md` (read-only,
 managed in claude-scrum-team). This config file is the only editable part.
 
 | Field | Type | Description |
@@ -218,7 +218,7 @@ managed in claude-scrum-team). This config file is the only editable part.
 | `enabled` | string[] | Array of spec IDs from catalog.md that are active (e.g., `["D-001", "S-001", "S-010"]`) |
 
 ### Rules
-- Only spec IDs that exist in `.design/catalog.md` may appear in `enabled`.
+- Only spec IDs that exist in `docs/design/catalog.md` may appear in `enabled`.
 - The phase-gate hook enforces that design spec files can only be created
   for IDs present in both `catalog.md` (exists) and `catalog-config.json`
   (enabled).
@@ -231,17 +231,17 @@ managed in claude-scrum-team). This config file is the only editable part.
 
 ## Entity: DesignDocument
 
-**Directory**: `.design/specs/{category}/`
-**Governance**: `.design/catalog.md` (type reference) + `.design/catalog-config.json` (enablement)
+**Directory**: `docs/design/specs/{category}/`
+**Governance**: `docs/design/catalog.md` (type reference) + `docs/design/catalog-config.json` (enablement)
 **Format**: Markdown with YAML frontmatter
 **Owner**: Assigned Developer (write), Reviewer (read)
 **Readers**: All Developers in subsequent Sprints (FR-004)
 
-Design documents are governed by `.design/catalog.md` (read-only type
-reference) and `.design/catalog-config.json` (editable enabled list). No
+Design documents are governed by `docs/design/catalog.md` (read-only type
+reference) and `docs/design/catalog-config.json` (editable enabled list). No
 design document may be created unless its spec type is listed in the catalog
 and enabled in the config. Files follow the naming convention
-`.design/specs/{category}/{id}-{slug}.md`.
+`docs/design/specs/{category}/{id}-{slug}.md`.
 
 | Category | Example Entry | Example File |
 |----------|--------------|-------------|
@@ -299,7 +299,7 @@ frontmatter to track edit history across Sprints. Each entry is a
 
 ### Rules
 - **Catalog-first**: no design file may be created without an entry in
-  `.design/catalog.md` AND an enabled entry in `.design/catalog-config.json`.
+  `docs/design/catalog.md` AND an enabled entry in `docs/design/catalog-config.json`.
   The Scrum Master adds spec IDs to the config's `enabled` array during
   Sprint Planning.
 - **Immediate stub creation**: when a spec ID is added to the `enabled`
@@ -309,7 +309,7 @@ frontmatter to track edit history across Sprints. Each entry is a
   during the design phase.
 - Multiple PBIs may reference the same design document.
 - PBIs reference design documents via `design_doc_paths: string[]`
-  (paths relative to project root, e.g., `.design/specs/ui/S-030-login.md`).
+  (paths relative to project root, e.g., `docs/design/specs/ui/S-030-login.md`).
 - Updates to existing documents follow FR-020 freeze/Change Process
   rules **and MUST append to `revision_history`**.
 - Each `revision_history` entry MUST include `pbis`.
@@ -473,7 +473,7 @@ backlog.json
   └── items[].sprint_id -> sprint.json.id
   └── items[].implementer_id -> sprint.json.developers[].id
   └── items[].reviewer_id -> sprint.json.developers[].id
-  └── items[].design_doc_paths[] -> .design/specs/{category}/{id}-{slug}.md
+  └── items[].design_doc_paths[] -> docs/design/specs/{category}/{id}-{slug}.md
   └── items[].review_doc_path -> reviews/<pbi-id>-review.md
   └── items[].parent_pbi_id -> items[].id (self-reference)
   └── items[].depends_on_pbi_ids[] -> items[].id (cross-reference)

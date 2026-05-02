@@ -8,7 +8,7 @@ disable-model-invocation: false
 
 - state.json → phase: design | implementation
 - sprint.json (developer assignments)
-- `.design/specs/**/*.md` (design docs + user-facing docs)
+- `docs/design/specs/**/*.md` (design docs + user-facing docs)
 - requirements.md
 
 ## Outputs

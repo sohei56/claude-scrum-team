@@ -8,14 +8,14 @@ disable-model-invocation: false
 
 - state.json → phase: sprint_planning | design
 - sprint.json → developer assignments
-- `.design/specs/**/*.md` stubs (from scaffold-design-spec)
-- `.design/catalog.md` (read-only), catalog-config.json
+- `docs/design/specs/**/*.md` stubs (from scaffold-design-spec)
+- `docs/design/catalog.md` (read-only), catalog-config.json
 - requirements.md
 
 ## Outputs
 
 - Populated design docs (architecture, internals)
-- User-facing docs (README specs, API ref, usage guides) at `.design/specs/docs/*.md`
+- User-facing docs (README specs, API ref, usage guides) at `docs/design/specs/docs/*.md`
 - revision_history entries with pbis field
 - backlog.json → items[].design_doc_paths updated
 - state.json → phase: design

@@ -144,7 +144,7 @@ All project state persists as JSON files (one file per concern) in a
   `improvements.json`, `communications.json`, `dashboard.json`,
   `requirements.md`
 - Subdirectories: `.scrum/reviews/` (cross-review results)
-- Design documents: `.design/specs/{category}/` (governed by `.design/catalog.md`)
+- Design documents: `docs/design/specs/{category}/` (governed by `docs/design/catalog.md`)
 - The Scrum Master reads state at Sprint start (fresh context per Sprint).
 - Developer teammates receive only their assigned artifacts.
 
@@ -321,12 +321,12 @@ prompt-only management:
 
 ---
 
-## R8: Design Documents — `.design/catalog.md` Governance
+## R8: Design Documents — `docs/design/catalog.md` Governance
 
 ### Decision
-Design documents are governed by `.design/catalog.md`. No design
+Design documents are governed by `docs/design/catalog.md`. No design
 document may be created unless its spec type is listed and enabled in
-the catalog. Design files live at `.design/specs/{category}/{id}-{slug}.md`
+the catalog. Design files live at `docs/design/specs/{category}/{id}-{slug}.md`
 following the catalog's existing governance rules.
 
 The catalog provides a richer taxonomy than a simple hierarchy:
@@ -347,13 +347,13 @@ The catalog provides a richer taxonomy than a simple hierarchy:
 - **Catalog-first governance** prevents ad-hoc document proliferation.
   The Scrum Master enables catalog entries; Developers create only what
   the catalog allows.
-- Reuses the existing `.design/catalog.md` governance rules (enabled/
+- Reuses the existing `docs/design/catalog.md` governance rules (enabled/
   disabled status, catalog-first workflow, no undocumented specs).
 - PBIs reference design documents via `design_doc_paths: string[]`.
 
 ### Key Technical Details
 
-**Catalog** (`.design/catalog.md`):
+**Catalog** (`docs/design/catalog.md`):
 - Already exists with governance rules, categories, and entries.
 - Scrum Master enables entries during Sprint Planning.
 - Six governance rules apply: catalog-first, enabled = file required,
@@ -363,19 +363,19 @@ The catalog provides a richer taxonomy than a simple hierarchy:
 **Workflow**:
 1. Sprint Planning: Scrum Master reviews PBIs, determines which catalog
    entries need to be enabled.
-2. Scrum Master updates `.design/catalog.md` — flips entries to `enabled`
+2. Scrum Master updates `docs/design/catalog.md` — flips entries to `enabled`
    or adds new entries (default `disabled`, then flip).
 3. Scrum Master invokes `scaffold-design-spec` Skill — creates template
    stub files for all newly enabled entries (required frontmatter +
    placeholder sections).
 4. Design phase: Developers populate the stub files at
-   `.design/specs/{category}/{id}-{slug}.md` for enabled entries.
+   `docs/design/specs/{category}/{id}-{slug}.md` for enabled entries.
 5. Hook enforcement: `PreToolUse` hook denies `Write`/`Edit` under
-   `.design/specs/` if the target file has no enabled catalog entry.
+   `docs/design/specs/` if the target file has no enabled catalog entry.
 
 **Directory structure**:
 ```
-.design/
+docs/design/
   catalog.md                                        # Single source of truth
   specs/
     system-wide/S-001-system-architecture.md        # Enabled
@@ -405,7 +405,7 @@ revision_history:
     change_process: true
 ---
 ```
-- `catalog_id` links the document to its `.design/catalog.md` entry.
+- `catalog_id` links the document to its `docs/design/catalog.md` entry.
 - `revision_history` is mandatory. Each entry records sprint, author,
   date, summary, `pbis`, and optionally `change_process: true`.
 - Updates follow FR-020 freeze/Change Process and append to
@@ -413,7 +413,7 @@ revision_history:
 
 ### Alternatives Considered
 - **Separate `.scrum/designs/catalog.md`**: Rejected — duplicates
-  governance that `.design/catalog.md` already provides.
+  governance that `docs/design/catalog.md` already provides.
 - **No catalog (ad-hoc creation)**: Leads to document proliferation.
 - **One doc per PBI**: Too granular; redundant for related PBIs.
 - **Single monolithic doc**: Unwieldy as the project grows.

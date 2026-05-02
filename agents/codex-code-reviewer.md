@@ -20,7 +20,7 @@ maxTurns: 30
 
 ## Receives
 
-- Design doc paths (`.design/specs/`)
+- Design doc paths (`docs/design/specs/`)
 - Source code file paths
 - `requirements.md` path
 

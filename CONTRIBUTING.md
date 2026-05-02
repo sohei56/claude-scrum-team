@@ -94,7 +94,7 @@ tests/                   # bats-core test suite
   integration/           # Script composition tests
   fixtures/              # Test data
   test_helper/           # bats-support, bats-assert (submodules)
-.design/                 # Design documents (governed by catalog.md)
+docs/design/                 # Design documents (governed by catalog.md)
 docs/                    # Project documentation
 ```
 
@@ -107,8 +107,8 @@ docs/                    # Project documentation
 - `agents/codex-code-reviewer.md` — Cross-model review via Codex CLI
 - `agents/tdd-guide.md` — TDD workflow guidance sub-agent
 - `agents/build-error-resolver.md` — Build error diagnosis sub-agent
-- `.design/catalog.md` — Design document type reference (read-only in working dirs)
-- `.design/catalog-config.json` — Editable list of enabled spec IDs
+- `docs/design/catalog.md` — Design document type reference (read-only in working dirs)
+- `docs/design/catalog-config.json` — Editable list of enabled spec IDs
 - `docs/` — Project documentation (requirements, architecture, data model, contracts, quickstart)
 
 ## Pull Request Process

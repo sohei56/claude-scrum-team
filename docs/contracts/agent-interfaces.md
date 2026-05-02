@@ -24,7 +24,7 @@ responsibilities (what it owns).
 - `.scrum/backlog.json` (for Sprint Planning)
 - `.scrum/improvements.json` (at Sprint start)
 - `.scrum/sprint-history.json` (for progress reporting)
-- `.design/catalog.md` (for Sprint Planning — determine which specs to enable)
+- `docs/design/catalog.md` (for Sprint Planning — determine which specs to enable)
 - Developer teammate messages (via Agent Teams messaging)
 
 ### Outputs
@@ -34,8 +34,8 @@ responsibilities (what it owns).
 - `.scrum/sprint-history.json` (appends after Sprint completion)
 - `.scrum/improvements.json` (creates and updates)
 - `.scrum/requirements.md` (delegates creation to Developer, stores result)
-- `.design/catalog.md` (enables entries during Sprint Planning)
-- `.design/specs/{category}/*.md` (delegates creation to Developers)
+- `docs/design/catalog.md` (enables entries during Sprint Planning)
+- `docs/design/specs/{category}/*.md` (delegates creation to Developers)
 - Developer teammate creation (via Agent Teams)
 - In-conversation status updates (Sprint Planning summary, Sprint Review)
 
@@ -96,14 +96,14 @@ body. Below is the reference for all 14 Skills:
 | `sprint-planning` | `state.json` → `phase: backlog_created \| retrospective`; `backlog.json` → refined PBIs | `sprint.json` (created); `backlog.json` → `items[].sprint_id`, `implementer_id`, `reviewer_id` (round-robin); oversized PBIs split into child PBIs with `parent_pbi_id` set; `state.json` → `phase: sprint_planning` |
 | `spawn-teammates` | `sprint.json` → `pbi_ids`, `developer_count`; `backlog.json` → assigned PBIs | `sprint.json` → `developers[]` (populated, `assigned_work.implement` + `assigned_work.review`), `status: "active"`; Agent Teams teammates spawned |
 | `install-subagents` | PBI assignment (task context); project-managed agent definitions | `.claude/agents/*.md` (installed); `sprint.json` → `developers[].sub_agents` (at runtime) |
-| `design` | `state.json` → `phase: sprint_planning`; `sprint.json` → `developers[]`; `.design/catalog.md`; existing `.design/specs/**/*.md` (stubs already created by `scaffold-design-spec`); `requirements.md` (source requirements for reference) | `.design/specs/{category}/*.md` (populated with design content, `revision_history` incl. `pbis`); `backlog.json` → `items[].design_doc_paths`; `state.json` → `phase: design` |
-| `implementation` | `state.json` → `phase: design`; `sprint.json`; `.design/specs/**/*.md`; `requirements.md` | Source code; test files; `backlog.json` → `items[].status: in_progress`; `state.json` → `phase: implementation` |
-| `cross-review` | `state.json` → `phase: implementation`; `backlog.json` → all PBIs in current Sprint with `status: in_progress` complete; `requirements.md`; relevant `.design/specs/**/*.md` for each PBI; `agents/code-reviewer.md`, `agents/security-reviewer.md` available | `sprint.json` → `status: "cross_review"`; `backlog.json` → `items[].status: in_progress → review → done`, `items[].review_doc_path` set; `reviews/<pbi-id>-review.md` (created by reviewer sub-agents); `state.json` → `phase: review` |
+| `design` | `state.json` → `phase: sprint_planning`; `sprint.json` → `developers[]`; `docs/design/catalog.md`; existing `docs/design/specs/**/*.md` (stubs already created by `scaffold-design-spec`); `requirements.md` (source requirements for reference) | `docs/design/specs/{category}/*.md` (populated with design content, `revision_history` incl. `pbis`); `backlog.json` → `items[].design_doc_paths`; `state.json` → `phase: design` |
+| `implementation` | `state.json` → `phase: design`; `sprint.json`; `docs/design/specs/**/*.md`; `requirements.md` | Source code; test files; `backlog.json` → `items[].status: in_progress`; `state.json` → `phase: implementation` |
+| `cross-review` | `state.json` → `phase: implementation`; `backlog.json` → all PBIs in current Sprint with `status: in_progress` complete; `requirements.md`; relevant `docs/design/specs/**/*.md` for each PBI; `agents/code-reviewer.md`, `agents/security-reviewer.md` available | `sprint.json` → `status: "cross_review"`; `backlog.json` → `items[].status: in_progress → review → done`, `items[].review_doc_path` set; `reviews/<pbi-id>-review.md` (created by reviewer sub-agents); `state.json` → `phase: review` |
 | `sprint-review` | `state.json` → `phase: review`; `sprint.json`; `backlog.json` | `sprint.json` → `status: "sprint_review"`; `sprint-history.json` → `sprints[]` (appended); `state.json` → `phase: sprint_review` |
 | `retrospective` | `state.json` → `phase: sprint_review`; `improvements.json` (existing improvements and `last_consolidation_sprint`); `sprint.json` → `id` (for consolidation check) | `improvements.json` → `entries[]` (appended), stale entries archived every 3 Sprints (`status: archived`, `archived_at` set, `last_consolidation_sprint` updated); `sprint.json` → `status: "complete"`; `state.json` → `phase: retrospective` |
 | `integration-sprint` | `state.json` → `phase: retrospective`; user confirmation | `.scrum/test-results.json` (structured test results from automated testing); `state.json` → `phase: integration_sprint → complete` |
 | `change-process` | Frozen document path; proposed change description; user approval | Updated document with new `revision_history` entry (incl. `pbis`); `backlog.json` updates if needed |
-| `scaffold-design-spec` | `.design/catalog.md` (newly enabled entries); `sprint.json` → `id` (current Sprint); `backlog.json` → PBI IDs for `related_pbis` | `.design/specs/{category}/{id}-{slug}.md` (stub files with frontmatter + placeholders) |
+| `scaffold-design-spec` | `docs/design/catalog.md` (newly enabled entries); `sprint.json` → `id` (current Sprint); `backlog.json` → PBI IDs for `related_pbis` | `docs/design/specs/{category}/{id}-{slug}.md` (stub files with frontmatter + placeholders) |
 | `smoke-test` | `state.json` → `phase: "integration_sprint"`; `requirements.md` (endpoint/workflow discovery); project source code with existing tests | Test execution results; `.scrum/test-results.json` (populated with test category results) |
 
 ### Lifecycle
@@ -123,13 +123,13 @@ body. Below is the reference for all 14 Skills:
 ### Inputs
 - PBI assignment from Scrum Master (via Agent Teams task list)
 - `.scrum/requirements.md` (read-only)
-- `.design/specs/**/*.md` (read: all existing designs for consistency)
-- `.design/catalog.md` (read: to verify enabled entries)
+- `docs/design/specs/**/*.md` (read: all existing designs for consistency)
+- `docs/design/catalog.md` (read: to verify enabled entries)
 - `.scrum/improvements.json` (read at Sprint start)
 - Project-managed support sub-agents (`tdd-guide`, `build-error-resolver`) via FR-019
 
 ### Outputs
-- `.design/specs/{category}/*.md` (during Design phase — only for enabled catalog entries)
+- `docs/design/specs/{category}/*.md` (during Design phase — only for enabled catalog entries)
 - Source code changes in user's project (during Implementation phase)
 - Test files in user's project (during Implementation phase)
 - Messages to Scrum Master (progress, issues, completion)
@@ -179,7 +179,7 @@ body. Below is the reference for all 14 Skills:
 ### Inputs
 - Task description from spawning agent (via Task tool prompt)
 - Project files in working directory
-- `.scrum/requirements.md` and `.design/specs/**/*.md` (reviewer sub-agents)
+- `.scrum/requirements.md` and `docs/design/specs/**/*.md` (reviewer sub-agents)
 
 ### Outputs
 - Task result returned to spawning agent
@@ -371,13 +371,13 @@ Line 3: Agents: SM:active Dev1:impl(PBI-7) Dev2:review(PBI-5)
 
 ### PreToolUse Hook
 - **Script**: `hooks/phase-gate.sh`
-- **Reads**: `.scrum/state.json` current phase; `.design/catalog.md`
+- **Reads**: `.scrum/state.json` current phase; `docs/design/catalog.md`
 - **Output**: `permissionDecision` (`allow`, `deny`, or `ask`)
 - **Logging**: Logs all deny decisions to `.scrum/hooks.log`
 - **Purpose**: Gate tool usage by current phase. Examples:
   - During `design` phase: deny `Edit` on source files
-  - During `design` phase: deny `Write`/`Edit` under `.design/specs/`
-    if target file has no enabled entry in `.design/catalog.md`
+  - During `design` phase: deny `Write`/`Edit` under `docs/design/specs/`
+    if target file has no enabled entry in `docs/design/catalog.md`
   - During `sprint_review` phase: deny code modifications
   - During `requirements_sprint` phase: deny source file creation
 

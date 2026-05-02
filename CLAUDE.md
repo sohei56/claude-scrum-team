@@ -42,7 +42,7 @@ tests/                   # Test suites
   integration/           # Script composition tests
   fixtures/              # Test data (JSON fixtures for validation)
 docs/                    # Project documentation (requirements, architecture, data model, contracts)
-.design/                 # Design document governance
+docs/design/                 # Design document governance
   catalog.md             # Immutable document type reference (read-only)
   catalog-config.json    # Editable list of enabled spec IDs
 .scrum/                  # Runtime state (JSON, gitignored)
@@ -88,7 +88,7 @@ sh /path/to/claude-scrum-team/scrum-start.sh
 
 - Scrum Master agent operates in **Delegate mode** — coordinates only, never writes code
 - All state persisted to `.scrum/` JSON files for resume capability
-- Design documents governed by `.design/catalog.md` (read-only type reference) + `.design/catalog-config.json` (editable enabled list)
+- Design documents governed by `docs/design/catalog.md` (read-only type reference) + `docs/design/catalog-config.json` (editable enabled list)
 - Developer teammates named with Sprint suffix: `dev-001-s{N}`
 - PBI status flow: `draft → refined → in_progress → review → done`
 - Sprint status flow: `planning → active → cross_review → sprint_review → complete`

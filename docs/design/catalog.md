@@ -6,7 +6,7 @@ and granularity. **Do not create, request, or reference any specification
 document that is not listed here.**
 
 Which specs are active for a given project is controlled by
-`.design/catalog-config.json` (a JSON file with an `enabled` array of spec
+`docs/design/catalog-config.json` (a JSON file with an `enabled` array of spec
 IDs). This catalog file itself is read-only in working directories.
 
 ## Governance Rules
@@ -14,19 +14,19 @@ IDs). This catalog file itself is read-only in working directories.
 The following rules are mandatory and enforceable:
 
 1. **Enabled specs require files.** If a spec ID is listed in
-   `.design/catalog-config.json`'s `enabled` array, a corresponding file
+   `docs/design/catalog-config.json`'s `enabled` array, a corresponding file
    MUST exist at:
-   `.design/specs/{category}/{id}-{slug}.md`
-   (e.g., `.design/specs/system-wide/S-001-system-architecture.md`).
+   `docs/design/specs/{category}/{id}-{slug}.md`
+   (e.g., `docs/design/specs/system-wide/S-001-system-architecture.md`).
 
 2. **Non-enabled specs prohibit files.** If a spec ID is NOT listed in
-   `.design/catalog-config.json`'s `enabled` array, no corresponding file
-   may exist under `.design/specs/`. If a file is found for a non-enabled
+   `docs/design/catalog-config.json`'s `enabled` array, no corresponding file
+   may exist under `docs/design/specs/`. If a file is found for a non-enabled
    spec, it MUST be deleted or the spec ID MUST be added to the `enabled`
    array first.
 
 3. **Config-first workflow.** When project needs change:
-   (1) Update `.design/catalog-config.json` to add/remove the spec ID from
+   (1) Update `docs/design/catalog-config.json` to add/remove the spec ID from
    the `enabled` array.
    (2) Then create or remove the corresponding spec files.
    Never create a spec file without an enabled config entry. Never remove
@@ -48,16 +48,16 @@ The following rules are mandatory and enforceable:
 
 7. **Catalog is read-only in working directories.** This file is the single
    source of truth managed in `claude-scrum-team`. Do not modify it in
-   project working directories. Only `.design/catalog-config.json` may be
+   project working directories. Only `docs/design/catalog-config.json` may be
    edited to control which entries are active.
 
 ## How to read this catalog
 
 This catalog lists every recognized design document type. To determine
-which specs are active for your project, check `.design/catalog-config.json`:
+which specs are active for your project, check `docs/design/catalog-config.json`:
 
 - If a spec ID appears in the `enabled` array, it is active and a
-  corresponding file MUST exist under `.design/specs/{category}/`.
+  corresponding file MUST exist under `docs/design/specs/{category}/`.
 - If a spec ID does not appear in the `enabled` array, it is inactive.
   No file should exist for it.
 

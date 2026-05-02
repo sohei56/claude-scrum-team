@@ -487,7 +487,7 @@ Observe implementation and verify Developers use support sub-agents.
 - **Project Directory (`.scrum/`)**: Root directory for Scrum runtime
   state (JSON files) and cross-review results, located in the user's
   project root. Design documents are governed separately by
-  `.design/catalog.md`.
+  `docs/design/catalog.md`.
 
 - **Product Goal**: The desired future state of the product,
   defined and owned by the user.
@@ -585,7 +585,7 @@ Observe implementation and verify Developers use support sub-agents.
 ### 2026-02-25
 
 - Q: What is the agent orchestration model? A: Agent Teams — the shell script launches one Claude Code session as the team lead (Scrum Master), which spawns Developer teammates via Agent Teams. Each teammate is an independent Claude Code session coordinating through a shared task list and direct messaging.
-- Q: Where are project artifacts stored on disk? A: A `.scrum/` directory in the project root with flat JSON files (one file per concern: `state.json`, `backlog.json`, `sprint.json`, etc.) and a `reviews/` subdirectory. Design documents live separately under `.design/specs/{category}/`, governed by `.design/catalog.md`.
+- Q: Where are project artifacts stored on disk? A: A `.scrum/` directory in the project root with flat JSON files (one file per concern: `state.json`, `backlog.json`, `sprint.json`, etc.) and a `reviews/` subdirectory. Design documents live separately under `docs/design/specs/{category}/`, governed by `docs/design/catalog.md`.
 - Q: What serialization format for state files? A: JSON — one file per concern (e.g., `state.json`, `backlog.json`, `improvements.json`).
 - Q: How are cross-Sprint context limits managed? A: Fresh context per Sprint — the Scrum Master (team lead) reads state files from disk at Sprint start; Developer teammates receive only their assigned artifacts (PBI, relevant design docs, requirements).
 - Q: What are the explicit PBI lifecycle states? A: 5 states: `draft` (coarse-grained) -> `refined` (implementation-ready) -> `in_progress` -> `review` -> `done`.

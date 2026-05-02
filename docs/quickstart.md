@@ -128,7 +128,7 @@ claude-scrum-team/
 │   ├── integration/
 │   ├── fixtures/
 │   └── test_helper/         # bats-support, bats-assert (submodules)
-├── .design/
+├── docs/design/
 │   ├── catalog.md           # Design document governance
 │   └── specs/{category}/    # Design documents per catalog entries
 └── docs/                    # Project documentation (requirements, architecture, data model, contracts, quickstart)
@@ -198,9 +198,9 @@ See `data-model.md` for schemas.
 - **Hooks** feed events to `.scrum/dashboard.json` and `communications.json`.
 
 ### Design Documents
-Governed by `.design/catalog.md` — no design document may be created
+Governed by `docs/design/catalog.md` — no design document may be created
 unless its spec type is listed and enabled in the catalog. Files live at
-`.design/specs/{category}/{id}-{slug}.md`. Each includes `revision_history`
+`docs/design/specs/{category}/{id}-{slug}.md`. Each includes `revision_history`
 in YAML frontmatter with `pbis` field.
 
 ## Development Workflow

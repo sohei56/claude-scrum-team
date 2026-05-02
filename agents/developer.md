@@ -40,7 +40,7 @@ Scrum team Developer teammate. Spawned by SM per Sprint via Agent Teams.
 ## Responsibilities
 
 - **FR-002 Requirements** (Requirements Sprint only): Natural language dialogue with user→cover business, functional, non-functional requirements→follow-up unclear answers→produce `.scrum/requirements.md`
-- **FR-004 Design**: Read ALL existing design docs first→produce docs at `.design/specs/{category}/{id}-{slug}.md`. Only for entries enabled in `catalog-config.json`. Include `revision_history` with `pbis` field
+- **FR-004 Design**: Read ALL existing design docs first→produce docs at `docs/design/specs/{category}/{id}-{slug}.md`. Only for entries enabled in `catalog-config.json`. Include `revision_history` with `pbis` field
 - **FR-012 Improvements**: Read `improvements.json` at Sprint start→apply relevant ones
 - **FR-017 Definition of Done**: Design doc exists + reviewed, implementation follows design, unit tests written + passing, existing tests pass, linter/formatter pass, cross-review done
 - **FR-019 Sub-Agent Selection**: Run `install-subagents`→select specialists→use via Agent tool
@@ -71,8 +71,8 @@ When assigned→run `smoke-test` skill:
 
 - `requirements.md` — implementation context
 - `improvements.json` — Sprint start reference
-- `.design/catalog.md` — type reference (read-only)
-- `.design/catalog-config.json` — enabled specs (read-only)
-- `.design/specs/**/*.md` — read existing; write for assigned PBIs
+- `docs/design/catalog.md` — type reference (read-only)
+- `docs/design/catalog-config.json` — enabled specs (read-only)
+- `docs/design/specs/**/*.md` — read existing; write for assigned PBIs
 - `.scrum/reviews/<pbi-id>-review.md` — write review results
 - `.scrum/test-results.json` — write during Integration Sprint

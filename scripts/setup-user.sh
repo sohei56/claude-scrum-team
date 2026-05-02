@@ -69,12 +69,12 @@ for lib_file in "$PROJECT_ROOT/hooks/lib/"*.sh; do
 done
 
 # --- Copy design catalog ---
-echo "Copying design catalog to $TARGET_DIR/.design/..."
-mkdir -p "$TARGET_DIR/.design"
-cp "$PROJECT_ROOT/.design/catalog.md" "$TARGET_DIR/.design/"
+echo "Copying design catalog to $TARGET_DIR/docs/design/..."
+mkdir -p "$TARGET_DIR/docs/design"
+cp "$PROJECT_ROOT/docs/design/catalog.md" "$TARGET_DIR/docs/design/"
 # Copy default catalog config if none exists yet (preserve existing project config)
-if [ ! -f "$TARGET_DIR/.design/catalog-config.json" ]; then
-  cp "$PROJECT_ROOT/.design/catalog-config.json" "$TARGET_DIR/.design/"
+if [ ! -f "$TARGET_DIR/docs/design/catalog-config.json" ]; then
+  cp "$PROJECT_ROOT/docs/design/catalog-config.json" "$TARGET_DIR/docs/design/"
   echo "  Created default catalog-config.json"
 else
   echo "  catalog-config.json already exists — preserving project configuration"
@@ -306,5 +306,5 @@ echo "Project configured at: $TARGET_DIR"
 echo "  .claude/agents/     — Agent definitions"
 echo "  .claude/skills/     — Skill definitions"
 echo "  .claude/hooks/      — Hook scripts"
-echo "  .design/            — Design catalog and configuration"
+echo "  docs/design/            — Design catalog and configuration"
 echo "  .claude/settings.json — Hook and status line configuration"

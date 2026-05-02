@@ -6,14 +6,14 @@ disable-model-invocation: false
 
 ## Inputs
 
-- `.design/catalog.md` (doc type reference)
-- `.design/catalog-config.json` (enabled spec IDs)
+- `docs/design/catalog.md` (doc type reference)
+- `docs/design/catalog-config.json` (enabled spec IDs)
 - `sprint.json` → id
 - `backlog.json` → PBI IDs for related_pbis
 
 ## Outputs
 
-- `.design/specs/{category}/{id}-{slug}.md` stub files
+- `docs/design/specs/{category}/{id}-{slug}.md` stub files
 - YAML frontmatter: catalog_id, created_sprint, last_updated_sprint, related_pbis, frozen: false, revision_history
 
 ## Preconditions
@@ -25,7 +25,7 @@ disable-model-invocation: false
 
 1. Read catalog-config.json→enabled IDs. Cross-reference catalog.md→get category/name/granularity
 2. Each enabled entry without existing file:
-   a. Create `.design/specs/{category}/{id}-{slug}.md` (auto-create dirs)
+   a. Create `docs/design/specs/{category}/{id}-{slug}.md` (auto-create dirs)
    b. YAML frontmatter: catalog_id, created_sprint, last_updated_sprint (same), related_pbis, frozen: false, revision_history (initial entry: sprint, author: "scrum-master", date, summary: "Initial stub created", pbis)
    c. Placeholder sections: Overview, Design Details, Constraints, References
    d. Category `docs/`→doc placeholders: Overview, Usage, API Reference, Examples
