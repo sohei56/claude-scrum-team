@@ -89,6 +89,14 @@ ln -s "../../hooks/lib" "$hooks_dir/lib"
 echo "  Symlinked .claude/hooks/ → hooks/ for live development."
 
 echo ""
+echo "Probing JSON Schema validator..."
+if validator="$("$SCRIPT_DIR/scrum/lib/check-validator.sh" 2>&1)"; then
+  echo "  Validator: $validator"
+else
+  echo "  $validator" >&2
+fi
+
+echo ""
 echo "=== Contributor setup complete ==="
 echo ""
 echo "Verify with:"
