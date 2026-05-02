@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PBI Pipeline Sub-Agent Output Envelope",
+  "type": "object",
+  "required": ["status", "summary", "findings", "next_actions", "artifacts"],
+  "properties": {
+    "status": {"enum": ["pass", "fail", "error"]},
+    "summary": {"type": "string"},
+    "verdict": {"enum": ["PASS", "FAIL", null]},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["signature", "severity", "criterion_key", "file_path", "line_start", "line_end", "description"],
+        "properties": {
+          "signature": {"type": "string", "pattern": "^.+:[0-9]+-[0-9]+:[a-z_]+$"},
+          "severity": {"enum": ["critical", "high", "medium", "low"]},
+          "criterion_key": {
+            "enum": [
+              "missing_requirement", "scope_creep", "unclear_interface",
+              "inconsistent_with_catalog", "inconsistent_internal", "missing_error_handling",
+              "incorrect_behavior", "naming", "error_handling",
+              "missing_validation", "unclear_intent", "dead_code",
+              "missing_test_for_acceptance", "missing_branch_coverage", "redundant_test",
+              "mock_overuse", "magic_number", "bad_assertion", "pragma_unjustified"
+            ]
+          },
+          "file_path": {"type": "string"},
+          "line_start": {"type": "integer", "minimum": 1},
+          "line_end": {"type": "integer", "minimum": 1},
+          "description": {"type": "string"}
+        }
+      }
+    },
+    "next_actions": {"type": "array", "items": {"type": "string"}},
+    "artifacts": {"type": "array", "items": {"type": "string"}}
+  }
+}
