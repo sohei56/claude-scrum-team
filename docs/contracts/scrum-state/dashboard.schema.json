@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Dashboard event log",
+  "type": "object",
+  "required": ["events"],
+  "additionalProperties": true,
+  "properties": {
+    "max_events": {"type": "integer", "minimum": 1},
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["timestamp", "type"],
+        "additionalProperties": false,
+        "properties": {
+          "timestamp": {"type": "string", "format": "date-time"},
+          "type": {
+            "enum": [
+              "file_changed",
+              "tool_use",
+              "phase_transition",
+              "subagent_start",
+              "subagent_stop",
+              "task_completed",
+              "teammate_idle",
+              "test_run",
+              "review_verdict"
+            ]
+          },
+          "agent_id": {"type": ["string", "null"]},
+          "pbi_id": {"type": ["string", "null"], "pattern": "^pbi-[0-9]+$"},
+          "file_path": {"type": ["string", "null"]},
+          "change_type": {"type": ["string", "null"]},
+          "detail": {"type": ["string", "null"]},
+          "phase_from": {"type": ["string", "null"]},
+          "phase_to": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "pbi_pipelines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["pbi_id"],
+        "additionalProperties": true,
+        "properties": {
+          "pbi_id": {"type": "string", "pattern": "^pbi-[0-9]+$"},
+          "developer": {"type": ["string", "null"]},
+          "phase": {"enum": ["design", "impl_ut", "complete", "escalated", "unknown"]},
+          "round": {"type": "integer", "minimum": 0},
+          "active_subagents": {"type": "array", "items": {"type": "string"}},
+          "last_event_at": {"type": "string", "format": "date-time"}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Inter-agent communications",
+  "type": "object",
+  "required": ["messages"],
+  "additionalProperties": true,
+  "properties": {
+    "max_messages": {"type": "integer", "minimum": 1},
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["timestamp", "sender_id", "type", "content"],
+        "additionalProperties": false,
+        "properties": {
+          "timestamp": {"type": "string", "format": "date-time"},
+          "sender_id": {"type": "string", "minLength": 1},
+          "sender_role": {"enum": ["scrum-master", "developer", "teammate", "sub-agent", "coordinator", "system"]},
+          "recipient_id": {"type": ["string", "null"]},
+          "type": {
+            "enum": [
+              "file_change",
+              "tool_use",
+              "phase_transition",
+              "subagent_start",
+              "subagent_stop",
+              "task_completed",
+              "teammate_idle",
+              "agent_spawn",
+              "progress_update",
+              "status_change",
+              "report",
+              "review",
+              "escalation",
+              "info"
+            ]
+          },
+          "content": {"type": "string"},
+          "pbi_id": {"type": ["string", "null"], "pattern": "^pbi-[0-9]+$"}
+        }
+      }
+    }
+  }
+}
