@@ -11,9 +11,14 @@ PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
 # Path to test fixtures
 FIXTURES_DIR="$PROJECT_ROOT/tests/fixtures"
 
-# Create a temporary directory for test state
+# Create a temporary directory for test state.
+# Uses an explicit base path so the sandbox-safe /tmp/claude location is
+# selected when running under Claude Code's sandboxed Bash. Override via
+# SCRUM_TEST_TMPDIR for CI or other environments.
 setup_temp_dir() {
-  TEMP_DIR="$(mktemp -d)"
+  local base="${SCRUM_TEST_TMPDIR:-/tmp/claude/scrum-team-tests}"
+  mkdir -p "$base"
+  TEMP_DIR="$(mktemp -d "$base/scrum.XXXXXX")"
   export TEMP_DIR
 }
 
