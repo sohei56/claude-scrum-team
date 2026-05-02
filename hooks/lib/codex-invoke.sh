@@ -22,8 +22,8 @@ codex_review_or_fallback() {
   fi
 
   "$cmd" review --uncommitted --ephemeral \
-    -o "$output" \
-    --instructions "$instructions" 2>&1 || return 1
+    --instructions "$instructions" \
+    -o "$output" 2>&1 || return 1
 
   [ -s "$output" ] || return 1
   return 0

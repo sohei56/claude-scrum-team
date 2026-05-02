@@ -26,8 +26,19 @@ teardown() {
   source "$HOOK_LIB"
   cat > fake-codex.sh <<'EOF'
 #!/usr/bin/env bash
-# Match the real codex review args we expect: review --uncommitted --ephemeral --instructions <file> -o <file>
-echo "## Review: stub" > "$5"
+# Stub mimicking codex review: locate the path passed after -o (any arg order)
+# and write a stub verdict to it.
+output=""
+prev=""
+for arg in "$@"; do
+  if [ "$prev" = "-o" ]; then
+    output="$arg"
+    break
+  fi
+  prev="$arg"
+done
+[ -n "$output" ] || { echo "stub: missing -o" >&2; exit 1; }
+echo "## Review: stub" > "$output"
 exit 0
 EOF
   chmod +x fake-codex.sh
