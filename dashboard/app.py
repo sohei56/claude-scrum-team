@@ -62,6 +62,7 @@ PHASE_FLOW = [
     ("sprint_planning", "Sprint Planning"),
     ("design", "Design"),
     ("implementation", "Implementation"),
+    ("pbi_pipeline_active", "PBI Pipelines Running"),
     ("review", "Review"),
     ("sprint_review", "Sprint Review"),
     ("retrospective", "Retrospective"),
@@ -421,6 +422,36 @@ class CommunicationLog(RichLog):
             )
 
 
+class PbiPipelinePane(Static):
+    """Panel (e): Live PBI Pipeline state per active PBI."""
+
+    DEFAULT_CSS = """
+    PbiPipelinePane {
+        height: auto;
+        border: solid $accent;
+        padding: 0 1;
+    }
+    """
+
+    def update_content(self) -> None:
+        dashboard = read_json(SCRUM_DIR / "dashboard.json") or {}
+        pipelines = dashboard.get("pbi_pipelines", []) if isinstance(dashboard, dict) else []
+        if not pipelines:
+            self.update("[bold]PBI Pipelines:[/bold] (none active)")
+            return
+        rows = ["[bold]PBI Pipelines:[/bold]"]
+        for pipe in pipelines:
+            phase = pipe.get("phase", "?")
+            phase_styled = f"[red]{phase}[/red]" if phase == "escalated" else phase
+            agents = ",".join(pipe.get("active_subagents", [])) or "-"
+            rows.append(
+                f"  {pipe.get('pbi_id', '?'):12} dev={pipe.get('developer', '?'):14} "
+                f"phase={phase_styled:10} round={pipe.get('round', '?'):2} "
+                f"agents={agents:30} updated={pipe.get('last_event_at', '?')}"
+            )
+        self.update("\n".join(rows))
+
+
 class WorkLog(RichLog):
     """Panel (d): Scrollable activity/work log."""
 
@@ -520,8 +551,8 @@ class ScrumDashboard(App):
     CSS = """
     Screen {
         layout: grid;
-        grid-size: 1 3;
-        grid-rows: auto 1fr 1fr;
+        grid-size: 1 4;
+        grid-rows: auto auto 1fr 1fr;
     }
     #logs-row {
         layout: grid;
@@ -544,6 +575,7 @@ class ScrumDashboard(App):
     def compose(self) -> ComposeResult:
         yield Header()
         yield SprintOverview(id="overview")
+        yield PbiPipelinePane(id="pbi-pipeline-pane")
         yield Vertical(
             TestResultsPanel(id="test-results"),
             Static("[bold]PBI Progress Board[/bold]", id="pbi-title"),
@@ -587,6 +619,9 @@ class ScrumDashboard(App):
         """Refresh all dashboard panels from disk."""
         overview = self.query_one("#overview", SprintOverview)
         overview.update_content()
+
+        pbi_pipeline = self.query_one("#pbi-pipeline-pane", PbiPipelinePane)
+        pbi_pipeline.update_content()
 
         pbi_board = self.query_one("#pbi-board", PBIProgressBoard)
         pbi_board.update_content()
