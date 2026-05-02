@@ -17,6 +17,7 @@ read (selectively) by Developer teammates.
 | `product_goal` | string | User-defined desired future state of the product |
 | `current_sprint_id` | string \| null | ID of the active Sprint, null if none |
 | `phase` | enum | Current workflow phase (see State Transitions) |
+| `active_pbi_pipelines` | string[] | PBI IDs currently being driven through `pbi-pipeline` (set during `pbi_pipeline_active`) |
 | `created_at` | ISO 8601 string | Project creation timestamp |
 | `updated_at` | ISO 8601 string | Last state change timestamp |
 
@@ -24,7 +25,7 @@ read (selectively) by Developer teammates.
 
 ```
 new -> requirements_sprint -> backlog_created -> sprint_planning
-  -> design -> implementation -> review -> sprint_review
+  -> pbi_pipeline_active -> review -> sprint_review
   -> retrospective -> sprint_planning (next Sprint)
   -> integration_sprint -> backlog_created (defect-fix loop)
                         -> complete
@@ -35,13 +36,13 @@ Valid phases:
 - `requirements_sprint` — Requirements Sprint in progress
 - `backlog_created` — initial Product Backlog created, ready for first Development Sprint
 - `sprint_planning` — Sprint Planning in progress (refining PBIs, assigning teammates)
-- `design` — Design phase (Developers producing design docs)
-- `implementation` — Implementation phase (Developers coding)
-- `review` — Cross-review phase
+- `pbi_pipeline_active` — Developers driving per-PBI `pbi-pipeline` skill (replaces former `design` + `implementation` phases). Each Developer's PBI internal state lives at `.scrum/pbi/<pbi-id>/state.json` (see `PbiPipelineState` below).
+- `review` — Sprint-end cross-review phase (`cross-review` skill)
 - `sprint_review` — Sprint Review with user
 - `retrospective` — Sprint Retrospective
 - `integration_sprint` — Integration Sprint in progress
 - `complete` — product released
+- `design`, `implementation` — legacy values retained read-only for backward-compatible dashboards. Not used by the current flow.
 
 ---
 
@@ -74,8 +75,10 @@ Valid phases:
 | `sprint_id` | string \| null | Sprint this PBI is assigned to, null if in backlog |
 | `implementer_id` | string \| null | Developer teammate assigned to implement |
 | `reviewer_id` | string \| null | Reviewer ID: a Developer teammate (round-robin) or `"scrum-master"` (single-PBI Sprint) |
-| `design_doc_paths` | string[] | Paths to design documents relative to project root (e.g., `docs/design/specs/ui/S-030-login.md`) |
-| `review_doc_path` | string \| null | Path to review results relative to `.scrum/` |
+| `design_doc_paths` | string[] | Paths to design documents relative to project root (catalog specs in `docs/design/specs/`, plus PBI working design at `.scrum/pbi/<pbi-id>/design/design.md`) |
+| `review_doc_path` | string \| null | Path to review results relative to project root |
+| `catalog_targets` | string[] | Catalog spec paths the PBI may touch. Recorded by `sprint-planning` skill; used to prevent parallel write contention (Layer 1 of `catalog-contention` defense). |
+| `pipeline_summary` | object \| null | Set by `pbi-pipeline` on completion. Fields: `design_rounds`, `impl_rounds`, `final_c0`, `final_c1`, `final_test_count`, `completed_at`, `escalation_reason` (null on success). |
 | `depends_on_pbi_ids` | string[] | IDs of PBIs that must be completed before this one (used by FR-008) |
 | `ux_change` | boolean | Whether this PBI involves UX changes (determines live demo in FR-010) |
 | `parent_pbi_id` | string \| null | ID of the coarse-grained PBI this was refined from |
@@ -86,13 +89,15 @@ Valid phases:
 
 ```
 draft -> refined -> in_progress -> review -> done
+                                          -> blocked (escalated)
 ```
 
 - `draft` — coarse-grained (e.g., "User Management"). Created during initial backlog creation.
 - `refined` — implementation-ready (one function, screen, API, or platform component). Refined during Sprint Planning. `acceptance_criteria` must be filled.
-- `in_progress` — Developer actively implementing.
-- `review` — cross-review by another Developer.
-- `done` — meets Definition of Done (FR-017).
+- `in_progress` — Developer actively driving the `pbi-pipeline` skill.
+- `review` — Sprint-end `cross-review` skill running (per-PBI reviews already completed inside `pbi-pipeline`).
+- `done` — meets Definition of Done (FR-017): `pbi-pipeline` reached `phase: complete`.
+- `blocked` — `pbi-pipeline` escalated. SM `pbi-escalation-handler` decides retry / split / hold / human-escalate. See escalation-resolution.md in PBI workspace.
 
 ### Validation Rules
 - `implementer_id` and `reviewer_id` MUST differ (FR-006). Reviewers are assigned round-robin. In a single-PBI Sprint, `reviewer_id` is `"scrum-master"`.
@@ -132,6 +137,8 @@ draft -> refined -> in_progress -> review -> done
 | `assigned_work` | object | PBI assignments split by responsibility |
 | `assigned_work.implement` | string[] | PBI IDs this Developer implements |
 | `assigned_work.review` | string[] | PBI IDs this Developer reviews (round-robin assigned) |
+| `current_pbi` | string \| null | PBI ID currently being driven through `pbi-pipeline` (1 PBI at a time, sequential). Null between PBIs. |
+| `current_pbi_phase` | enum \| null | Mirror of the PBI's internal phase: `design`, `impl_ut`, `complete`, `escalated`. See `PbiPipelineState`. |
 | `status` | enum | `"active"`, `"idle"`, `"failed"` |
 | `sub_agents` | string[] | Names of specialist sub-agents actually invoked via the Task tool (runtime-populated, not candidates) |
 
@@ -366,6 +373,18 @@ Stores timestamped agent activity events written by Claude Code hooks
 |-------|------|-------------|
 | `events` | DashboardEvent[] | Ordered list of recent events |
 | `max_events` | integer | Maximum events to retain (default: 100, oldest trimmed) |
+| `pbi_pipelines` | PbiPipelineSnapshot[] | One entry per active PBI pipeline (replaced in place by `dashboard-event.sh` on each sub-agent start/stop) |
+
+### Embedded: PbiPipelineSnapshot
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `pbi_id` | string | PBI identifier |
+| `developer` | string | Developer ID currently driving the pipeline |
+| `phase` | enum | Mirror of `PbiPipelineState.phase`: `"design"`, `"impl_ut"`, `"complete"`, `"escalated"` |
+| `round` | integer | Current Round number (design or impl_ut depending on phase) |
+| `active_subagents` | string[] | Names of sub-agents currently spawned (set on `start`, cleared on `stop`) |
+| `last_event_at` | ISO 8601 string | Timestamp of the most recent dashboard-event update |
 
 ### Embedded: DashboardEvent
 
@@ -459,7 +478,74 @@ The Scrum Master blocks UAT until `overall_status` is `"passed"` or `"passed_wit
 **Owner**: Assigned Reviewer (write)
 **Readers**: Implementer, Scrum Master
 
-Cross-review results for a PBI. Created during the Review phase (FR-009).
+Cross-review results for a PBI. Created during the Sprint-end Review phase
+(FR-009). Per-PBI pipeline reviews live separately under
+`.scrum/pbi/<pbi-id>/{impl,ut}/review-r{n}.md`.
+
+---
+
+## Entity: PbiPipelineState
+
+**File**: `.scrum/pbi/<pbi-id>/state.json`
+**Owner**: Developer (conductor of `pbi-pipeline` skill)
+**Readers**: Textual dashboard app, completion-gate.sh, pbi-escalation-handler skill
+
+Per-PBI internal state managed by the `pbi-pipeline` skill while the PBI
+is in flight. Tracks Round counters, sub-agent verdicts, and escalation
+context.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `pbi_id` | string | PBI identifier (matches `backlog.json.items[].id`) |
+| `phase` | enum | `"design"`, `"impl_ut"`, `"complete"`, `"escalated"` |
+| `design_round` | integer | Current/last design Round (1..5; 0 before first) |
+| `impl_round` | integer | Current/last impl+UT Round (1..5; 0 before first) |
+| `design_status` | enum | `"pending"`, `"in_review"`, `"fail"`, `"pass"` |
+| `impl_status` | enum | `"pending"`, `"in_review"`, `"fail"`, `"pass"` |
+| `ut_status` | enum | `"pending"`, `"in_review"`, `"fail"`, `"pass"` |
+| `coverage_status` | enum | `"pending"`, `"fail"`, `"pass"` |
+| `escalation_reason` | enum \| null | Set when `phase == escalated`. See enum below. |
+| `started_at` | ISO 8601 string | PBI pipeline start timestamp |
+| `updated_at` | ISO 8601 string | Last state mutation timestamp |
+
+`escalation_reason` enum:
+
+```text
+stagnation | divergence | max_rounds | budget_exhausted |
+requirements_unclear | coverage_tool_error | coverage_tool_unavailable |
+catalog_lock_timeout
+```
+
+### Companion artifacts (under `.scrum/pbi/<pbi-id>/`)
+
+| Path | Purpose |
+|------|---------|
+| `design/design.md` | Primary design artifact authored by `pbi-designer` |
+| `design/review-r{n}.md` | `codex-design-reviewer` output per Round |
+| `impl/review-r{n}.md` | `codex-impl-reviewer` output per Round |
+| `impl/summary.md` | Final-Round impl summary (file list, change summary) |
+| `ut/review-r{n}.md` | `codex-ut-reviewer` output per Round |
+| `ut/summary.md` | Final-Round UT summary |
+| `metrics/coverage-r{n}.json` | Normalized coverage report (see `docs/contracts/coverage-rN.schema.json`) |
+| `metrics/test-results-r{n}.json` | Normalized test results (see `docs/contracts/test-results-rN.schema.json`) |
+| `metrics/pragma-audit-r{n}.json` | Pragma exclusion audit (see `docs/contracts/pragma-audit-rN.schema.json`) |
+| `feedback/impl-r{n+1}.md` | Aggregated feedback for next-round `pbi-implementer` |
+| `feedback/ut-r{n+1}.md` | Aggregated feedback for next-round `pbi-ut-author` |
+| `pipeline.log` | Append-only event log: `<ISO8601>\t<phase>\t<round>\t<event>\t<detail>` |
+| `escalation-resolution.md` | SM decision recorded by `pbi-escalation-handler` (only on escalation) |
+
+### Companion lock directory
+
+| Path | Purpose |
+|------|---------|
+| `.scrum/locks/catalog-<spec_id>.lock` | `flock(2)` target used by `pbi-designer` to serialize catalog spec writes across parallel PBIs (Layer 2 of `catalog-contention` defense). 60s timeout → `escalation_reason: catalog_lock_timeout`. |
+
+### Rules
+
+- The conductor MUST update `state.json` atomically (temp file + rename).
+- `phase: complete` requires all four `*_status` fields to be `"pass"`.
+- `phase: escalated` requires `escalation_reason` to be non-null.
+- `coverage_status: pending` is permanent when `.scrum/config.json.coverage_tool` is `null` (project-wide coverage skip declared); evaluation logic skips this gate.
 
 ---
 
@@ -469,19 +555,28 @@ Cross-review results for a PBI. Created during the Review phase (FR-009).
 state.json
   └── current_sprint_id -> sprint.json.id
 
+state.json
+  └── active_pbi_pipelines[] -> .scrum/pbi/<pbi-id>/state.json (PbiPipelineState)
+
 backlog.json
   └── items[].sprint_id -> sprint.json.id
   └── items[].implementer_id -> sprint.json.developers[].id
   └── items[].reviewer_id -> sprint.json.developers[].id
   └── items[].design_doc_paths[] -> docs/design/specs/{category}/{id}-{slug}.md
+                                  | .scrum/pbi/<pbi-id>/design/design.md
   └── items[].review_doc_path -> reviews/<pbi-id>-review.md
+  └── items[].catalog_targets[] -> docs/design/specs/{category}/{id}-{slug}.md
   └── items[].parent_pbi_id -> items[].id (self-reference)
   └── items[].depends_on_pbi_ids[] -> items[].id (cross-reference)
 
 sprint.json
   └── pbi_ids[] -> backlog.json.items[].id
+  └── developers[].current_pbi -> backlog.json.items[].id
   └── developers[].assigned_work.implement[] -> backlog.json.items[].id
   └── developers[].assigned_work.review[] -> backlog.json.items[].id
+
+.scrum/pbi/<pbi-id>/state.json (PbiPipelineState)
+  └── pbi_id -> backlog.json.items[].id
 
 improvements.json
   └── entries[].sprint_id -> sprint-history.json.sprints[].id
@@ -493,6 +588,8 @@ communications.json
 dashboard.json
   └── events[].agent_id -> sprint.json.developers[].id
   └── events[].pbi_id -> backlog.json.items[].id
+  └── pbi_pipelines[].pbi_id -> backlog.json.items[].id
+  └── pbi_pipelines[].developer -> sprint.json.developers[].id
 
 test-results.json
   (standalone — no foreign key references; read by completion-gate.sh and dashboard)
