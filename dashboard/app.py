@@ -209,8 +209,6 @@ class SprintOverview(Static):
             done_count = 0
             if backlog and pbi_ids:
                 for item in get_backlog_items(backlog):
-                    if not isinstance(item, dict):
-                        continue
                     if str(item.get("id", "")) in pbi_ids and item.get("status") == "done":
                         done_count += 1
 
@@ -231,11 +229,6 @@ class SprintOverview(Static):
             if devs:
                 dev_parts = []
                 for d in devs:
-                    if isinstance(d, str):
-                        dev_parts.append(d)
-                        continue
-                    if not isinstance(d, dict):
-                        continue
                     did = d.get("id", "?")
                     status = d.get("status", "?")
                     impl = d.get("assigned_work", {}).get("implement", [])
@@ -273,12 +266,8 @@ class PBIProgressBoard(DataTable):
         pbi_review_map: dict[str, str] = {}
         if sprint and isinstance(sprint, dict):
             for dev in sprint.get("developers") or []:
-                if not isinstance(dev, dict):
-                    continue
                 did = dev.get("id", "?")
                 assigned = dev.get("assigned_work") or {}
-                if not isinstance(assigned, dict):
-                    continue
                 for pbi_id in assigned.get("implement") or []:
                     pbi_impl_map[str(pbi_id).lower()] = did
                 for pbi_id in assigned.get("review") or []:
@@ -287,8 +276,6 @@ class PBIProgressBoard(DataTable):
         items = get_backlog_items(backlog)
 
         for item in items:
-            if not isinstance(item, dict):
-                continue
             pbi_id = str(item.get("id") or "?")
             title = str(item.get("title") or "Untitled")[:35]
             raw_status = item.get("status", "?")
