@@ -2,6 +2,9 @@
 # tests/unit/scrum-state/test_atomic-lib.bats — exercises atomic_write helper.
 
 setup() {
+  # Force jsonschema CLI for deterministic, sandbox-friendly runs.
+  # ajv-cli (npx) needs network + npm cache write access not available in CI sandbox.
+  export SCRUM_VALIDATOR_OVERRIDE=jsonschema-cli
   PROJECT_ROOT="$(cd "${BATS_TEST_DIRNAME}/../../.." && pwd)"
   TEST_TMP="$(mktemp -d /tmp/claude/atomic-lib-test.XXXXXX 2>/dev/null || mktemp -d "${TMPDIR:-/tmp}/atomic-lib-test.XXXXXX")"
   cd "$TEST_TMP" || exit 1
@@ -18,7 +21,7 @@ teardown() {
 }
 
 @test "atomic_write writes file atomically and validates against schema" {
-  run bash -c "cd '$TEST_TMP' && source '$PROJECT_ROOT/scripts/scrum/lib/errors.sh' && source '$PROJECT_ROOT/scripts/scrum/lib/atomic.sh' && atomic_write .scrum/backlog.json '.items += [{\"id\":\"pbi-001\",\"title\":\"x\",\"status\":\"draft\"}]' docs/contracts/scrum-state/backlog.schema.json"
+  run env SCRUM_VALIDATOR_OVERRIDE=jsonschema-cli bash -c "cd '$TEST_TMP' && source '$PROJECT_ROOT/scripts/scrum/lib/errors.sh' && source '$PROJECT_ROOT/scripts/scrum/lib/atomic.sh' && atomic_write .scrum/backlog.json '.items += [{\"id\":\"pbi-001\",\"title\":\"x\",\"status\":\"draft\"}]' docs/contracts/scrum-state/backlog.schema.json"
   [ "$status" -eq 0 ]
   run jq -r '.items[0].id' "$TEST_TMP/.scrum/backlog.json"
   [ "$output" = "pbi-001" ]
@@ -26,7 +29,7 @@ teardown() {
 
 @test "atomic_write rejects schema-invalid result and leaves file untouched" {
   cp "$TEST_TMP/.scrum/backlog.json" "$TEST_TMP/before.json"
-  run bash -c "cd '$TEST_TMP' && source '$PROJECT_ROOT/scripts/scrum/lib/errors.sh' && source '$PROJECT_ROOT/scripts/scrum/lib/atomic.sh' && atomic_write .scrum/backlog.json '.items += [{\"id\":\"BAD-ID\",\"title\":\"x\",\"status\":\"draft\"}]' docs/contracts/scrum-state/backlog.schema.json"
+  run env SCRUM_VALIDATOR_OVERRIDE=jsonschema-cli bash -c "cd '$TEST_TMP' && source '$PROJECT_ROOT/scripts/scrum/lib/errors.sh' && source '$PROJECT_ROOT/scripts/scrum/lib/atomic.sh' && atomic_write .scrum/backlog.json '.items += [{\"id\":\"BAD-ID\",\"title\":\"x\",\"status\":\"draft\"}]' docs/contracts/scrum-state/backlog.schema.json"
   [ "$status" -ne 0 ]
   [[ "$output" == *"E_SCHEMA"* ]]
   run diff "$TEST_TMP/.scrum/backlog.json" "$TEST_TMP/before.json"
@@ -35,7 +38,7 @@ teardown() {
 
 @test "atomic_write serializes concurrent writers via mkdir lock" {
   for i in 1 2 3 4 5; do
-    bash -c "cd '$TEST_TMP' && source '$PROJECT_ROOT/scripts/scrum/lib/errors.sh' && source '$PROJECT_ROOT/scripts/scrum/lib/atomic.sh' && atomic_write .scrum/backlog.json \".items += [{\\\"id\\\":\\\"pbi-00${i}\\\",\\\"title\\\":\\\"x\\\",\\\"status\\\":\\\"draft\\\"}]\" docs/contracts/scrum-state/backlog.schema.json" &
+    env SCRUM_VALIDATOR_OVERRIDE=jsonschema-cli bash -c "cd '$TEST_TMP' && source '$PROJECT_ROOT/scripts/scrum/lib/errors.sh' && source '$PROJECT_ROOT/scripts/scrum/lib/atomic.sh' && atomic_write .scrum/backlog.json \".items += [{\\\"id\\\":\\\"pbi-00${i}\\\",\\\"title\\\":\\\"x\\\",\\\"status\\\":\\\"draft\\\"}]\" docs/contracts/scrum-state/backlog.schema.json" &
   done
   wait
   run jq '.items | length' "$TEST_TMP/.scrum/backlog.json"
@@ -44,7 +47,7 @@ teardown() {
 
 @test "atomic_write fails clearly when file does not exist" {
   rm -f "$TEST_TMP/.scrum/backlog.json"
-  run bash -c "cd '$TEST_TMP' && source '$PROJECT_ROOT/scripts/scrum/lib/errors.sh' && source '$PROJECT_ROOT/scripts/scrum/lib/atomic.sh' && atomic_write .scrum/backlog.json '.items += []' docs/contracts/scrum-state/backlog.schema.json"
+  run env SCRUM_VALIDATOR_OVERRIDE=jsonschema-cli bash -c "cd '$TEST_TMP' && source '$PROJECT_ROOT/scripts/scrum/lib/errors.sh' && source '$PROJECT_ROOT/scripts/scrum/lib/atomic.sh' && atomic_write .scrum/backlog.json '.items += []' docs/contracts/scrum-state/backlog.schema.json"
   [ "$status" -eq 67 ]
   [[ "$output" == *"E_FILE_MISSING"* ]]
 }
