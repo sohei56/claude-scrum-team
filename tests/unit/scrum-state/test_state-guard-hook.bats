@@ -62,6 +62,55 @@ teardown() {
   [ "$status" -eq 2 ]
 }
 
+# --- v2: tightened path normalization ---
+
+@test "guard: blocks Edit on ./.scrum/backlog.json (./prefix bypass)" {
+  run bash -c "$HOOK <<< '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"./.scrum/backlog.json\"}}'"
+  [ "$status" -eq 2 ]
+}
+
+@test "guard: blocks Write on absolute path under \$PWD/.scrum/" {
+  run bash -c "$HOOK <<< \"{\\\"tool_name\\\":\\\"Write\\\",\\\"tool_input\\\":{\\\"file_path\\\":\\\"$PWD/.scrum/state.json\\\"}}\""
+  [ "$status" -eq 2 ]
+}
+
+@test "guard: blocks Edit on .scrum/./pbi/.//x.json (collapsed ./ segments)" {
+  run bash -c "$HOOK <<< '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\".scrum/./pbi/./pbi-001/state.json\"}}'"
+  [ "$status" -eq 2 ]
+}
+
+# --- v2: bypass-via-substring is now blocked ---
+
+@test "guard: blocks Bash with wrapper substring + raw mv (substring bypass)" {
+  run bash -c "$HOOK <<< '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"# scripts/scrum/foo.sh note\\\\nmv /tmp/x.json .scrum/backlog.json\"}}'"
+  [ "$status" -eq 2 ]
+}
+
+@test "guard: blocks Bash with echo .scrum/scripts/ + raw redirect" {
+  run bash -c "$HOOK <<< '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo .scrum/scripts/ > /dev/null; jq . in.json > .scrum/backlog.json\"}}'"
+  [ "$status" -eq 2 ]
+}
+
+@test "guard: blocks Bash with mv into absolute .scrum/*.json path" {
+  run bash -c "$HOOK <<< \"{\\\"tool_name\\\":\\\"Bash\\\",\\\"tool_input\\\":{\\\"command\\\":\\\"mv /tmp/x.json $PWD/.scrum/backlog.json\\\"}}\""
+  [ "$status" -eq 2 ]
+}
+
+@test "guard: blocks Bash with cp into .scrum/*.json" {
+  run bash -c "$HOOK <<< '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cp /tmp/x.json .scrum/state.json\"}}'"
+  [ "$status" -eq 2 ]
+}
+
+@test "guard: blocks Bash with awk -i inplace on .scrum/" {
+  run bash -c "$HOOK <<< '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"awk -i inplace 1 .scrum/backlog.json\"}}'"
+  [ "$status" -eq 2 ]
+}
+
+@test "guard: blocks Bash with truncate on .scrum/*.json" {
+  run bash -c "$HOOK <<< '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"truncate -s 0 .scrum/backlog.json\"}}'"
+  [ "$status" -eq 2 ]
+}
+
 # --- Allow cases ---
 
 @test "guard: allows Bash that calls scripts/scrum/" {

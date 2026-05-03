@@ -4,7 +4,7 @@
 
 Agents must no longer edit `.scrum/*.json` directly. All writes flow through validated wrapper scripts under `.scrum/scripts/` that take a directory lock, apply a `jq` expression, validate the result against a JSON Schema in `docs/contracts/scrum-state/`, and write atomically (`tmp` + `mv`). A `PreToolUse` hook blocks bypass attempts (`Write`, `Edit`, raw redirects, `jq -i`, `sed -i`) on `.scrum/**/*.json`.
 
-> **Layout note** — In deployed projects the wrappers live at `.scrum/scripts/*.sh` (placed there by `setup-user.sh` to keep them out of the user's own `scripts/` tree). Inside this framework's own source tree they live at `scripts/scrum/*.sh`; the hook accepts both paths.
+> **Layout note** — In deployed projects the wrappers live at `.scrum/scripts/*.sh` (placed there by `setup-user.sh` to keep them out of the user's own `scripts/` tree). Inside this framework's own source tree they live at `scripts/scrum/*.sh`; both invocation styles work because neither matches the guard's block patterns.
 
 ## Mapping
 
@@ -32,14 +32,17 @@ All pairs apply in a single atomic transaction (one schema validation, one `mv`)
 
 `hooks/pre-tool-use-scrum-state-guard.sh` is registered as a `PreToolUse` hook in `.claude/settings.json` (matcher: `Write|Edit|MultiEdit|Bash`). It blocks:
 
-- `Write` / `Edit` / `MultiEdit` on `.scrum/**/*.json`
+- `Write` / `Edit` / `MultiEdit` on `.scrum/**/*.json`. The path is normalized against `$PWD` first, so `./.scrum/x.json`, `$PWD/.scrum/x.json`, and `.scrum/./pbi/.//state.json` are all caught (not just the bare relative form).
 - `Bash` commands that redirect (`>`, `>>`, `tee`, `sponge`) into `.scrum/*.json`
-- `Bash` with `jq -i` or `sed -i` on `.scrum/*.json`
-- `Bash` with `mv X .scrum/*.json` (the second half of the redirect-then-rename pattern)
+- `Bash` with `jq -i`, `sed -i`, or `awk -i inplace` on `.scrum/*.json`
+- `Bash` with `mv X .scrum/*.json` or `cp X .scrum/*.json` (the second half of the redirect-then-rename pattern)
+- `Bash` with `truncate ... .scrum/*.json`
 
-`Bash` commands containing `.scrum/scripts/` (deployed) or `scripts/scrum/` (framework source) are unconditionally allowed — the wrapper handles validation.
+The destination match works on absolute paths too (`mv /tmp/x $PWD/.scrum/y.json` is blocked, not just `mv /tmp/x .scrum/y.json`).
 
-The threat model is **honest agent**, not adversary. Sophisticated obfuscation (variable substitution, eval, indirect tools) can bypass the regex-based check; this is acceptable for the project's threat model.
+Wrapper invocations (`.scrum/scripts/foo.sh args` or `scripts/scrum/foo.sh args`) **are not whitelisted** — they pass naturally because their argv contains none of the block keywords. This intentional design closes the v1 bypass where an agent could include `# .scrum/scripts/...` as a comment alongside a raw write and have the entire command short-circuit to `allow`.
+
+The threat model is **honest agent**, not adversary. Sophisticated obfuscation (variable substitution, `eval`, `bash -c`, base64-encoded commands) can still bypass the regex-based check; this is acceptable for the project's threat model.
 
 ## Failure modes
 
