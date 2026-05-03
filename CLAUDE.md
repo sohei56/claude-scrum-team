@@ -108,5 +108,14 @@ sh /path/to/claude-scrum-team/scrum-start.sh
   tooling (C0/C1 100% by default; partial-C1 languages declare relaxed
   threshold in `.scrum/config.json`).
 
+## State management
+
+`.scrum/*.json` writes go through `scripts/scrum/*.sh` wrappers. Direct
+edits are blocked by `hooks/pre-tool-use-scrum-state-guard.sh`
+(registered as `PreToolUse`). Schemas under
+`docs/contracts/scrum-state/` are the SSOT. See
+`docs/MIGRATION-scrum-state-tools.md` for the wrapper map and known
+gaps.
+
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
