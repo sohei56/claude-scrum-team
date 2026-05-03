@@ -48,9 +48,7 @@ SCRUM_DIR = Path(".scrum")
 # SSOT schemas live alongside the contracts catalog. Each .scrum/<name>.json
 # is validated against its schema on read; failures fall back to "stale data"
 # rather than crashing the dashboard.
-SCRUM_STATE_DIR = (
-    Path(__file__).resolve().parent.parent / "docs" / "contracts" / "scrum-state"
-)
+SCRUM_STATE_DIR = Path(__file__).resolve().parent.parent / "docs" / "contracts" / "scrum-state"
 
 _SCHEMA_FOR_FILE = {
     "state.json": "state.schema.json",
