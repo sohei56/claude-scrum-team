@@ -49,9 +49,9 @@ jq -n --arg id "$PBI_ID" --arg now "$NOW" '{
 ALWAYS update PBI state via the validated wrapper script (never raw jq):
 
 ```bash
-scripts/scrum/update-pbi-state.sh "$PBI_ID" design_round 1 design_status in_review
-scripts/scrum/update-pbi-state.sh "$PBI_ID" phase complete
-scripts/scrum/update-pbi-state.sh "$PBI_ID" phase escalated escalation_reason stagnation
+.scrum/scripts/update-pbi-state.sh "$PBI_ID" design_round 1 design_status in_review
+.scrum/scripts/update-pbi-state.sh "$PBI_ID" phase complete
+.scrum/scripts/update-pbi-state.sh "$PBI_ID" phase escalated escalation_reason stagnation
 ```
 
 The wrapper:
@@ -64,13 +64,13 @@ Variadic field/value pairs are applied as a single transaction. Unknown fields o
 
 ```bash
 # Multiple fields atomically
-scripts/scrum/update-pbi-state.sh "$PBI_ID" \
+.scrum/scripts/update-pbi-state.sh "$PBI_ID" \
   phase impl_ut \
   impl_round 1 \
   design_status pass
 
 # Clear escalation_reason
-scripts/scrum/update-pbi-state.sh "$PBI_ID" escalation_reason null
+.scrum/scripts/update-pbi-state.sh "$PBI_ID" escalation_reason null
 ```
 
 ## pipeline.log format
@@ -96,7 +96,7 @@ Examples:
 For the line-formatted pipeline log, use the `append-pbi-log.sh` wrapper instead of raw `printf >>`:
 
 ```bash
-scripts/scrum/append-pbi-log.sh "$PBI_ID" "$PHASE" "$ROUND" "$EVENT" "$DETAIL"
+.scrum/scripts/append-pbi-log.sh "$PBI_ID" "$PHASE" "$ROUND" "$EVENT" "$DETAIL"
 ```
 
 ## Sprint-level state side-effects
@@ -108,5 +108,8 @@ When a PBI starts pipeline:
 
 When a PBI completes or escalates:
 - Remove from `active_pbi_pipelines[]`
-- Update backlog.json status to `done` or `blocked`
+- backlog.json items[].status is auto-projected by `update-pbi-state.sh`
+  (complete → `review`; escalated → `blocked`). Do NOT call
+  `update-backlog-status.sh` directly — it rejects post-pipeline statuses.
 - Add `pipeline_summary` to backlog.json item (rounds, final coverage)
+  via a separate jq invocation (status is not part of the summary write).

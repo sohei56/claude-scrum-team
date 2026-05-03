@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # pre-tool-use-scrum-state-guard.sh — PreToolUse hook.
-# Blocks agent edits to .scrum/**/*.json that bypass scripts/scrum/.
+# Blocks agent edits to .scrum/**/*.json that bypass the SSOT wrappers.
+# Permitted writers live at .scrum/scripts/* in deployed projects (and at
+# scripts/scrum/* inside the framework source tree for dogfooding).
 # Stdin payload: JSON {tool_name, tool_input.{file_path,command,...}, ...}.
 # Exit 2 = block (with stderr message). Exit 0 = allow.
 #
@@ -9,7 +11,7 @@
 set -euo pipefail
 
 block() {
-  echo "[scrum-guard] BLOCKED: $1. Use scripts/scrum/* instead. See docs/MIGRATION-scrum-state-tools.md." >&2
+  echo "[scrum-guard] BLOCKED: $1. Use .scrum/scripts/* instead. See docs/MIGRATION-scrum-state-tools.md." >&2
   exit 2
 }
 
@@ -37,8 +39,10 @@ case "$tool" in
     cmd="$(printf '%s' "$payload" | jq -r '.tool_input.command // empty' 2>/dev/null || true)"
     [ -n "$cmd" ] || exit 0
 
-    # Whitelist: any invocation of scripts/scrum/* is allowed unconditionally
-    if [[ "$cmd" == *"scripts/scrum/"* ]]; then
+    # Whitelist: any invocation of the SSOT wrappers is allowed unconditionally.
+    # `.scrum/scripts/` is the deployed location (target projects).
+    # `scripts/scrum/` is the framework source location (dogfooding only).
+    if [[ "$cmd" == *".scrum/scripts/"* || "$cmd" == *"scripts/scrum/"* ]]; then
       exit 0
     fi
 
@@ -61,7 +65,7 @@ case "$tool" in
     fi
     # Also block `mv X.json.tmp .scrum/X.json` — common second half of jq-redirect-then-rename pattern
     if [[ "$cmd" =~ mv[[:space:]]+[^[:space:]]+[[:space:]]+\.scrum/[^[:space:]]*\.json ]]; then
-      block "mv into .scrum json from Bash (use scripts/scrum/* wrapper)"
+      block "mv into .scrum json from Bash (use .scrum/scripts/* wrapper)"
     fi
     ;;
   *)

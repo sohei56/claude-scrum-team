@@ -74,6 +74,16 @@ teardown() {
   [ "$status" -eq 0 ]
 }
 
+@test "guard: allows Bash that calls .scrum/scripts/ (deployed layout)" {
+  run bash -c "$HOOK <<< '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\".scrum/scripts/update-backlog-status.sh pbi-001 review\"}}'"
+  [ "$status" -eq 0 ]
+}
+
+@test "guard: allows Bash with env prefix calling .scrum/scripts/" {
+  run bash -c "$HOOK <<< '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"env SCRUM_VALIDATOR_OVERRIDE=jsonschema-cli .scrum/scripts/append-communication.sh --from a --kind info --content x\"}}'"
+  [ "$status" -eq 0 ]
+}
+
 @test "guard: allows Bash that only reads .scrum/" {
   run bash -c "$HOOK <<< '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat .scrum/backlog.json | jq .items\"}}'"
   [ "$status" -eq 0 ]

@@ -14,7 +14,7 @@ Agent(subagent_type="pbi-implementer", prompt=<from sub-agent-prompts.md § pbi-
 Agent(subagent_type="pbi-ut-author", prompt=<from sub-agent-prompts.md § pbi-ut-author>)
 ```
 
-`scripts/scrum/update-pbi-state.sh "$PBI_ID" impl_round "$n" impl_status pending ut_status pending`
+`.scrum/scripts/update-pbi-state.sh "$PBI_ID" impl_round "$n" impl_status pending ut_status pending`
 
 ### Step 2: Test execution + coverage measurement
 
@@ -60,11 +60,13 @@ ALL of:
 #### Success branch
 
 ```bash
-scripts/scrum/update-pbi-state.sh "$PBI_ID" impl_status pass ut_status pass coverage_status pass phase complete
+.scrum/scripts/update-pbi-state.sh "$PBI_ID" impl_status pass ut_status pass coverage_status pass phase complete
+# update-pbi-state.sh auto-projects backlog.json items[].status = "review"
+# (cross-review will later advance phase to review_complete → backlog "done").
 write_summary "$PBI_DIR/impl/summary.md"
 write_summary "$PBI_DIR/ut/summary.md"
-scripts/scrum/append-pbi-log.sh "$PBI_ID" impl_ut "$n" gate "success → complete"
-# Then: PBI completion procedure (update backlog.json, notify SM)
+.scrum/scripts/append-pbi-log.sh "$PBI_ID" impl_ut "$n" gate "success → complete"
+# Then: notify SM (no separate backlog.status write needed)
 ```
 
 #### Termination gate (Stagnation / Divergence / Hard cap)
@@ -72,8 +74,8 @@ scripts/scrum/append-pbi-log.sh "$PBI_ID" impl_ut "$n" gate "success → complet
 See `termination-gates.md`. On any escalate gate:
 
 ```bash
-scripts/scrum/update-pbi-state.sh "$PBI_ID" phase escalated escalation_reason "<reason>"
-scripts/scrum/append-pbi-log.sh "$PBI_ID" impl_ut "$n" gate "escalate → <reason>"
+.scrum/scripts/update-pbi-state.sh "$PBI_ID" phase escalated escalation_reason "<reason>"
+.scrum/scripts/append-pbi-log.sh "$PBI_ID" impl_ut "$n" gate "escalate → <reason>"
 notify_sm_escalation "$PBI_ID" "<reason>"
 ```
 
@@ -89,6 +91,6 @@ See `feedback-routing.md`. Generate:
 Then:
 
 ```bash
-scripts/scrum/append-pbi-log.sh "$PBI_ID" impl_ut "$n" gate "fail → round $((n+1))"
+.scrum/scripts/append-pbi-log.sh "$PBI_ID" impl_ut "$n" gate "fail → round $((n+1))"
 # Recurse with n+1
 ```

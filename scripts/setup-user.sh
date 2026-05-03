@@ -75,21 +75,40 @@ done
 
 # --- Copy scrum-state SSOT wrappers ---
 # pre-tool-use-scrum-state-guard blocks raw writes to .scrum/*.json. Without
-# the wrappers in scripts/scrum/, agents have no permitted way to mutate state.
-# Copy them under .claude/scripts/scrum/ to match the project-local layout.
-echo "Copying scrum-state wrappers to $TARGET_DIR/scripts/scrum/..."
-mkdir -p "$TARGET_DIR/scripts/scrum/lib"
+# the wrappers, agents have no permitted way to mutate state.
+# Deploy under .scrum/scripts/ to keep framework artifacts out of the user's
+# scripts/ tree (where they were easy to confuse with project deliverables).
+echo "Copying scrum-state wrappers to $TARGET_DIR/.scrum/scripts/..."
+mkdir -p "$TARGET_DIR/.scrum/scripts/lib"
 for wrapper in "$PROJECT_ROOT/scripts/scrum/"*.sh; do
   if [ -f "$wrapper" ]; then
-    cp "$wrapper" "$TARGET_DIR/scripts/scrum/"
-    chmod +x "$TARGET_DIR/scripts/scrum/$(basename "$wrapper")"
+    cp "$wrapper" "$TARGET_DIR/.scrum/scripts/"
+    chmod +x "$TARGET_DIR/.scrum/scripts/$(basename "$wrapper")"
   fi
 done
 for wrapper_lib in "$PROJECT_ROOT/scripts/scrum/lib/"*.sh; do
   if [ -f "$wrapper_lib" ]; then
-    cp "$wrapper_lib" "$TARGET_DIR/scripts/scrum/lib/"
+    cp "$wrapper_lib" "$TARGET_DIR/.scrum/scripts/lib/"
   fi
 done
+
+# Clean up wrappers from the legacy deploy location (scripts/scrum/) so they
+# don't shadow the new layout. Only removes files we recognize as ours; leaves
+# any unrelated files the user may have placed there.
+legacy_dir="$TARGET_DIR/scripts/scrum"
+if [ -d "$legacy_dir" ]; then
+  for wrapper in "$PROJECT_ROOT/scripts/scrum/"*.sh; do
+    [ -f "$legacy_dir/$(basename "$wrapper")" ] && rm -f "$legacy_dir/$(basename "$wrapper")"
+  done
+  if [ -d "$legacy_dir/lib" ]; then
+    for wrapper_lib in "$PROJECT_ROOT/scripts/scrum/lib/"*.sh; do
+      [ -f "$legacy_dir/lib/$(basename "$wrapper_lib")" ] && rm -f "$legacy_dir/lib/$(basename "$wrapper_lib")"
+    done
+    rmdir "$legacy_dir/lib" 2>/dev/null || true
+  fi
+  rmdir "$legacy_dir" 2>/dev/null || true
+  rmdir "$TARGET_DIR/scripts" 2>/dev/null || true
+fi
 
 # --- Copy PBI Pipeline configuration template ---
 # Provide .scrum-config.example.json so users can copy it to .scrum/config.json

@@ -1,9 +1,10 @@
 # Data Model: AI-Powered Scrum Team
 
 State persists as JSON files in `.scrum/`, one per concern. Owners write
-through `scripts/scrum/*.sh` wrappers (raw `Write`/`Edit` is blocked by
+through `.scrum/scripts/*.sh` wrappers (raw `Write`/`Edit` is blocked by
 `hooks/pre-tool-use-scrum-state-guard.sh`); readers consult the SSOT
-schemas under `docs/contracts/scrum-state/`.
+schemas under `docs/contracts/scrum-state/`. The wrappers are deployed
+from this repo's `scripts/scrum/` source by `setup-user.sh`.
 
 ---
 

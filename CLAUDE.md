@@ -108,8 +108,9 @@ sh /path/to/claude-scrum-team/scrum-start.sh
 
 ## State management
 
-`.scrum/*.json` writes go through `scripts/scrum/*.sh` wrappers. Direct
-edits are blocked by `hooks/pre-tool-use-scrum-state-guard.sh`
+`.scrum/*.json` writes go through `.scrum/scripts/*.sh` wrappers
+(deployed by `setup-user.sh` from this repo's `scripts/scrum/` source).
+Direct edits are blocked by `hooks/pre-tool-use-scrum-state-guard.sh`
 (registered as `PreToolUse`). Schemas under
 `docs/contracts/scrum-state/` are the SSOT. See
 `docs/MIGRATION-scrum-state-tools.md` for the wrapper map and known

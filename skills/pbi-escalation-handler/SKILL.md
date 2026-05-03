@@ -19,8 +19,9 @@ disable-model-invocation: false
 
 - SM judgment recorded at
   `.scrum/pbi/<pbi-id>/escalation-resolution.md` (audit trail)
-- `backlog.json` status updated (`blocked` → `in_progress` for retry,
-  or stays `blocked` for hold/human)
+- `backlog.json` status auto-projected from `pbi/<id>/state.json.phase`:
+  retry resets phase to `design` (→ status `in_progress`); hold/human keeps
+  `phase: escalated` (→ status `blocked`). Never write backlog.status directly.
 - User notified via SM channel when human escalation needed
 
 ## Response Matrix
@@ -42,7 +43,15 @@ disable-model-invocation: false
 2. Identify `escalation_reason`.
 3. Match to Response Matrix action.
 4. For retry: spawn fresh Developer instance for the PBI; reset PBI
-   round counters in state.json; status back to `in_progress`.
+   round counters and phase via:
+   ```bash
+   .scrum/scripts/update-pbi-state.sh "$PBI_ID" \
+     phase design escalation_reason null \
+     design_round 0 impl_round 0 \
+     design_status pending impl_status pending \
+     ut_status pending coverage_status pending
+   ```
+   This auto-projects backlog.status `blocked → in_progress`.
 5. For hold or human-escalate: prepare summary message (PBI id, last
    review headlines, escalation reason, recommended user actions);
    send via SM communications channel.

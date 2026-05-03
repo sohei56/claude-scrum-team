@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "properties": {
     "pbi_id": {"type": "string", "pattern": "^pbi-[0-9]+$"},
-    "phase": {"enum": ["design", "impl_ut", "complete", "escalated"]},
+    "phase": {"enum": ["design", "impl_ut", "complete", "review_complete", "escalated"]},
     "design_round": {"type": "integer", "minimum": 0},
     "impl_round": {"type": "integer", "minimum": 0},
     "design_status": {"enum": ["pending", "in_review", "fail", "pass"]},

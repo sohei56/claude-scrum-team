@@ -17,8 +17,35 @@ teardown() {
   fi
 }
 
-@test "update-backlog-status: refined → in_progress" {
+@test "update-backlog-status: accepts pre-pipeline status (draft)" {
+  run env SCRUM_VALIDATOR_OVERRIDE=jsonschema-cli "$PROJECT_ROOT/scripts/scrum/update-backlog-status.sh" pbi-001 draft
+  [ "$status" -eq 0 ]
+  run jq -r '.items[] | select(.id=="pbi-001").status' "$TEST_TMP/.scrum/backlog.json"
+  [ "$output" = "draft" ]
+}
+
+@test "update-backlog-status: accepts pre-pipeline status (refined)" {
+  run env SCRUM_VALIDATOR_OVERRIDE=jsonschema-cli "$PROJECT_ROOT/scripts/scrum/update-backlog-status.sh" pbi-001 refined
+  [ "$status" -eq 0 ]
+  run jq -r '.items[] | select(.id=="pbi-001").status' "$TEST_TMP/.scrum/backlog.json"
+  [ "$output" = "refined" ]
+}
+
+@test "update-backlog-status: rejects post-pipeline status (in_progress) without override" {
   run env SCRUM_VALIDATOR_OVERRIDE=jsonschema-cli "$PROJECT_ROOT/scripts/scrum/update-backlog-status.sh" pbi-001 in_progress
+  [ "$status" -eq 64 ]
+  [[ "$output" == *"post-pipeline"* ]]
+  [[ "$output" == *"update-pbi-state.sh"* ]]
+}
+
+@test "update-backlog-status: rejects post-pipeline status (done) without override" {
+  run env SCRUM_VALIDATOR_OVERRIDE=jsonschema-cli "$PROJECT_ROOT/scripts/scrum/update-backlog-status.sh" pbi-001 done
+  [ "$status" -eq 64 ]
+}
+
+@test "update-backlog-status: accepts post-pipeline status with SCRUM_ALLOW_POST_PIPELINE_STATUS=1 (escape hatch)" {
+  run env SCRUM_VALIDATOR_OVERRIDE=jsonschema-cli SCRUM_ALLOW_POST_PIPELINE_STATUS=1 \
+    "$PROJECT_ROOT/scripts/scrum/update-backlog-status.sh" pbi-001 in_progress
   [ "$status" -eq 0 ]
   run jq -r '.items[] | select(.id=="pbi-001").status' "$TEST_TMP/.scrum/backlog.json"
   [ "$output" = "in_progress" ]
@@ -31,12 +58,12 @@ teardown() {
 }
 
 @test "update-backlog-status: rejects bad pbi-id format" {
-  run env SCRUM_VALIDATOR_OVERRIDE=jsonschema-cli "$PROJECT_ROOT/scripts/scrum/update-backlog-status.sh" "BAD ID" done
+  run env SCRUM_VALIDATOR_OVERRIDE=jsonschema-cli "$PROJECT_ROOT/scripts/scrum/update-backlog-status.sh" "BAD ID" refined
   [ "$status" -eq 64 ]
 }
 
 @test "update-backlog-status: rejects nonexistent pbi-id" {
-  run env SCRUM_VALIDATOR_OVERRIDE=jsonschema-cli "$PROJECT_ROOT/scripts/scrum/update-backlog-status.sh" pbi-999 done
+  run env SCRUM_VALIDATOR_OVERRIDE=jsonschema-cli "$PROJECT_ROOT/scripts/scrum/update-backlog-status.sh" pbi-999 refined
   [ "$status" -eq 64 ]
   [[ "$output" == *"not found"* ]] || [[ "$output" == *"E_INVALID_ARG"* ]]
 }
