@@ -45,6 +45,19 @@ logger = logging.getLogger(__name__)
 
 SCRUM_DIR = Path(".scrum")
 
+# Route logger output to .scrum/dashboard.log so users can
+# `tail -f .scrum/dashboard.log` to debug silent schema rejections during
+# TUI runs (Textual takes over stderr, hiding warnings otherwise).
+# Guard against double-add when dashboard.app is re-imported (e.g. in tests).
+if not logger.handlers:
+    SCRUM_DIR.mkdir(parents=True, exist_ok=True)
+    _log_handler = logging.FileHandler(SCRUM_DIR / "dashboard.log", mode="a", encoding="utf-8")
+    _log_handler.setFormatter(
+        logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    )
+    logger.addHandler(_log_handler)
+    logger.setLevel(logging.WARNING)
+
 # SSOT schemas live alongside the contracts catalog. Each .scrum/<name>.json
 # is validated against its schema on read; failures fall back to "stale data"
 # rather than crashing the dashboard.

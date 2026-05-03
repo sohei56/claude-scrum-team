@@ -125,6 +125,20 @@ class TestReadJsonValidated:
         result = read_json_validated(target)
         assert result == {"overall_status": "passed"}
 
+    def test_logs_violation_to_file(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+        """Schema validation failures must be logged so users can diagnose."""
+        bogus = tmp_path / "backlog.json"
+        bogus.write_text(
+            '{"items":[{"id":"pbi-001","title":"x","status":"WRONG"}]}',
+            encoding="utf-8",
+        )
+
+        with caplog.at_level("WARNING", logger="dashboard.app"):
+            result = read_json_validated(bogus)
+
+        assert result is None
+        assert any("Schema validation failed" in rec.message for rec in caplog.records)
+
 
 class TestGetBacklogItems:
     def test_fixture_shaped_backlog_returns_items(self) -> None:
@@ -183,9 +197,7 @@ def _run_async(coro):
 
 
 class TestSprintOverview:
-    def test_renders_fixture_content(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
+    def test_renders_fixture_content(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         async def runner() -> str:
             import dashboard.app as dash
 
