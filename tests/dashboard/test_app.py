@@ -26,6 +26,7 @@ import pytest
 from textual.app import App, ComposeResult
 
 from dashboard.app import (
+    SCRUM_STATE_DIR,
     PBIProgressBoard,
     SprintOverview,
     format_phase,
@@ -138,6 +139,25 @@ class TestReadJsonValidated:
 
         assert result is None
         assert any("Schema validation failed" in rec.message for rec in caplog.records)
+
+
+class TestBacklogSchema:
+    def test_accepts_catalog_targets(self) -> None:
+        """PR #22 sprint-planning writes catalog_targets — schema must accept it."""
+        import jsonschema
+
+        schema = json.loads((SCRUM_STATE_DIR / "backlog.schema.json").read_text(encoding="utf-8"))
+        sample = {
+            "items": [
+                {
+                    "id": "pbi-001",
+                    "title": "x",
+                    "status": "draft",
+                    "catalog_targets": ["docs/design/specs/ui/S-030-login.md"],
+                }
+            ]
+        }
+        jsonschema.validate(sample, schema)  # raises if invalid
 
 
 class TestGetBacklogItems:

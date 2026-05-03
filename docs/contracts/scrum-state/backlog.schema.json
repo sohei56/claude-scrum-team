@@ -18,6 +18,11 @@
           "title": {"type": "string", "minLength": 1},
           "description": {"type": ["string", "null"]},
           "acceptance_criteria": {"type": "array", "items": {"type": "string"}},
+          "catalog_targets": {
+            "type": "array",
+            "items": {"type": "string"},
+            "uniqueItems": true
+          },
           "status": {"enum": ["draft", "refined", "in_progress", "review", "done", "blocked"]},
           "priority": {"type": ["integer", "null"], "minimum": 0},
           "sprint_id": {"type": ["string", "null"], "pattern": "^sprint-[0-9]+$"},
