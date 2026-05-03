@@ -14,7 +14,7 @@ Agent(subagent_type="pbi-implementer", prompt=<from sub-agent-prompts.md § pbi-
 Agent(subagent_type="pbi-ut-author", prompt=<from sub-agent-prompts.md § pbi-ut-author>)
 ```
 
-`update_state … '.impl_round = $n | .impl_status = "pending" | .ut_status = "pending"'`
+`scripts/scrum/update-pbi-state.sh "$PBI_ID" impl_round "$n" impl_status pending ut_status pending`
 
 ### Step 2: Test execution + coverage measurement
 
@@ -60,10 +60,10 @@ ALL of:
 #### Success branch
 
 ```bash
-update_state "$PBI_DIR" '.impl_status = "pass" | .ut_status = "pass" | .coverage_status = "pass" | .phase = "complete"'
+scripts/scrum/update-pbi-state.sh "$PBI_ID" impl_status pass ut_status pass coverage_status pass phase complete
 write_summary "$PBI_DIR/impl/summary.md"
 write_summary "$PBI_DIR/ut/summary.md"
-log_event impl_ut "$n" gate "success → complete"
+scripts/scrum/append-pbi-log.sh "$PBI_ID" impl_ut "$n" gate "success → complete"
 # Then: PBI completion procedure (update backlog.json, notify SM)
 ```
 
@@ -72,8 +72,8 @@ log_event impl_ut "$n" gate "success → complete"
 See `termination-gates.md`. On any escalate gate:
 
 ```bash
-update_state "$PBI_DIR" '.phase = "escalated" | .escalation_reason = "<reason>"'
-log_event impl_ut "$n" gate "escalate → <reason>"
+scripts/scrum/update-pbi-state.sh "$PBI_ID" phase escalated escalation_reason "<reason>"
+scripts/scrum/append-pbi-log.sh "$PBI_ID" impl_ut "$n" gate "escalate → <reason>"
 notify_sm_escalation "$PBI_ID" "<reason>"
 ```
 
@@ -89,6 +89,6 @@ See `feedback-routing.md`. Generate:
 Then:
 
 ```bash
-log_event impl_ut "$n" gate "fail → round $((n+1))"
+scripts/scrum/append-pbi-log.sh "$PBI_ID" impl_ut "$n" gate "fail → round $((n+1))"
 # Recurse with n+1
 ```

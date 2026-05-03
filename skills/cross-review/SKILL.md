@@ -51,7 +51,7 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
 1. state.json → phase: "review", sprint.json → status: "cross_review"
 2. All Sprint PBIs status: in_progress→review:
    ```bash
-   jq '(.items[] | select(.id == "pbi-001")).status = "review"' .scrum/backlog.json > .scrum/backlog.json.tmp && mv .scrum/backlog.json.tmp .scrum/backlog.json
+   scripts/scrum/update-backlog-status.sh "$PBI_ID" review
    ```
 3. **Pre-review build verification**: Start app→all tests pass. Fail→`TaskGet` Developer status→terminated? re-spawn (Teammate Liveness Protocol)→then relay fix request. Do NOT review non-building code
 4. Collect review inputs per PBI: design_doc_paths, source paths, requirements.md path
@@ -64,7 +64,7 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
 9. Write `.scrum/reviews/<pbi-id>-review.md` (combined code + security review)
 10. Both PASS→status: done:
     ```bash
-    jq '(.items[] | select(.id == "pbi-001")).status = "done"' .scrum/backlog.json > .scrum/backlog.json.tmp && mv .scrum/backlog.json.tmp .scrum/backlog.json
+    scripts/scrum/update-backlog-status.sh "$PBI_ID" done
     ```
 11. Set items[].review_doc_path
 

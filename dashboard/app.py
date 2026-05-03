@@ -14,10 +14,12 @@ Panels:
 from __future__ import annotations
 
 import json
-from datetime import datetime
+import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock, Timer
 
+from rich.table import Table
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
@@ -25,7 +27,50 @@ from textual.widgets import DataTable, Footer, Header, RichLog, Static
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
+try:
+    from jsonschema import ValidationError
+    from jsonschema import validate as _jsonschema_validate
+
+    _SCHEMA_VALIDATION = True
+except ImportError:  # pragma: no cover — fallback path when jsonschema absent
+    _SCHEMA_VALIDATION = False
+
+    class ValidationError(Exception):  # type: ignore[no-redef]
+        pass
+
+    def _jsonschema_validate(_data, _schema) -> None:  # type: ignore[misc]
+        return None
+
+
+logger = logging.getLogger(__name__)
+
 SCRUM_DIR = Path(".scrum")
+
+# Route logger output to .scrum/dashboard.log so users can
+# `tail -f .scrum/dashboard.log` to debug silent schema rejections during
+# TUI runs (Textual takes over stderr, hiding warnings otherwise).
+# Guard against double-add when dashboard.app is re-imported (e.g. in tests).
+if not logger.handlers:
+    SCRUM_DIR.mkdir(parents=True, exist_ok=True)
+    _log_handler = logging.FileHandler(SCRUM_DIR / "dashboard.log", mode="a", encoding="utf-8")
+    _log_handler.setFormatter(
+        logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    )
+    logger.addHandler(_log_handler)
+    logger.setLevel(logging.WARNING)
+
+# SSOT schemas live alongside the contracts catalog. Each .scrum/<name>.json
+# is validated against its schema on read; failures fall back to "stale data"
+# rather than crashing the dashboard.
+SCRUM_STATE_DIR = Path(__file__).resolve().parent.parent / "docs" / "contracts" / "scrum-state"
+
+_SCHEMA_FOR_FILE = {
+    "state.json": "state.schema.json",
+    "sprint.json": "sprint.schema.json",
+    "backlog.json": "backlog.schema.json",
+    "communications.json": "communications.schema.json",
+    "dashboard.json": "dashboard.schema.json",
+}
 
 # Status colors for PBI Progress Board
 STATUS_COLORS = {
@@ -79,21 +124,16 @@ def format_phase(current_phase: str) -> str:
     return f"[bold]Phase:[/bold] [bold white on red] {current_phase} [/]"
 
 
-def get_backlog_items(backlog: dict | list | None) -> list:
-    """Extract PBI items from backlog data, handling variant key names."""
-    if isinstance(backlog, dict):
-        return (
-            backlog.get("items")
-            or backlog.get("backlog_items")
-            or backlog.get("pbis")
-            or backlog.get("pbi_list")
-            or backlog.get("product_backlog")
-            or backlog.get("backlog")
-            or []
-        )
-    if isinstance(backlog, list):
-        return backlog
-    return []
+def get_backlog_items(backlog: dict | None) -> list:
+    """Return PBI items from a schema-validated backlog dict.
+
+    The backlog schema declares ``items`` as the canonical list, so callers
+    do not need any alternative key fallback. ``None`` (e.g. missing or
+    invalid file) yields an empty list.
+    """
+    if backlog is None:
+        return []
+    return backlog.get("items", [])
 
 
 def read_json(path: Path) -> dict | list | None:
@@ -104,6 +144,37 @@ def read_json(path: Path) -> dict | list | None:
     except (json.JSONDecodeError, OSError, UnicodeDecodeError):
         pass
     return None
+
+
+def read_json_validated(path: Path) -> dict | None:
+    """Read a `.scrum/<name>.json` file and validate against its SSOT schema.
+
+    Returns None on missing file, invalid JSON, schema violation, or any I/O
+    error. Schema violations are logged at warning level so the dashboard
+    degrades to a "stale data" placeholder rather than crashing.
+
+    Files unknown to ``_SCHEMA_FOR_FILE`` (e.g. ``test-results.json``,
+    ``session-map.json``) fall back to plain ``read_json``.
+
+    When ``jsonschema`` is unavailable (import failed at module load), this
+    delegates unconditionally to ``read_json``.
+    """
+    schema_name = _SCHEMA_FOR_FILE.get(path.name)
+    if schema_name is None or not _SCHEMA_VALIDATION:
+        result = read_json(path)
+        return result if isinstance(result, dict) else None
+    try:
+        if not path.exists():
+            return None
+        data = json.loads(path.read_text(encoding="utf-8"))
+        schema = json.loads((SCRUM_STATE_DIR / schema_name).read_text(encoding="utf-8"))
+        _jsonschema_validate(data, schema)
+        return data if isinstance(data, dict) else None
+    except ValidationError as exc:
+        logger.warning("Schema validation failed for %s: %s", path.name, exc.message)
+        return None
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError):
+        return None
 
 
 class SprintOverview(Static):
@@ -119,9 +190,9 @@ class SprintOverview(Static):
     """
 
     def update_content(self) -> None:
-        state = read_json(SCRUM_DIR / "state.json")
-        sprint = read_json(SCRUM_DIR / "sprint.json")
-        backlog = read_json(SCRUM_DIR / "backlog.json")
+        state = read_json_validated(SCRUM_DIR / "state.json")
+        sprint = read_json_validated(SCRUM_DIR / "sprint.json")
+        backlog = read_json_validated(SCRUM_DIR / "backlog.json")
 
         if not state:
             self.update("[bold]No project state[/bold]\nRun scrum-start.sh to begin.")
@@ -134,42 +205,22 @@ class SprintOverview(Static):
         lines.append(format_phase(phase))
 
         if sprint and isinstance(sprint, dict):
-            # Handle both data-model field names and agent-produced field names
-            sprint_id = sprint.get("id") or sprint.get("sprint_number") or "?"
-            goal = sprint.get("goal") or sprint.get("sprint_goal") or "No goal"
-            sprint_status = sprint.get("status") or "?"
+            sprint_id = sprint.get("id", "?")
+            goal = sprint.get("goal") or "No goal"
+            sprint_status = sprint.get("status", "?")
 
-            # PBI IDs: from pbi_ids[] (spec) or pbis[] objects (agent)
-            pbi_ids = [str(x) for x in (sprint.get("pbi_ids") or [])]
-            sprint_pbis = sprint.get("pbis") or []
-            if not pbi_ids and sprint_pbis:
-                pbi_ids = [str(p.get("id", "?")) for p in sprint_pbis if isinstance(p, dict)]
+            pbi_ids = list(sprint.get("pbi_ids") or [])
             pbi_count = len(pbi_ids)
 
-            # Count done PBIs: from backlog (spec) or inline pbis (agent)
+            # Count done PBIs by joining sprint.pbi_ids[] against backlog items.
             done_count = 0
-            if sprint_pbis:
-                for p in sprint_pbis:
-                    if isinstance(p, dict) and p.get("status") == "done":
-                        done_count += 1
-            elif backlog and pbi_ids:
+            if backlog and pbi_ids:
                 for item in get_backlog_items(backlog):
-                    if not isinstance(item, dict):
-                        continue
-                    if str(item.get("id", "")) in pbi_ids and item.get("status") == "done":
+                    if item.get("id", "") in pbi_ids and item.get("status") == "done":
                         done_count += 1
 
-            # Developer count: from developer_count, developers[], or pbis[]
             devs = sprint.get("developers") or []
             dev_count = sprint.get("developer_count") or len(devs) or 0
-            if not dev_count and sprint_pbis:
-                devs_set = set()
-                for p in sprint_pbis:
-                    if isinstance(p, dict):
-                        assigned = p.get("assigned_to")
-                        if assigned:
-                            devs_set.add(assigned)
-                dev_count = len(devs_set)
 
             lines.append(
                 f"[bold]Sprint:[/bold] {sprint_id}"
@@ -182,28 +233,13 @@ class SprintOverview(Static):
                 f" | [bold]Developers:[/bold] {dev_count}"
             )
 
-            # Agent assignments: from developers[] (spec) or pbis[] (agent)
             if devs:
                 dev_parts = []
                 for d in devs:
-                    if isinstance(d, str):
-                        dev_parts.append(d)
-                        continue
-                    if not isinstance(d, dict):
-                        continue
                     did = d.get("id", "?")
                     status = d.get("status", "?")
                     impl = d.get("assigned_work", {}).get("implement", [])
-                    dev_parts.append(f"{did}:{status}({','.join(str(i) for i in impl)})")
-                lines.append(f"[bold]Agents:[/bold] {' | '.join(dev_parts)}")
-            elif sprint_pbis:
-                dev_parts = []
-                for p in sprint_pbis:
-                    if isinstance(p, dict):
-                        assigned = p.get("assigned_to") or "?"
-                        pid = p.get("id") or "?"
-                        pstatus = p.get("status") or "?"
-                        dev_parts.append(f"{assigned}→{pid}({pstatus})")
+                    dev_parts.append(f"{did}:{status}({','.join(impl)})")
                 lines.append(f"[bold]Agents:[/bold] {' | '.join(dev_parts)}")
         else:
             lines.append("[dim]No active Sprint — waiting for Sprint Planning[/dim]")
@@ -227,8 +263,8 @@ class PBIProgressBoard(DataTable):
         self.update_content()
 
     def update_content(self) -> None:
-        backlog = read_json(SCRUM_DIR / "backlog.json")
-        sprint = read_json(SCRUM_DIR / "sprint.json")
+        backlog = read_json_validated(SCRUM_DIR / "backlog.json")
+        sprint = read_json_validated(SCRUM_DIR / "sprint.json")
         self.clear()
 
         # Build PBI→developer lookup from sprint.json developers[]
@@ -237,73 +273,38 @@ class PBIProgressBoard(DataTable):
         pbi_review_map: dict[str, str] = {}
         if sprint and isinstance(sprint, dict):
             for dev in sprint.get("developers") or []:
-                if not isinstance(dev, dict):
-                    continue
-                did = dev.get("id") or dev.get("name") or "?"
+                did = dev.get("id", "?")
                 assigned = dev.get("assigned_work") or {}
-                if not isinstance(assigned, dict):
-                    continue
                 for pbi_id in assigned.get("implement") or []:
-                    pbi_impl_map[str(pbi_id).lower()] = did
+                    pbi_impl_map[pbi_id.lower()] = did
                 for pbi_id in assigned.get("review") or []:
-                    pbi_review_map[str(pbi_id).lower()] = did
+                    pbi_review_map[pbi_id.lower()] = did
 
-            # Also check sprint.pbis[] for inline assignments
-            for p in sprint.get("pbis") or []:
-                if not isinstance(p, dict):
-                    continue
-                pid = str(p.get("id", "")).lower()
-                if pid:
-                    if p.get("assigned_to") and pid not in pbi_impl_map:
-                        pbi_impl_map[pid] = p["assigned_to"]
-                    if p.get("reviewer") and pid not in pbi_review_map:
-                        pbi_review_map[pid] = p["reviewer"]
-
-        # Collect PBI items from backlog (spec format) or sprint.pbis (agent format)
-        # Try multiple key names — LLM agents may use non-canonical names
         items = get_backlog_items(backlog)
-        if not items and sprint and isinstance(sprint, dict):
-            items = sprint.get("pbis", [])
 
         for item in items:
-            if not isinstance(item, dict):
-                continue
-            pbi_id = str(item.get("id") or "?")
-            title = str(item.get("title") or "Untitled")[:35]
+            pbi_id = item.get("id") or "?"
+            title = (item.get("title") or "Untitled")[:35]
             raw_status = item.get("status", "?")
             # Normalize status to canonical form
             status = STATUS_NORMALIZE.get(raw_status, raw_status)
             # Resolve implementer: prefer sprint.json developer map (most
             # reliable — set by spawn-teammates after reconciliation), then
             # fall back to backlog.json fields which may hold placeholders.
-            pbi_key = str(pbi_id).lower()
-            impl = (
-                pbi_impl_map.get(pbi_key)
-                or item.get("implementer_id")
-                or item.get("implementer")
-                or item.get("assigned_to")
-                or item.get("developer")
-                or item.get("developer_id")
-                or "-"
-            )
-            reviewer = (
-                pbi_review_map.get(pbi_key)
-                or item.get("reviewer_id")
-                or item.get("reviewer")
-                or item.get("assigned_reviewer")
-                or "-"
-            )
+            pbi_key = pbi_id.lower()
+            impl = pbi_impl_map.get(pbi_key) or item.get("implementer_id") or "-"
+            reviewer = pbi_review_map.get(pbi_key) or item.get("reviewer_id") or "-"
 
             color = STATUS_COLORS.get(status, "")
             status_display = f"[{color}]{status}[/{color}]" if color else status
 
             self.add_row(
-                str(pbi_id),
+                pbi_id,
                 title,
                 status_display,
-                str(impl),
-                str(reviewer),
-                key=str(pbi_id),
+                impl,
+                reviewer,
+                key=pbi_id,
             )
 
         # Scroll to the last row so the latest PBI is visible
@@ -393,7 +394,7 @@ class CommunicationLog(RichLog):
         self._last_count = 0
 
     def update_content(self) -> None:
-        comms = read_json(SCRUM_DIR / "communications.json")
+        comms = read_json_validated(SCRUM_DIR / "communications.json")
         if not comms:
             return
 
@@ -422,6 +423,123 @@ class CommunicationLog(RichLog):
             )
 
 
+# Per-PBI state files use a richer phase vocabulary than dashboard.json.
+# Map every observed value to the canonical pane phase so legacy projects render.
+PBI_STATE_PHASE_NORMALIZE = {
+    "design": "design",
+    "design_complete": "design",
+    "impl_ut": "impl_ut",
+    "implementation": "impl_ut",
+    "implementation_complete": "complete",
+    "review": "impl_ut",
+    "complete": "complete",
+    "escalated": "escalated",
+}
+
+
+def _build_pipelines_from_pbi_state() -> list[dict]:
+    """Aggregate .scrum/pbi/*/state.json into pbi_pipelines[] when the
+    hook-maintained list in dashboard.json is empty (legacy projects, or
+    sessions that never emitted SubagentStart with pbi_id)."""
+    pbi_root = SCRUM_DIR / "pbi"
+    if not pbi_root.exists():
+        return []
+    sprint = read_json_validated(SCRUM_DIR / "sprint.json") or {}
+    dev_for_pbi: dict[str, str] = {}
+    for dev in sprint.get("developers") or []:
+        did = dev.get("id", "?")
+        for pbi_id in (dev.get("assigned_work") or {}).get("implement") or []:
+            dev_for_pbi[pbi_id.lower()] = did
+
+    out: list[dict] = []
+    for state_path in sorted(pbi_root.glob("*/state.json")):
+        data = read_json(state_path)
+        if not isinstance(data, dict):
+            continue
+        pbi_id = data.get("pbi_id") or state_path.parent.name
+        raw_phase = data.get("phase", "unknown")
+        phase = PBI_STATE_PHASE_NORMALIZE.get(raw_phase, raw_phase)
+        round_no = data.get("design_round") if phase == "design" else data.get("impl_round")
+        if round_no is None:
+            round_no = data.get("round", 0)
+        developer = (
+            data.get("implementer")
+            or data.get("developer_id")
+            or dev_for_pbi.get(pbi_id.lower(), "?")
+        )
+        out.append(
+            {
+                "pbi_id": pbi_id,
+                "developer": developer,
+                "phase": phase,
+                "round": round_no,
+                "active_subagents": [],
+                "last_event_at": data.get("updated_at", "?"),
+            }
+        )
+    return out
+
+
+PIPELINE_PHASE_COLORS = {
+    "design": "cyan",
+    "impl_ut": "yellow",
+    "complete": "green",
+    "escalated": "red",
+    "unknown": "dim",
+}
+
+# Round count above this is highlighted as a stagnation hint.
+PIPELINE_ROUND_WARN_THRESHOLD = 2
+
+
+def _pbi_sort_key(pipe: dict) -> tuple[int, int | str]:
+    """Natural-sort key for pbi_ids like ``pbi-001``, ``pbi-010``.
+
+    Falls back to string sort when the trailing token is not numeric so
+    malformed IDs still produce a deterministic ordering.
+    """
+    pbi_id = pipe.get("pbi_id", "")
+    try:
+        return (0, int(pbi_id.split("-")[-1]))
+    except (ValueError, IndexError):
+        return (1, pbi_id)
+
+
+def _humanize_age(ts: str | None, now: datetime) -> str:
+    """Render an ISO-8601 timestamp as ``Ns ago`` / ``Nm ago`` / ``Nh ago``.
+
+    Returns a dim ``?`` placeholder when the timestamp is missing or
+    cannot be parsed. Naive timestamps are treated as UTC, matching how
+    the SSOT writers stamp ``last_event_at``.
+    """
+    if not ts or ts == "?":
+        return "[dim]?[/dim]"
+    try:
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    except (ValueError, AttributeError, TypeError):
+        return "[dim]?[/dim]"
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    delta = (now - dt).total_seconds()
+    if delta < 0:
+        return "now"
+    if delta < 60:
+        return f"{int(delta)}s ago"
+    if delta < 3600:
+        return f"{int(delta // 60)}m ago"
+    if delta < 86400:
+        return f"{int(delta // 3600)}h ago"
+    return f"{int(delta // 86400)}d ago"
+
+
+def _format_round(round_no) -> str:
+    if not isinstance(round_no, int):
+        return "[dim]-[/dim]"
+    if round_no > PIPELINE_ROUND_WARN_THRESHOLD:
+        return f"[red]{round_no}[/red]"
+    return str(round_no)
+
+
 class PbiPipelinePane(Static):
     """Panel (e): Live PBI Pipeline state per active PBI."""
 
@@ -434,22 +552,50 @@ class PbiPipelinePane(Static):
     """
 
     def update_content(self) -> None:
-        dashboard = read_json(SCRUM_DIR / "dashboard.json") or {}
+        dashboard = read_json_validated(SCRUM_DIR / "dashboard.json") or {}
         pipelines = dashboard.get("pbi_pipelines", []) if isinstance(dashboard, dict) else []
         if not pipelines:
-            self.update("[bold]PBI Pipelines:[/bold] (none active)")
+            # Fall back to per-PBI state files. The dashboard.json aggregate is
+            # only populated by SubagentStart/Stop hooks with pbi_id; legacy
+            # projects never get those events.
+            pipelines = _build_pipelines_from_pbi_state()
+        if not pipelines:
+            self.update("[bold]PBI Pipelines[/bold] [dim](none active)[/dim]")
             return
-        rows = ["[bold]PBI Pipelines:[/bold]"]
+
+        pipelines = sorted(pipelines, key=_pbi_sort_key)
+        now = datetime.now(timezone.utc)
+
+        table = Table(
+            title="PBI Pipelines",
+            title_style="bold",
+            title_justify="left",
+            box=None,
+            pad_edge=False,
+            expand=True,
+            show_edge=False,
+            show_lines=False,
+        )
+        table.add_column("PBI", style="bold", no_wrap=True)
+        table.add_column("Dev", no_wrap=True)
+        table.add_column("Phase", no_wrap=True)
+        table.add_column("Round", justify="right", no_wrap=True)
+        table.add_column("Agents", overflow="ellipsis")
+        table.add_column("Updated", justify="right", no_wrap=True)
+
         for pipe in pipelines:
-            phase = pipe.get("phase", "?")
-            phase_styled = f"[red]{phase}[/red]" if phase == "escalated" else phase
-            agents = ",".join(pipe.get("active_subagents", [])) or "-"
-            rows.append(
-                f"  {pipe.get('pbi_id', '?'):12} dev={pipe.get('developer', '?'):14} "
-                f"phase={phase_styled:10} round={pipe.get('round', '?'):2} "
-                f"agents={agents:30} updated={pipe.get('last_event_at', '?')}"
-            )
-        self.update("\n".join(rows))
+            pbi_id = pipe.get("pbi_id", "?")
+            developer = pipe.get("developer") or "[dim]-[/dim]"
+            phase = pipe.get("phase", "unknown")
+            phase_color = PIPELINE_PHASE_COLORS.get(phase, "")
+            phase_cell = f"[{phase_color}]{phase}[/{phase_color}]" if phase_color else phase
+            round_cell = _format_round(pipe.get("round"))
+            agents = pipe.get("active_subagents") or []
+            agents_cell = ", ".join(agents) if agents else "[dim]idle[/dim]"
+            updated_cell = _humanize_age(pipe.get("last_event_at"), now)
+            table.add_row(pbi_id, developer, phase_cell, round_cell, agents_cell, updated_cell)
+
+        self.update(table)
 
 
 class WorkLog(RichLog):
@@ -467,7 +613,7 @@ class WorkLog(RichLog):
         self._last_count = 0
 
     def update_content(self) -> None:
-        dashboard = read_json(SCRUM_DIR / "dashboard.json")
+        dashboard = read_json_validated(SCRUM_DIR / "dashboard.json")
         if not dashboard:
             return
 
@@ -546,6 +692,13 @@ class ScrumFileHandler(FileSystemEventHandler):
 
 class ScrumDashboard(App):
     """Main Textual TUI dashboard application."""
+
+    # Preserve the terminal's native ANSI palette instead of converting named
+    # colors (red/green/cyan/...) to RGB through Textual's theme. This keeps
+    # status colors readable on terminals with limited or buggy truecolor
+    # support (e.g. Apple Terminal), at the cost of transparency effects we
+    # do not use here. Requires textual >= 0.80.
+    ansi_color = True
 
     TITLE = "Scrum Team Dashboard"
     CSS = """

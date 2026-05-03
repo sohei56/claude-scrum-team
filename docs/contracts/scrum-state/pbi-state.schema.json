@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PBI pipeline internal state",
+  "type": "object",
+  "required": ["pbi_id", "phase", "started_at", "updated_at"],
+  "additionalProperties": false,
+  "properties": {
+    "pbi_id": {"type": "string", "pattern": "^pbi-[0-9]+$"},
+    "phase": {"enum": ["design", "impl_ut", "complete", "escalated"]},
+    "design_round": {"type": "integer", "minimum": 0},
+    "impl_round": {"type": "integer", "minimum": 0},
+    "design_status": {"enum": ["pending", "in_review", "fail", "pass"]},
+    "impl_status": {"enum": ["pending", "in_review", "fail", "pass"]},
+    "ut_status": {"enum": ["pending", "in_review", "fail", "pass"]},
+    "coverage_status": {"enum": ["pending", "fail", "pass"]},
+    "escalation_reason": {
+      "type": ["string", "null"],
+      "enum": [
+        null,
+        "stagnation",
+        "divergence",
+        "max_rounds",
+        "budget_exhausted",
+        "requirements_unclear",
+        "coverage_tool_error",
+        "coverage_tool_unavailable",
+        "catalog_lock_timeout"
+      ]
+    },
+    "started_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"}
+  }
+}
