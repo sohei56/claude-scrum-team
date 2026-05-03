@@ -198,42 +198,24 @@ class SprintOverview(Static):
         lines.append(format_phase(phase))
 
         if sprint and isinstance(sprint, dict):
-            # Handle both data-model field names and agent-produced field names
             sprint_id = sprint.get("id", "?")
             goal = sprint.get("goal") or "No goal"
             sprint_status = sprint.get("status", "?")
 
-            # PBI IDs: from pbi_ids[] (spec) or pbis[] objects (agent)
             pbi_ids = [str(x) for x in (sprint.get("pbi_ids") or [])]
-            sprint_pbis = sprint.get("pbis") or []
-            if not pbi_ids and sprint_pbis:
-                pbi_ids = [str(p.get("id", "?")) for p in sprint_pbis if isinstance(p, dict)]
             pbi_count = len(pbi_ids)
 
-            # Count done PBIs: from backlog (spec) or inline pbis (agent)
+            # Count done PBIs by joining sprint.pbi_ids[] against backlog items.
             done_count = 0
-            if sprint_pbis:
-                for p in sprint_pbis:
-                    if isinstance(p, dict) and p.get("status") == "done":
-                        done_count += 1
-            elif backlog and pbi_ids:
+            if backlog and pbi_ids:
                 for item in get_backlog_items(backlog):
                     if not isinstance(item, dict):
                         continue
                     if str(item.get("id", "")) in pbi_ids and item.get("status") == "done":
                         done_count += 1
 
-            # Developer count: from developer_count, developers[], or pbis[]
             devs = sprint.get("developers") or []
             dev_count = sprint.get("developer_count") or len(devs) or 0
-            if not dev_count and sprint_pbis:
-                devs_set = set()
-                for p in sprint_pbis:
-                    if isinstance(p, dict):
-                        assigned = p.get("assigned_to")
-                        if assigned:
-                            devs_set.add(assigned)
-                dev_count = len(devs_set)
 
             lines.append(
                 f"[bold]Sprint:[/bold] {sprint_id}"
@@ -246,7 +228,6 @@ class SprintOverview(Static):
                 f" | [bold]Developers:[/bold] {dev_count}"
             )
 
-            # Agent assignments: from developers[] (spec) or pbis[] (agent)
             if devs:
                 dev_parts = []
                 for d in devs:
@@ -259,15 +240,6 @@ class SprintOverview(Static):
                     status = d.get("status", "?")
                     impl = d.get("assigned_work", {}).get("implement", [])
                     dev_parts.append(f"{did}:{status}({','.join(str(i) for i in impl)})")
-                lines.append(f"[bold]Agents:[/bold] {' | '.join(dev_parts)}")
-            elif sprint_pbis:
-                dev_parts = []
-                for p in sprint_pbis:
-                    if isinstance(p, dict):
-                        assigned = p.get("assigned_to") or "?"
-                        pid = p.get("id") or "?"
-                        pstatus = p.get("status") or "?"
-                        dev_parts.append(f"{assigned}→{pid}({pstatus})")
                 lines.append(f"[bold]Agents:[/bold] {' | '.join(dev_parts)}")
         else:
             lines.append("[dim]No active Sprint — waiting for Sprint Planning[/dim]")
@@ -312,22 +284,7 @@ class PBIProgressBoard(DataTable):
                 for pbi_id in assigned.get("review") or []:
                     pbi_review_map[str(pbi_id).lower()] = did
 
-            # Also check sprint.pbis[] for inline assignments
-            for p in sprint.get("pbis") or []:
-                if not isinstance(p, dict):
-                    continue
-                pid = str(p.get("id", "")).lower()
-                if pid:
-                    if p.get("assigned_to") and pid not in pbi_impl_map:
-                        pbi_impl_map[pid] = p["assigned_to"]
-                    if p.get("reviewer") and pid not in pbi_review_map:
-                        pbi_review_map[pid] = p["reviewer"]
-
-        # Collect PBI items from backlog (spec format) or sprint.pbis (agent format)
-        # Try multiple key names — LLM agents may use non-canonical names
         items = get_backlog_items(backlog)
-        if not items and sprint and isinstance(sprint, dict):
-            items = sprint.get("pbis", [])
 
         for item in items:
             if not isinstance(item, dict):
