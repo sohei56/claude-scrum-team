@@ -73,6 +73,24 @@ for lib_file in "$PROJECT_ROOT/hooks/lib/"*.sh; do
   fi
 done
 
+# --- Copy scrum-state SSOT wrappers ---
+# pre-tool-use-scrum-state-guard blocks raw writes to .scrum/*.json. Without
+# the wrappers in scripts/scrum/, agents have no permitted way to mutate state.
+# Copy them under .claude/scripts/scrum/ to match the project-local layout.
+echo "Copying scrum-state wrappers to $TARGET_DIR/scripts/scrum/..."
+mkdir -p "$TARGET_DIR/scripts/scrum/lib"
+for wrapper in "$PROJECT_ROOT/scripts/scrum/"*.sh; do
+  if [ -f "$wrapper" ]; then
+    cp "$wrapper" "$TARGET_DIR/scripts/scrum/"
+    chmod +x "$TARGET_DIR/scripts/scrum/$(basename "$wrapper")"
+  fi
+done
+for wrapper_lib in "$PROJECT_ROOT/scripts/scrum/lib/"*.sh; do
+  if [ -f "$wrapper_lib" ]; then
+    cp "$wrapper_lib" "$TARGET_DIR/scripts/scrum/lib/"
+  fi
+done
+
 # --- Copy PBI Pipeline configuration template ---
 # Provide .scrum-config.example.json so users can copy it to .scrum/config.json
 # and adapt to their project's test_runner / coverage_tool. Only copies if the
@@ -86,6 +104,13 @@ fi
 if [ -d "$PROJECT_ROOT/docs/contracts" ]; then
   mkdir -p "$TARGET_DIR/docs/contracts"
   cp "$PROJECT_ROOT/docs/contracts/"*.schema.json "$TARGET_DIR/docs/contracts/" 2>/dev/null || true
+fi
+# --- Copy scrum-state SSOT schemas ---
+# Required by scripts/scrum/migrate-legacy.sh (and any hand-run validation).
+if [ -d "$PROJECT_ROOT/docs/contracts/scrum-state" ]; then
+  mkdir -p "$TARGET_DIR/docs/contracts/scrum-state"
+  cp "$PROJECT_ROOT/docs/contracts/scrum-state/"*.schema.json \
+     "$TARGET_DIR/docs/contracts/scrum-state/" 2>/dev/null || true
 fi
 
 # --- Copy design catalog ---
@@ -140,6 +165,15 @@ cat > "$settings_file" << 'SETTINGS_EOF'
       }
     ],
     "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/pre-tool-use-scrum-state-guard.sh"
+          }
+        ]
+      },
       {
         "matcher": "Write|Edit",
         "hooks": [

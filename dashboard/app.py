@@ -422,6 +422,63 @@ class CommunicationLog(RichLog):
             )
 
 
+# Per-PBI state files use a richer phase vocabulary than dashboard.json.
+# Map every observed value to the canonical pane phase so legacy projects render.
+PBI_STATE_PHASE_NORMALIZE = {
+    "design": "design",
+    "design_complete": "design",
+    "impl_ut": "impl_ut",
+    "implementation": "impl_ut",
+    "implementation_complete": "complete",
+    "review": "impl_ut",
+    "complete": "complete",
+    "escalated": "escalated",
+}
+
+
+def _build_pipelines_from_pbi_state() -> list[dict]:
+    """Aggregate .scrum/pbi/*/state.json into pbi_pipelines[] when the
+    hook-maintained list in dashboard.json is empty (legacy projects, or
+    sessions that never emitted SubagentStart with pbi_id)."""
+    pbi_root = SCRUM_DIR / "pbi"
+    if not pbi_root.exists():
+        return []
+    sprint = read_json_validated(SCRUM_DIR / "sprint.json") or {}
+    dev_for_pbi: dict[str, str] = {}
+    for dev in sprint.get("developers") or []:
+        did = dev.get("id", "?")
+        for pbi_id in (dev.get("assigned_work") or {}).get("implement") or []:
+            dev_for_pbi[pbi_id.lower()] = did
+
+    out: list[dict] = []
+    for state_path in sorted(pbi_root.glob("*/state.json")):
+        data = read_json(state_path)
+        if not isinstance(data, dict):
+            continue
+        pbi_id = data.get("pbi_id") or state_path.parent.name
+        raw_phase = data.get("phase", "unknown")
+        phase = PBI_STATE_PHASE_NORMALIZE.get(raw_phase, raw_phase)
+        round_no = data.get("design_round") if phase == "design" else data.get("impl_round")
+        if round_no is None:
+            round_no = data.get("round", 0)
+        developer = (
+            data.get("implementer")
+            or data.get("developer_id")
+            or dev_for_pbi.get(pbi_id.lower(), "?")
+        )
+        out.append(
+            {
+                "pbi_id": pbi_id,
+                "developer": developer,
+                "phase": phase,
+                "round": round_no,
+                "active_subagents": [],
+                "last_event_at": data.get("updated_at", "?"),
+            }
+        )
+    return out
+
+
 class PbiPipelinePane(Static):
     """Panel (e): Live PBI Pipeline state per active PBI."""
 
@@ -436,6 +493,11 @@ class PbiPipelinePane(Static):
     def update_content(self) -> None:
         dashboard = read_json_validated(SCRUM_DIR / "dashboard.json") or {}
         pipelines = dashboard.get("pbi_pipelines", []) if isinstance(dashboard, dict) else []
+        if not pipelines:
+            # Fall back to per-PBI state files. The dashboard.json aggregate is
+            # only populated by SubagentStart/Stop hooks with pbi_id; legacy
+            # projects never get those events.
+            pipelines = _build_pipelines_from_pbi_state()
         if not pipelines:
             self.update("[bold]PBI Pipelines:[/bold] (none active)")
             return

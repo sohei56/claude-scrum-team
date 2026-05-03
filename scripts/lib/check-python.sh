@@ -44,6 +44,9 @@ check_python_prereqs() {
   fi
 
   # 3. TUI packages — auto-install if missing
+  # jsonschema is required so the dashboard validates .scrum/*.json against
+  # docs/contracts/scrum-state/*.schema.json. Without it, validation silently
+  # bypasses and stale/legacy state renders as empty panels.
   local missing_pkgs=""
   if ! python3 -c "import textual" 2>/dev/null; then
     missing_pkgs="textual"
@@ -51,17 +54,41 @@ check_python_prereqs() {
   if ! python3 -c "import watchdog" 2>/dev/null; then
     missing_pkgs="${missing_pkgs:+${missing_pkgs} }watchdog"
   fi
+  if ! python3 -c "import jsonschema" 2>/dev/null; then
+    missing_pkgs="${missing_pkgs:+${missing_pkgs} }jsonschema"
+  fi
   if [ -n "$missing_pkgs" ]; then
     echo "Installing missing Python package(s): ${missing_pkgs}..."
+    local pip_err
     # shellcheck disable=SC2086
-    if python3 -m pip install --quiet $missing_pkgs 2>/dev/null; then
+    if pip_err="$(python3 -m pip install --quiet $missing_pkgs 2>&1)"; then
       echo "  Installed successfully."
+    elif printf '%s' "$pip_err" | grep -q -e "externally-managed" -e "PEP 668"; then
+      # Homebrew/system Python (PEP 668) refuses pip without --break-system-packages.
+      # Retry once with that flag — the TUI deps are user-scope tooling, not OS-managed.
+      echo "  System Python is externally-managed; retrying with --break-system-packages..."
+      # shellcheck disable=SC2086
+      if python3 -m pip install --quiet --break-system-packages $missing_pkgs; then
+        echo "  Installed successfully."
+      else
+        _check_python_install_failed "$missing_pkgs"
+      fi
     else
-      echo "Error: Failed to install Python package(s): ${missing_pkgs}" >&2
-      echo "" >&2
-      echo "Try installing manually:" >&2
-      echo "  pip install textual watchdog" >&2
-      exit 3
+      printf '%s\n' "$pip_err" >&2
+      _check_python_install_failed "$missing_pkgs"
     fi
   fi
+}
+
+_check_python_install_failed() {
+  local pkgs="$1"
+  echo "Error: Failed to install Python package(s): ${pkgs}" >&2
+  echo "" >&2
+  echo "Try installing manually:" >&2
+  echo "  pip install ${pkgs}" >&2
+  echo "or, on Homebrew/system Python (PEP 668):" >&2
+  echo "  pip install --break-system-packages ${pkgs}" >&2
+  echo "or use a project venv:" >&2
+  echo "  python3 -m venv .venv && .venv/bin/pip install ${pkgs}" >&2
+  exit 3
 }
