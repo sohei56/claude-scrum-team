@@ -1,8 +1,9 @@
 # Data Model: AI-Powered Scrum Team
 
-All state persists as JSON files in `.scrum/` at the user's project root.
-One file per concern. Files are read/written by the Scrum Master agent and
-read (selectively) by Developer teammates.
+State persists as JSON files in `.scrum/`, one per concern. Owners write
+through `scripts/scrum/*.sh` wrappers (raw `Write`/`Edit` is blocked by
+`hooks/pre-tool-use-scrum-state-guard.sh`); readers consult the SSOT
+schemas under `docs/contracts/scrum-state/`.
 
 ---
 

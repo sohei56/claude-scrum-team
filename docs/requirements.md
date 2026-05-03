@@ -209,7 +209,7 @@ spawns independent reviewer sub-agents (`code-reviewer`,
 `security-reviewer`, and optionally `codex-code-reviewer`) to
 evaluate each PBI's implementation against requirements and
 design documents. During implementation, Developer teammates
-install support sub-agents (`tdd-guide`, `build-error-resolver`)
+install PBI Pipeline sub-agents (`pbi-*`, `codex-*-reviewer`)
 via the `install-subagents` Skill. All sub-agent definitions are
 maintained in the project's `agents/` directory and distributed
 to `.claude/agents/` by `setup-user.sh`. This happens
@@ -235,8 +235,10 @@ Observe implementation and verify Developers use support sub-agents.
 
 3. **Given** Sprint Planning assigns a PBI to a Developer teammate,
    **When** the Developer prepares for implementation,
-   **Then** the Developer installs support sub-agents (`tdd-guide`,
-   `build-error-resolver`) from project-managed definitions.
+   **Then** the Developer verifies PBI Pipeline sub-agents
+   (`pbi-designer`, `pbi-implementer`, `pbi-ut-author`,
+   `codex-design-reviewer`, `codex-impl-reviewer`,
+   `codex-ut-reviewer`) are installed under `.claude/agents/`.
 
 ---
 
@@ -459,10 +461,6 @@ Observe implementation and verify Developers use support sub-agents.
   `code-reviewer`, `security-reviewer`, `codex-code-reviewer`. Used
   by the `cross-review` skill (FR-009 Layer 2).
 
-  **Optional support sub-agents**: `tdd-guide`, `build-error-resolver`
-  remain available but are deprioritized — the Developer no longer
-  writes code directly, so they are rarely invoked.
-
   Path-level constraints on PBI Pipeline sub-agents are enforced by
   `hooks/pre-tool-use-path-guard.sh`: `pbi-ut-author` cannot Read /
   Write / Edit implementation paths; `pbi-implementer` cannot Write /
@@ -583,9 +581,11 @@ Observe implementation and verify Developers use support sub-agents.
   it globally. Agent Teams is an experimental feature as of
   February 2026.
 - Specialist sub-agents (`code-reviewer`, `security-reviewer`,
-  `codex-code-reviewer`, `tdd-guide`, `build-error-resolver`) are
-  project-managed in the `agents/` directory and distributed by
-  `setup-user.sh`. No external catalog dependency.
+  `codex-code-reviewer`, plus PBI Pipeline sub-agents `pbi-designer`,
+  `pbi-implementer`, `pbi-ut-author`, `codex-design-reviewer`,
+  `codex-impl-reviewer`, `codex-ut-reviewer`) are project-managed in
+  the `agents/` directory and distributed by `setup-user.sh`. No
+  external catalog dependency.
 - The user's environment supports TUI rendering (standard terminal
   emulator with basic ANSI support).
 - Python 3.9+ is installed and available on the user's PATH.

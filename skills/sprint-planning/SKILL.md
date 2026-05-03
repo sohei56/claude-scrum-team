@@ -34,22 +34,15 @@ disable-model-invocation: false
 8. Assign reviewers: round-robin (no self-review). Single-PBI Sprint→reviewer_id: "scrum-master"
 9. Create sprint.json
 
-    > **TODO(scrum-state-tools):** No `init-sprint.sh` wrapper exists yet.
-    > The current `scripts/scrum/*` wrappers all assume `.scrum/sprint.json`
-    > already exists (they fail with `E_FILE_MISSING` / exit 67 otherwise),
-    > and the `pre-tool-use-scrum-state-guard.sh` PreToolUse hook blocks any
-    > raw `Write`/`Edit` to `.scrum/sprint.json`. A follow-up wrapper is
-    > required before this step can run cleanly. See
-    > `docs/MIGRATION-scrum-state-tools.md` for the gap list.
+    > **TODO(scrum-state-tools):** Needs `init-sprint.sh` wrapper —
+    > existing wrappers require `.scrum/sprint.json` to exist and raw
+    > Write/Edit is blocked. See `docs/MIGRATION-scrum-state-tools.md`.
 
 10. Update backlog.json: sprint_id, implementer_id, reviewer_id
 
-    > **TODO(scrum-state-tools):** No wrapper exists yet for
-    > `items[].sprint_id`, `items[].implementer_id`, `items[].reviewer_id`.
-    > Raw `jq > .scrum/backlog.json` is now blocked by
-    > `pre-tool-use-scrum-state-guard.sh`. A follow-up
-    > `scripts/scrum/set-backlog-item-field.sh` (or per-field wrappers) is
-    > required. See `docs/MIGRATION-scrum-state-tools.md`.
+    > **TODO(scrum-state-tools):** Needs `set-backlog-item-field.sh`
+    > (or per-field wrappers) for `items[].{sprint_id,implementer_id,reviewer_id}`.
+    > See `docs/MIGRATION-scrum-state-tools.md`.
 
 11. **Catalog Target Assignment** (PBI Pipeline parallel-safety):
 
@@ -58,16 +51,11 @@ disable-model-invocation: false
        paths it will touch (entries enabled in catalog-config.json).
     2. Record in backlog.json items[].catalog_targets[]:
 
-       > **TODO(scrum-state-tools):** This step writes `items[].catalog_targets`
-       > via raw `jq`, which is now blocked by the
-       > `pre-tool-use-scrum-state-guard.sh` PreToolUse hook. Two follow-ups
-       > are required: (a) extend
-       > `docs/contracts/scrum-state/backlog.schema.json` to add the
-       > `catalog_targets` field (currently rejected by
-       > `additionalProperties: false`); (b) ship a wrapper such as
-       > `scripts/scrum/set-backlog-item-field.sh` (or a per-field setter).
-       > Until then, this step will fail at runtime. See
-       > `docs/MIGRATION-scrum-state-tools.md` for the full gap list.
+       > **TODO(scrum-state-tools):** Blocked at runtime — needs (a)
+       > `catalog_targets` added to `backlog.schema.json` (currently
+       > rejected by `additionalProperties: false`); (b) a wrapper such
+       > as `set-backlog-item-field.sh`. See
+       > `docs/MIGRATION-scrum-state-tools.md`.
 
        ```bash
        jq --arg id "$PBI_ID" --argjson targets "$TARGETS_JSON" \

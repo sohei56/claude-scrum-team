@@ -126,7 +126,7 @@ body. Below is the reference for all 14 Skills:
 - `docs/design/specs/**/*.md` (read: all existing designs for consistency)
 - `docs/design/catalog.md` (read: to verify enabled entries)
 - `.scrum/improvements.json` (read at Sprint start)
-- Project-managed support sub-agents (`tdd-guide`, `build-error-resolver`) via FR-019
+- Project-managed PBI Pipeline sub-agents (`pbi-designer`, `pbi-implementer`, `pbi-ut-author`, `codex-design-reviewer`, `codex-impl-reviewer`, `codex-ut-reviewer`) via FR-019
 
 ### Outputs
 - `docs/design/specs/{category}/*.md` (during Design phase — only for enabled catalog entries)
@@ -142,7 +142,7 @@ body. Below is the reference for all 14 Skills:
 | FR-004 | Produce design documents; read all existing designs for consistency |
 | FR-012 | Read improvement log at Sprint start, apply relevant improvements |
 | FR-017 | Ensure PBI meets Definition of Done |
-| FR-019 | Install support sub-agents (`tdd-guide`, `build-error-resolver`) from project-managed agents |
+| FR-019 | Install/verify PBI Pipeline sub-agents (`pbi-*`, `codex-*-reviewer`) from project-managed agents |
 
 ### Lifecycle
 1. Spawned by Scrum Master via `spawn-teammates` Skill
@@ -150,7 +150,7 @@ body. Below is the reference for all 14 Skills:
 3. Reads `.scrum/improvements.json`, applies relevant improvements
 4. Invokes `install-subagents` Skill for support sub-agent installation (FR-019)
 5. Design phase: produces design document with `revision_history` entry
-6. Implementation phase: implements PBI, writes tests (uses `tdd-guide` and `build-error-resolver` sub-agents as needed)
+6. PBI Pipeline phase: conducts the per-PBI Round loop — spawns `pbi-designer` / `codex-design-reviewer` (Design phase), then `pbi-implementer` + `pbi-ut-author` / `codex-impl-reviewer` + `codex-ut-reviewer` (Impl+UT phase). The Developer does not write code itself.
 7. Terminates at Sprint end (cross-review is handled by the Scrum Master via independent reviewer sub-agents — see FR-009)
 
 ---
@@ -169,12 +169,16 @@ body. Below is the reference for all 14 Skills:
 | `security-reviewer` | Security vulnerability scanning (OWASP Top 10) | Read, Grep, Glob, Bash (read-only) |
 | `codex-code-reviewer` | Cross-model review via OpenAI Codex CLI | Read, Grep, Glob, Bash |
 
-### Developer Support Sub-Agents (spawned by Developer during implementation)
+### PBI Pipeline Sub-Agents (spawned by Developer per Round)
 
 | Agent | Purpose | Tools |
 |-------|---------|-------|
-| `tdd-guide` | TDD workflow guidance (RED-GREEN-REFACTOR) | Read, Write, Edit, Bash, Grep |
-| `build-error-resolver` | Build error diagnosis and minimal fixes | Read, Write, Edit, Bash, Grep, Glob |
+| `pbi-designer` | Author per-PBI design spec | Read, Write, Edit, Grep, Glob, Bash |
+| `pbi-implementer` | Implement PBI source (no test writes) | Read, Write, Edit, Grep, Glob, Bash |
+| `pbi-ut-author` | Black-box unit tests (no impl reads) | Read, Write, Edit, Grep, Glob, Bash |
+| `codex-design-reviewer` | Cross-model critical design review | Read, Grep, Glob, Bash |
+| `codex-impl-reviewer` | Cross-model impl review (no test visibility) | Read, Grep, Glob, Bash |
+| `codex-ut-reviewer` | Cross-model UT review (no impl visibility) | Read, Grep, Glob, Bash |
 
 ### Inputs
 - Task description from spawning agent (via Task tool prompt)

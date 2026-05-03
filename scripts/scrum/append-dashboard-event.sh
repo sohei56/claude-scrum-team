@@ -47,7 +47,7 @@ fi
 # empty-string-or-literal-"null" → JSON null pattern into one place per field.
 EVT_JSON="$(
   jq -n \
-    --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+    --arg ts "$(_iso_utc_now)" \
     --arg type "$TYPE" \
     --arg agent "$AGENT" \
     --arg pbi "$PBI" \

@@ -30,15 +30,6 @@ Verify these 6 sub-agents exist with valid YAML frontmatter at
 
 Missing required → BLOCK (escalate to SM, do not proceed to PBI work).
 
-## Optional Sub-Agents
-
-- `tdd-guide` — lower priority since Developer no longer writes code
-  directly.
-- `build-error-resolver` — lower priority since Codex reviewers catch
-  most build issues.
-
-Missing optional → log warning, proceed.
-
 ## Steps
 
 1. Analyze PBI→determine specialist needs
@@ -50,9 +41,7 @@ Missing optional → log warning, proceed.
    done
    ```
 3. Verify YAML frontmatter on each (yq eval '.name' or equivalent).
-4. Verify optional sub-agents (`tdd-guide`, `build-error-resolver`);
-   log warning if missing.
-5. During pbi-pipeline execution→invoke via
+4. During pbi-pipeline execution→invoke via
    `Agent(subagent_type="<name>")`. Record only actually-used agents in
    sprint.json.
 
@@ -60,7 +49,6 @@ Missing optional → log warning, proceed.
 
 - Required sub-agent files missing → BLOCK (cannot proceed; SM must
   install them).
-- Optional sub-agent files missing → proceed with warning.
 
 Ref: FR-019
 
