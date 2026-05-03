@@ -31,6 +31,7 @@ from dashboard.app import (
     format_phase,
     get_backlog_items,
     read_json,
+    read_json_validated,
 )
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
@@ -80,6 +81,49 @@ class TestReadJson:
         good.write_text("[1, 2, 3]", encoding="utf-8")
         result = read_json(good)
         assert result == [1, 2, 3]
+
+
+class TestReadJsonValidated:
+    def test_valid_state_passes(self, tmp_path: Path) -> None:
+        target = tmp_path / "state.json"
+        target.write_text((FIXTURES_DIR / "valid-state.json").read_text(), encoding="utf-8")
+        result = read_json_validated(target)
+        assert isinstance(result, dict)
+        assert result["phase"] == "implementation"
+
+    def test_valid_sprint_passes(self, tmp_path: Path) -> None:
+        target = tmp_path / "sprint.json"
+        target.write_text((FIXTURES_DIR / "valid-sprint.json").read_text(), encoding="utf-8")
+        result = read_json_validated(target)
+        assert isinstance(result, dict)
+        assert result["id"] == "sprint-001"
+
+    def test_missing_file_returns_none(self, tmp_path: Path) -> None:
+        assert read_json_validated(tmp_path / "state.json") is None
+
+    def test_schema_violation_returns_none(self, tmp_path: Path, caplog) -> None:
+        # state.json without required `phase` field
+        bad = tmp_path / "state.json"
+        bad.write_text(
+            '{"created_at": "2026-03-01T10:00:00Z", "updated_at": "2026-03-01T12:00:00Z"}',
+            encoding="utf-8",
+        )
+        with caplog.at_level("WARNING"):
+            result = read_json_validated(bad)
+        assert result is None
+        assert any("state.json" in rec.message for rec in caplog.records)
+
+    def test_invalid_json_returns_none(self, tmp_path: Path) -> None:
+        bad = tmp_path / "state.json"
+        bad.write_text("{not valid", encoding="utf-8")
+        assert read_json_validated(bad) is None
+
+    def test_unknown_filename_falls_back_to_read_json(self, tmp_path: Path) -> None:
+        # test-results.json has no schema mapping; should still load.
+        target = tmp_path / "test-results.json"
+        target.write_text('{"overall_status": "passed"}', encoding="utf-8")
+        result = read_json_validated(target)
+        assert result == {"overall_status": "passed"}
 
 
 class TestGetBacklogItems:

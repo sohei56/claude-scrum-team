@@ -14,6 +14,7 @@ Panels:
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 from threading import Lock, Timer
@@ -25,7 +26,39 @@ from textual.widgets import DataTable, Footer, Header, RichLog, Static
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
+try:
+    from jsonschema import ValidationError
+    from jsonschema import validate as _jsonschema_validate
+
+    _SCHEMA_VALIDATION = True
+except ImportError:  # pragma: no cover — fallback path when jsonschema absent
+    _SCHEMA_VALIDATION = False
+
+    class ValidationError(Exception):  # type: ignore[no-redef]
+        pass
+
+    def _jsonschema_validate(_data, _schema) -> None:  # type: ignore[misc]
+        return None
+
+
+logger = logging.getLogger(__name__)
+
 SCRUM_DIR = Path(".scrum")
+
+# SSOT schemas live alongside the contracts catalog. Each .scrum/<name>.json
+# is validated against its schema on read; failures fall back to "stale data"
+# rather than crashing the dashboard.
+SCRUM_STATE_DIR = (
+    Path(__file__).resolve().parent.parent / "docs" / "contracts" / "scrum-state"
+)
+
+_SCHEMA_FOR_FILE = {
+    "state.json": "state.schema.json",
+    "sprint.json": "sprint.schema.json",
+    "backlog.json": "backlog.schema.json",
+    "communications.json": "communications.schema.json",
+    "dashboard.json": "dashboard.schema.json",
+}
 
 # Status colors for PBI Progress Board
 STATUS_COLORS = {
@@ -106,6 +139,37 @@ def read_json(path: Path) -> dict | list | None:
     return None
 
 
+def read_json_validated(path: Path) -> dict | None:
+    """Read a `.scrum/<name>.json` file and validate against its SSOT schema.
+
+    Returns None on missing file, invalid JSON, schema violation, or any I/O
+    error. Schema violations are logged at warning level so the dashboard
+    degrades to a "stale data" placeholder rather than crashing.
+
+    Files unknown to ``_SCHEMA_FOR_FILE`` (e.g. ``test-results.json``,
+    ``session-map.json``) fall back to plain ``read_json``.
+
+    When ``jsonschema`` is unavailable (import failed at module load), this
+    delegates unconditionally to ``read_json``.
+    """
+    schema_name = _SCHEMA_FOR_FILE.get(path.name)
+    if schema_name is None or not _SCHEMA_VALIDATION:
+        result = read_json(path)
+        return result if isinstance(result, dict) else None
+    try:
+        if not path.exists():
+            return None
+        data = json.loads(path.read_text(encoding="utf-8"))
+        schema = json.loads((SCRUM_STATE_DIR / schema_name).read_text(encoding="utf-8"))
+        _jsonschema_validate(data, schema)
+        return data if isinstance(data, dict) else None
+    except ValidationError as exc:
+        logger.warning("Schema validation failed for %s: %s", path.name, exc.message)
+        return None
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError):
+        return None
+
+
 class SprintOverview(Static):
     """Panel (a): Sprint Goal, phase, PBI count, Developer assignments."""
 
@@ -119,9 +183,9 @@ class SprintOverview(Static):
     """
 
     def update_content(self) -> None:
-        state = read_json(SCRUM_DIR / "state.json")
-        sprint = read_json(SCRUM_DIR / "sprint.json")
-        backlog = read_json(SCRUM_DIR / "backlog.json")
+        state = read_json_validated(SCRUM_DIR / "state.json")
+        sprint = read_json_validated(SCRUM_DIR / "sprint.json")
+        backlog = read_json_validated(SCRUM_DIR / "backlog.json")
 
         if not state:
             self.update("[bold]No project state[/bold]\nRun scrum-start.sh to begin.")
@@ -227,8 +291,8 @@ class PBIProgressBoard(DataTable):
         self.update_content()
 
     def update_content(self) -> None:
-        backlog = read_json(SCRUM_DIR / "backlog.json")
-        sprint = read_json(SCRUM_DIR / "sprint.json")
+        backlog = read_json_validated(SCRUM_DIR / "backlog.json")
+        sprint = read_json_validated(SCRUM_DIR / "sprint.json")
         self.clear()
 
         # Build PBI→developer lookup from sprint.json developers[]
@@ -393,7 +457,7 @@ class CommunicationLog(RichLog):
         self._last_count = 0
 
     def update_content(self) -> None:
-        comms = read_json(SCRUM_DIR / "communications.json")
+        comms = read_json_validated(SCRUM_DIR / "communications.json")
         if not comms:
             return
 
@@ -434,7 +498,7 @@ class PbiPipelinePane(Static):
     """
 
     def update_content(self) -> None:
-        dashboard = read_json(SCRUM_DIR / "dashboard.json") or {}
+        dashboard = read_json_validated(SCRUM_DIR / "dashboard.json") or {}
         pipelines = dashboard.get("pbi_pipelines", []) if isinstance(dashboard, dict) else []
         if not pipelines:
             self.update("[bold]PBI Pipelines:[/bold] (none active)")
@@ -467,7 +531,7 @@ class WorkLog(RichLog):
         self._last_count = 0
 
     def update_content(self) -> None:
-        dashboard = read_json(SCRUM_DIR / "dashboard.json")
+        dashboard = read_json_validated(SCRUM_DIR / "dashboard.json")
         if not dashboard:
             return
 
