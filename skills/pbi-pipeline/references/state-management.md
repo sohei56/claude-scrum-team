@@ -46,22 +46,31 @@ jq -n --arg id "$PBI_ID" --arg now "$NOW" '{
 
 ## Atomic update helper
 
-ALWAYS write via temp + rename (never partial write):
+ALWAYS update PBI state via the validated wrapper script (never raw jq):
 
 ```bash
-update_state() {
-  local pbi_dir="$1"; shift
-  local jq_expr="$1"; shift
-  local now; now="$(date -Iseconds)"
-  jq --arg now "$now" "$jq_expr | .updated_at = \$now" \
-    "$pbi_dir/state.json" > "$pbi_dir/state.json.tmp"
-  mv "$pbi_dir/state.json.tmp" "$pbi_dir/state.json"
-}
-# Examples:
-update_state "$PBI_DIR" '.design_round = 1 | .design_status = "in_review"'
-update_state "$PBI_DIR" '.phase = "complete"'
-update_state "$PBI_DIR" \
-  '.phase = "escalated" | .escalation_reason = "stagnation"'
+scripts/scrum/update-pbi-state.sh "$PBI_ID" design_round 1 design_status in_review
+scripts/scrum/update-pbi-state.sh "$PBI_ID" phase complete
+scripts/scrum/update-pbi-state.sh "$PBI_ID" phase escalated escalation_reason stagnation
+```
+
+The wrapper:
+- validates against `docs/contracts/scrum-state/pbi-state.schema.json`,
+- takes a per-file `mkdir` lock for race safety,
+- atomically writes via `tmp + mv`,
+- auto-stamps `.updated_at = now`.
+
+Variadic field/value pairs are applied as a single transaction. Unknown fields or out-of-enum values are rejected with `E_INVALID_ARG` (exit 64).
+
+```bash
+# Multiple fields atomically
+scripts/scrum/update-pbi-state.sh "$PBI_ID" \
+  phase impl_ut \
+  impl_round 1 \
+  design_status pass
+
+# Clear escalation_reason
+scripts/scrum/update-pbi-state.sh "$PBI_ID" escalation_reason null
 ```
 
 ## pipeline.log format
@@ -84,15 +93,10 @@ Examples:
 2026-05-02T12:25:00+09:00	impl_ut	1	gate	fail → round 2 (test_failures=2)
 ```
 
-Append helper:
+For the line-formatted pipeline log, use the `append-pbi-log.sh` wrapper instead of raw `printf >>`:
 
 ```bash
-log_event() {
-  local pbi_dir="$1" phase="$2" round="$3" event="$4" detail="$5"
-  printf '%s\t%s\t%s\t%s\t%s\n' \
-    "$(date -Iseconds)" "$phase" "$round" "$event" "$detail" \
-    >> "$pbi_dir/pipeline.log"
-}
+scripts/scrum/append-pbi-log.sh "$PBI_ID" "$PHASE" "$ROUND" "$EVENT" "$DETAIL"
 ```
 
 ## Sprint-level state side-effects
