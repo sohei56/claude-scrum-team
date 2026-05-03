@@ -202,14 +202,14 @@ class SprintOverview(Static):
             goal = sprint.get("goal") or "No goal"
             sprint_status = sprint.get("status", "?")
 
-            pbi_ids = [str(x) for x in (sprint.get("pbi_ids") or [])]
+            pbi_ids = list(sprint.get("pbi_ids") or [])
             pbi_count = len(pbi_ids)
 
             # Count done PBIs by joining sprint.pbi_ids[] against backlog items.
             done_count = 0
             if backlog and pbi_ids:
                 for item in get_backlog_items(backlog):
-                    if str(item.get("id", "")) in pbi_ids and item.get("status") == "done":
+                    if item.get("id", "") in pbi_ids and item.get("status") == "done":
                         done_count += 1
 
             devs = sprint.get("developers") or []
@@ -232,7 +232,7 @@ class SprintOverview(Static):
                     did = d.get("id", "?")
                     status = d.get("status", "?")
                     impl = d.get("assigned_work", {}).get("implement", [])
-                    dev_parts.append(f"{did}:{status}({','.join(str(i) for i in impl)})")
+                    dev_parts.append(f"{did}:{status}({','.join(impl)})")
                 lines.append(f"[bold]Agents:[/bold] {' | '.join(dev_parts)}")
         else:
             lines.append("[dim]No active Sprint — waiting for Sprint Planning[/dim]")
@@ -269,22 +269,22 @@ class PBIProgressBoard(DataTable):
                 did = dev.get("id", "?")
                 assigned = dev.get("assigned_work") or {}
                 for pbi_id in assigned.get("implement") or []:
-                    pbi_impl_map[str(pbi_id).lower()] = did
+                    pbi_impl_map[pbi_id.lower()] = did
                 for pbi_id in assigned.get("review") or []:
-                    pbi_review_map[str(pbi_id).lower()] = did
+                    pbi_review_map[pbi_id.lower()] = did
 
         items = get_backlog_items(backlog)
 
         for item in items:
-            pbi_id = str(item.get("id") or "?")
-            title = str(item.get("title") or "Untitled")[:35]
+            pbi_id = item.get("id") or "?"
+            title = (item.get("title") or "Untitled")[:35]
             raw_status = item.get("status", "?")
             # Normalize status to canonical form
             status = STATUS_NORMALIZE.get(raw_status, raw_status)
             # Resolve implementer: prefer sprint.json developer map (most
             # reliable — set by spawn-teammates after reconciliation), then
             # fall back to backlog.json fields which may hold placeholders.
-            pbi_key = str(pbi_id).lower()
+            pbi_key = pbi_id.lower()
             impl = (
                 pbi_impl_map.get(pbi_key)
                 or item.get("implementer_id")
@@ -306,12 +306,12 @@ class PBIProgressBoard(DataTable):
             status_display = f"[{color}]{status}[/{color}]" if color else status
 
             self.add_row(
-                str(pbi_id),
+                pbi_id,
                 title,
                 status_display,
-                str(impl),
-                str(reviewer),
-                key=str(pbi_id),
+                impl,
+                reviewer,
+                key=pbi_id,
             )
 
         # Scroll to the last row so the latest PBI is visible
