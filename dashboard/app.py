@@ -112,21 +112,16 @@ def format_phase(current_phase: str) -> str:
     return f"[bold]Phase:[/bold] [bold white on red] {current_phase} [/]"
 
 
-def get_backlog_items(backlog: dict | list | None) -> list:
-    """Extract PBI items from backlog data, handling variant key names."""
-    if isinstance(backlog, dict):
-        return (
-            backlog.get("items")
-            or backlog.get("backlog_items")
-            or backlog.get("pbis")
-            or backlog.get("pbi_list")
-            or backlog.get("product_backlog")
-            or backlog.get("backlog")
-            or []
-        )
-    if isinstance(backlog, list):
-        return backlog
-    return []
+def get_backlog_items(backlog: dict | None) -> list:
+    """Return PBI items from a schema-validated backlog dict.
+
+    The backlog schema declares ``items`` as the canonical list, so callers
+    do not need any alternative key fallback. ``None`` (e.g. missing or
+    invalid file) yields an empty list.
+    """
+    if backlog is None:
+        return []
+    return backlog.get("items", [])
 
 
 def read_json(path: Path) -> dict | list | None:
