@@ -15,10 +15,11 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock, Timer
 
+from rich.table import Table
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
@@ -479,6 +480,66 @@ def _build_pipelines_from_pbi_state() -> list[dict]:
     return out
 
 
+PIPELINE_PHASE_COLORS = {
+    "design": "cyan",
+    "impl_ut": "yellow",
+    "complete": "green",
+    "escalated": "red",
+    "unknown": "dim",
+}
+
+# Round count above this is highlighted as a stagnation hint.
+PIPELINE_ROUND_WARN_THRESHOLD = 2
+
+
+def _pbi_sort_key(pipe: dict) -> tuple[int, int | str]:
+    """Natural-sort key for pbi_ids like ``pbi-001``, ``pbi-010``.
+
+    Falls back to string sort when the trailing token is not numeric so
+    malformed IDs still produce a deterministic ordering.
+    """
+    pbi_id = pipe.get("pbi_id", "")
+    try:
+        return (0, int(pbi_id.split("-")[-1]))
+    except (ValueError, IndexError):
+        return (1, pbi_id)
+
+
+def _humanize_age(ts: str | None, now: datetime) -> str:
+    """Render an ISO-8601 timestamp as ``Ns ago`` / ``Nm ago`` / ``Nh ago``.
+
+    Returns a dim ``?`` placeholder when the timestamp is missing or
+    cannot be parsed. Naive timestamps are treated as UTC, matching how
+    the SSOT writers stamp ``last_event_at``.
+    """
+    if not ts or ts == "?":
+        return "[dim]?[/dim]"
+    try:
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    except (ValueError, AttributeError, TypeError):
+        return "[dim]?[/dim]"
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    delta = (now - dt).total_seconds()
+    if delta < 0:
+        return "now"
+    if delta < 60:
+        return f"{int(delta)}s ago"
+    if delta < 3600:
+        return f"{int(delta // 60)}m ago"
+    if delta < 86400:
+        return f"{int(delta // 3600)}h ago"
+    return f"{int(delta // 86400)}d ago"
+
+
+def _format_round(round_no) -> str:
+    if not isinstance(round_no, int):
+        return "[dim]-[/dim]"
+    if round_no > PIPELINE_ROUND_WARN_THRESHOLD:
+        return f"[red]{round_no}[/red]"
+    return str(round_no)
+
+
 class PbiPipelinePane(Static):
     """Panel (e): Live PBI Pipeline state per active PBI."""
 
@@ -499,19 +560,42 @@ class PbiPipelinePane(Static):
             # projects never get those events.
             pipelines = _build_pipelines_from_pbi_state()
         if not pipelines:
-            self.update("[bold]PBI Pipelines:[/bold] (none active)")
+            self.update("[bold]PBI Pipelines[/bold] [dim](none active)[/dim]")
             return
-        rows = ["[bold]PBI Pipelines:[/bold]"]
+
+        pipelines = sorted(pipelines, key=_pbi_sort_key)
+        now = datetime.now(timezone.utc)
+
+        table = Table(
+            title="PBI Pipelines",
+            title_style="bold",
+            title_justify="left",
+            box=None,
+            pad_edge=False,
+            expand=True,
+            show_edge=False,
+            show_lines=False,
+        )
+        table.add_column("PBI", style="bold", no_wrap=True)
+        table.add_column("Dev", no_wrap=True)
+        table.add_column("Phase", no_wrap=True)
+        table.add_column("Round", justify="right", no_wrap=True)
+        table.add_column("Agents", overflow="ellipsis")
+        table.add_column("Updated", justify="right", no_wrap=True)
+
         for pipe in pipelines:
-            phase = pipe.get("phase", "?")
-            phase_styled = f"[red]{phase}[/red]" if phase == "escalated" else phase
-            agents = ",".join(pipe.get("active_subagents", [])) or "-"
-            rows.append(
-                f"  {pipe.get('pbi_id', '?'):12} dev={pipe.get('developer', '?'):14} "
-                f"phase={phase_styled:10} round={pipe.get('round', '?'):2} "
-                f"agents={agents:30} updated={pipe.get('last_event_at', '?')}"
-            )
-        self.update("\n".join(rows))
+            pbi_id = pipe.get("pbi_id", "?")
+            developer = pipe.get("developer") or "[dim]-[/dim]"
+            phase = pipe.get("phase", "unknown")
+            phase_color = PIPELINE_PHASE_COLORS.get(phase, "")
+            phase_cell = f"[{phase_color}]{phase}[/{phase_color}]" if phase_color else phase
+            round_cell = _format_round(pipe.get("round"))
+            agents = pipe.get("active_subagents") or []
+            agents_cell = ", ".join(agents) if agents else "[dim]idle[/dim]"
+            updated_cell = _humanize_age(pipe.get("last_event_at"), now)
+            table.add_row(pbi_id, developer, phase_cell, round_cell, agents_cell, updated_cell)
+
+        self.update(table)
 
 
 class WorkLog(RichLog):

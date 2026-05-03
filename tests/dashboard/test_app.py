@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -29,6 +30,9 @@ from dashboard.app import (
     SCRUM_STATE_DIR,
     PBIProgressBoard,
     SprintOverview,
+    _format_round,
+    _humanize_age,
+    _pbi_sort_key,
     format_phase,
     get_backlog_items,
     read_json,
@@ -307,3 +311,50 @@ class TestPBIProgressBoard:
                 return board.row_count
 
         assert _run_async(runner()) == 0
+
+
+class TestPipelineHelpers:
+    """Pure helpers used by PbiPipelinePane.update_content."""
+
+    def test_pbi_sort_key_orders_numerically(self) -> None:
+        items = [{"pbi_id": "pbi-010"}, {"pbi_id": "pbi-002"}, {"pbi_id": "pbi-001"}]
+        ordered = sorted(items, key=_pbi_sort_key)
+        assert [p["pbi_id"] for p in ordered] == ["pbi-001", "pbi-002", "pbi-010"]
+
+    def test_pbi_sort_key_falls_back_for_malformed_id(self) -> None:
+        items = [{"pbi_id": "pbi-002"}, {"pbi_id": "garbage"}, {"pbi_id": "pbi-001"}]
+        ordered = sorted(items, key=_pbi_sort_key)
+        # Numeric IDs sort first, malformed last (deterministic).
+        assert ordered[0]["pbi_id"] == "pbi-001"
+        assert ordered[-1]["pbi_id"] == "garbage"
+
+    def test_humanize_age_returns_dim_placeholder_on_invalid(self) -> None:
+        now = datetime(2026, 5, 3, 12, 0, 0, tzinfo=timezone.utc)
+        assert _humanize_age(None, now) == "[dim]?[/dim]"
+        assert _humanize_age("?", now) == "[dim]?[/dim]"
+        assert _humanize_age("not-a-date", now) == "[dim]?[/dim]"
+
+    @pytest.mark.parametrize(
+        ("delta_seconds", "expected"),
+        [
+            (5, "5s ago"),
+            (90, "1m ago"),
+            (3700, "1h ago"),
+            (90000, "1d ago"),
+        ],
+    )
+    def test_humanize_age_buckets(self, delta_seconds: int, expected: str) -> None:
+        now = datetime(2026, 5, 3, 12, 0, 0, tzinfo=timezone.utc)
+        ts = (now - timedelta(seconds=delta_seconds)).isoformat().replace("+00:00", "Z")
+        assert _humanize_age(ts, now) == expected
+
+    def test_humanize_age_treats_naive_as_utc(self) -> None:
+        now = datetime(2026, 5, 3, 12, 0, 0, tzinfo=timezone.utc)
+        ts = "2026-05-03T11:59:30"  # naive, 30 s in the past
+        assert _humanize_age(ts, now) == "30s ago"
+
+    def test_format_round_marks_stagnation(self) -> None:
+        assert _format_round(0) == "0"
+        assert _format_round(2) == "2"
+        assert _format_round(3) == "[red]3[/red]"
+        assert _format_round(None) == "[dim]-[/dim]"
