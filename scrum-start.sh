@@ -42,7 +42,7 @@ if [ -f ".scrum/state.json" ]; then
 
   phase="$(jq -r '.phase // "unknown"' .scrum/state.json)"
   echo "  Current phase: $phase"
-  initial_prompt="Resuming session. Read .scrum/state.json, .scrum/sprint.json, and .scrum/backlog.json. Reconcile PBI statuses in backlog.json against actual project state — check if implementation files exist for each in-progress PBI and update statuses accordingly (e.g., mark PBIs as done if their code is complete, or keep as in_progress if work remains). Report where we left off, then continue the workflow from the current phase."
+  initial_prompt="Read .scrum/state.json, .scrum/sprint.json, and .scrum/backlog.json. Reconcile PBI statuses in backlog.json against actual project state — check if implementation files exist for each in-progress PBI and update statuses accordingly (e.g., mark PBIs as done if their code is complete, or keep as in_progress if work remains). Report where we left off, then continue the workflow from the current phase."
 else
   echo ""
   echo "New project — starting fresh."
