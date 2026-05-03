@@ -1,10 +1,6 @@
 ## Summary
 
-<!-- Brief description of the changes -->
-
 ## Changes
-
-<!-- List key changes -->
 
 -
 
@@ -19,4 +15,4 @@
 
 ## Related Issues
 
-<!-- Link related issues: Closes #123, Fixes #456 -->
+Closes #

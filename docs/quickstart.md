@@ -193,8 +193,8 @@ bats tests/lint/skill-frontmatter.bats
 - `agents/code-reviewer.md` — Independent code review (spawned by Scrum Master during cross-review).
 - `agents/security-reviewer.md` — Security vulnerability scanning (spawned by Scrum Master during cross-review).
 - `agents/codex-code-reviewer.md` — Cross-model review via OpenAI Codex CLI (optional, spawned by Scrum Master).
-- `agents/tdd-guide.md` — TDD guidance (spawned by Developer during implementation).
-- `agents/build-error-resolver.md` — Build error diagnosis (spawned by Developer during implementation).
+- `agents/pbi-{designer,implementer,ut-author}.md` — PBI Pipeline workers (spawned per Round by Developer).
+- `agents/codex-{design,impl,ut}-reviewer.md` — PBI Pipeline critical reviewers (cross-model via Codex CLI).
 
 ### Skills
 Markdown files in `.claude/skills/<name>/SKILL.md` encapsulating Scrum

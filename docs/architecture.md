@@ -252,10 +252,11 @@ execute.
   assigned round-robin (no self-review). In a single-PBI Sprint,
   the Scrum Master performs the review.
 
-- **`install-subagents`**: Reproducible sub-agent installation from
-  project-managed agent definitions (FR-019). Developers invoke after
-  receiving PBI assignments to install support sub-agents (`tdd-guide`,
-  `build-error-resolver`).
+- **`install-subagents`**: Verify PBI Pipeline sub-agents
+  (`pbi-designer`, `pbi-implementer`, `pbi-ut-author`,
+  `codex-design-reviewer`, `codex-impl-reviewer`, `codex-ut-reviewer`)
+  are installed under `.claude/agents/` (FR-019). Developers invoke
+  after receiving PBI assignments; missing required sub-agent → BLOCK.
 
 - The Scrum Master preloads all 14 Skills via `skills:` frontmatter.
   The Developer agent loads 5 Skills: `requirements-sprint`, `design`,
@@ -460,14 +461,14 @@ NOT by peer Developers reviewing each other's code.
   - `code-reviewer.md` — code quality and design compliance review
   - `security-reviewer.md` — security vulnerability scanning
   - `codex-code-reviewer.md` — cross-model review via OpenAI Codex CLI
-  - `tdd-guide.md` — TDD workflow guidance for Developers
-  - `build-error-resolver.md` — build error diagnosis for Developers
+  - `pbi-designer.md`, `pbi-implementer.md`, `pbi-ut-author.md` — PBI Pipeline workers
+  - `codex-design-reviewer.md`, `codex-impl-reviewer.md`, `codex-ut-reviewer.md` — PBI Pipeline critical reviewers
 - Distributed via `setup-user.sh` to `.claude/agents/`.
 - Cross-review flow: Scrum Master invokes `cross-review` Skill, which
   spawns `code-reviewer` and `security-reviewer` (and optionally
   `codex-code-reviewer`) as sub-agents via the Task tool.
-- Developer support: Developers invoke `tdd-guide` and
-  `build-error-resolver` directly via the Task tool during implementation.
+- PBI Pipeline: the Developer conductor spawns `pbi-*` workers and
+  `codex-*-reviewer` critics per Round (see R10).
 - Runtime tracking: `sprint.json` → `developers[].sub_agents` records
   only actually used agents.
 

@@ -83,7 +83,7 @@ Follow the task-based commit strategy (Constitution IV):
 
 ```
 scrum-start.sh           # Entry point
-agents/                  # Agent definitions (scrum-master, developer, code-reviewer, security-reviewer, codex-code-reviewer, tdd-guide, build-error-resolver)
+agents/                  # Agent definitions (scrum-master, developer, code-reviewer, security-reviewer, codex-code-reviewer, pbi-{designer,implementer,ut-author}, codex-{design,impl,ut}-reviewer)
 skills/                  # ceremony Skills
 hooks/                   # Sprint cycle enforcement hooks
 dashboard/               # Textual TUI dashboard
@@ -105,8 +105,8 @@ docs/                    # Project documentation
 - `agents/code-reviewer.md` — Independent code review sub-agent
 - `agents/security-reviewer.md` — Security vulnerability scanning sub-agent
 - `agents/codex-code-reviewer.md` — Cross-model review via Codex CLI
-- `agents/tdd-guide.md` — TDD workflow guidance sub-agent
-- `agents/build-error-resolver.md` — Build error diagnosis sub-agent
+- `agents/pbi-{designer,implementer,ut-author}.md` — PBI Pipeline workers (spawned per Round by Developer)
+- `agents/codex-{design,impl,ut}-reviewer.md` — Critical reviewers for PBI Pipeline (cross-model via Codex)
 - `docs/design/catalog.md` — Design document type reference (read-only in working dirs)
 - `docs/design/catalog-config.json` — Editable list of enabled spec IDs
 - `docs/` — Project documentation (requirements, architecture, data model, contracts, quickstart)

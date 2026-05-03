@@ -56,7 +56,7 @@ fi
 # default to JSON null; sender_role is omitted entirely if --role is unset.
 MSG_JSON="$(
   jq -n \
-    --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+    --arg ts "$(_iso_utc_now)" \
     --arg sid "$FROM" \
     --arg rid "$TO" \
     --arg type "$KIND" \

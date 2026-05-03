@@ -16,8 +16,6 @@ agents/                  # Agent and sub-agent definitions
   codex-design-reviewer.md  # Critical design review (spawned by Developer)
   codex-impl-reviewer.md    # Critical impl review — no test visibility (spawned by Developer)
   codex-ut-reviewer.md      # Critical UT review — no impl visibility (spawned by Developer)
-  tdd-guide.md           # TDD workflow guidance (legacy; deprioritized)
-  build-error-resolver.md # Build error diagnosis (legacy; deprioritized)
 skills/                  # 14 Ceremony Skills (YAML frontmatter + Markdown)
   backlog-refinement/    # Refine PBIs from coarse to sprint-ready
   change-process/        # Manage changes to frozen design docs

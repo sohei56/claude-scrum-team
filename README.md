@@ -162,7 +162,7 @@ For detailed setup instructions, see [quickstart.md](docs/quickstart.md).
 | `scripts/` | Status line, user setup, contributor setup |
 | `.scrum/` | Runtime state (JSON, gitignored) |
 | `docs/design/` | Design documents governed by `catalog.md` (read-only) + `catalog-config.json` (enabled list) |
-| `agents/` sub-agents | Project-managed specialist sub-agents: `code-reviewer`, `security-reviewer`, `codex-code-reviewer`, `tdd-guide`, `build-error-resolver` |
+| `agents/` sub-agents | Project-managed specialist sub-agents: `code-reviewer`, `security-reviewer`, `codex-code-reviewer`, plus PBI Pipeline sub-agents (`pbi-designer`, `pbi-implementer`, `pbi-ut-author`, `codex-design-reviewer`, `codex-impl-reviewer`, `codex-ut-reviewer`) |
 | `.mcp-servers/` | MCP server implementations (OpenAI/Codex bridge for cross-model review) |
 
 ## Development
