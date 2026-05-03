@@ -609,6 +609,13 @@ class ScrumFileHandler(FileSystemEventHandler):
 class ScrumDashboard(App):
     """Main Textual TUI dashboard application."""
 
+    # Preserve the terminal's native ANSI palette instead of converting named
+    # colors (red/green/cyan/...) to RGB through Textual's theme. This keeps
+    # status colors readable on terminals with limited or buggy truecolor
+    # support (e.g. Apple Terminal), at the cost of transparency effects we
+    # do not use here. Requires textual >= 0.80.
+    ansi_color = True
+
     TITLE = "Scrum Team Dashboard"
     CSS = """
     Screen {

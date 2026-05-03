@@ -63,6 +63,14 @@ if command -v tmux >/dev/null 2>&1; then
   # Kill any stale scrum-team session from a previous run
   tmux kill-session -t "$session_name" 2>/dev/null || true
 
+  # Tmux truecolor: ensure the dashboard pane sees a 256-color TERM and that
+  # tmux passes through 24-bit RGB escape sequences. Without this, tmux
+  # defaults to TERM=screen (8 colors) inside the pane, which makes Textual
+  # render the dashboard nearly monochrome on Apple Terminal. The flags are
+  # idempotent and harmless on tmux servers that already have these set.
+  tmux set-option -g default-terminal "screen-256color" 2>/dev/null || true
+  tmux set-option -ga terminal-overrides ",*:RGB" 2>/dev/null || true
+
   if [ "$term_cols" -ge "$min_split_cols" ]; then
     echo "Launching Scrum team with tmux dashboard..."
     echo "  Main pane: Claude Code (Scrum Master)"
@@ -86,9 +94,12 @@ if command -v tmux >/dev/null 2>&1; then
   tmux send-keys -t "$session_name" "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --agent scrum-master --teammate-mode in-process '${initial_prompt}'; tmux kill-session -t ${session_name}" C-m
 
   if [ "$term_cols" -ge "$min_split_cols" ]; then
-    # Side pane: Textual TUI dashboard
+    # Side pane: Textual TUI dashboard.
+    # COLORTERM=truecolor signals Rich/Textual to emit 24-bit RGB escapes;
+    # the tmux terminal-overrides above let those escapes through to the
+    # outer terminal so theme colors render with full contrast.
     tmux split-window -h -c "$PWD" -t "$session_name" \
-      "python3 \"$SCRIPT_DIR/dashboard/app.py\"; read -r"
+      "COLORTERM=truecolor python3 \"$SCRIPT_DIR/dashboard/app.py\"; read -r"
   fi
 
   # Focus main pane
