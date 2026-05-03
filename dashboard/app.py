@@ -278,22 +278,8 @@ class PBIProgressBoard(DataTable):
             # reliable — set by spawn-teammates after reconciliation), then
             # fall back to backlog.json fields which may hold placeholders.
             pbi_key = pbi_id.lower()
-            impl = (
-                pbi_impl_map.get(pbi_key)
-                or item.get("implementer_id")
-                or item.get("implementer")
-                or item.get("assigned_to")
-                or item.get("developer")
-                or item.get("developer_id")
-                or "-"
-            )
-            reviewer = (
-                pbi_review_map.get(pbi_key)
-                or item.get("reviewer_id")
-                or item.get("reviewer")
-                or item.get("assigned_reviewer")
-                or "-"
-            )
+            impl = pbi_impl_map.get(pbi_key) or item.get("implementer_id") or "-"
+            reviewer = pbi_review_map.get(pbi_key) or item.get("reviewer_id") or "-"
 
             color = STATUS_COLORS.get(status, "")
             status_display = f"[{color}]{status}[/{color}]" if color else status
