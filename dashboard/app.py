@@ -199,9 +199,9 @@ class SprintOverview(Static):
 
         if sprint and isinstance(sprint, dict):
             # Handle both data-model field names and agent-produced field names
-            sprint_id = sprint.get("id") or sprint.get("sprint_number") or "?"
-            goal = sprint.get("goal") or sprint.get("sprint_goal") or "No goal"
-            sprint_status = sprint.get("status") or "?"
+            sprint_id = sprint.get("id", "?")
+            goal = sprint.get("goal") or "No goal"
+            sprint_status = sprint.get("status", "?")
 
             # PBI IDs: from pbi_ids[] (spec) or pbis[] objects (agent)
             pbi_ids = [str(x) for x in (sprint.get("pbi_ids") or [])]
@@ -303,7 +303,7 @@ class PBIProgressBoard(DataTable):
             for dev in sprint.get("developers") or []:
                 if not isinstance(dev, dict):
                     continue
-                did = dev.get("id") or dev.get("name") or "?"
+                did = dev.get("id", "?")
                 assigned = dev.get("assigned_work") or {}
                 if not isinstance(assigned, dict):
                     continue
