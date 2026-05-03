@@ -34,8 +34,10 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
 ## Outputs
 
 - `.scrum/reviews/<pbi-id>-review.md` (per PBI)
-- backlog.json → status: in_progress→review→done
-- backlog.json → items[].review_doc_path
+- pbi/<id>/state.json → phase: complete → review_complete
+  (backlog.json items[].status auto-projected to review → done by
+  `update-pbi-state.sh`; never write `backlog.json.status` directly)
+- backlog.json → items[].review_doc_path (this field is hand-written; status is not)
 - state.json → phase: review
 - sprint.json → status: "cross_review"
 
@@ -49,10 +51,10 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
 ## Steps
 
 1. state.json → phase: "review", sprint.json → status: "cross_review"
-2. All Sprint PBIs status: in_progress→review:
-   ```bash
-   scripts/scrum/update-backlog-status.sh "$PBI_ID" review
-   ```
+2. All Sprint PBIs already at `pbi/<id>/state.json.phase = complete` from
+   pbi-pipeline; backlog.status is therefore already `review` (auto-derived).
+   No direct backlog.status write here — `update-backlog-status.sh` rejects
+   post-pipeline statuses by design.
 3. **Pre-review build verification**: Start app→all tests pass. Fail→`TaskGet` Developer status→terminated? re-spawn (Teammate Liveness Protocol)→then relay fix request. Do NOT review non-building code
 4. Collect review inputs per PBI: design_doc_paths, source paths, requirements.md path
 5. **Spawn 2 sub-agents per PBI in parallel (Agent tool)**:
@@ -62,9 +64,10 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
 7. **Doc-implementation consistency check**: Compare design docs + user-facing docs vs actual code. Mismatch→send Developer to update docs (not code)
 8. **Handle FAIL**: `TaskGet` Developer status→terminated? re-spawn (Teammate Liveness Protocol). Relay findings to Developer→fix→re-spawn failing reviewer(s)→repeat until both PASS
 9. Write `.scrum/reviews/<pbi-id>-review.md` (combined code + security review)
-10. Both PASS→status: done:
+10. Both PASS → advance pipeline phase to `review_complete`
+    (backlog.status auto-projects to `done`):
     ```bash
-    scripts/scrum/update-backlog-status.sh "$PBI_ID" done
+    .scrum/scripts/update-pbi-state.sh "$PBI_ID" phase review_complete
     ```
 11. Set items[].review_doc_path
 

@@ -1,15 +1,15 @@
 # `.scrum/` Sprint State Schemas (SSOT)
 
-Each schema corresponds to one file under `.scrum/` and is the single source of truth for its on-disk shape today. Both the validated wrapper scripts (`scripts/scrum/*.sh`) and readers (dashboard, hooks) MUST validate against these schemas.
+Each schema corresponds to one file under `.scrum/` and is the single source of truth for its on-disk shape today. Both the validated wrapper scripts (`.scrum/scripts/*.sh` in deployed projects; `scripts/scrum/*.sh` in this framework's source tree) and readers (dashboard, hooks) MUST validate against these schemas.
 
 | File                                | Schema                                | Write script (Phase B)                                |
 |-------------------------------------|---------------------------------------|-------------------------------------------------------|
-| `.scrum/state.json`                 | `state.schema.json`                   | `scripts/scrum/update-state-phase.sh`                 |
-| `.scrum/sprint.json`                | `sprint.schema.json`                  | `scripts/scrum/update-sprint-status.sh`, `set-sprint-developer.sh` |
-| `.scrum/backlog.json`               | `backlog.schema.json`                 | `scripts/scrum/update-backlog-status.sh`              |
-| `.scrum/communications.json`        | `communications.schema.json`          | `scripts/scrum/append-communication.sh`               |
-| `.scrum/dashboard.json`             | `dashboard.schema.json`               | `scripts/scrum/append-dashboard-event.sh`             |
-| `.scrum/pbi/<id>/state.json`        | `pbi-state.schema.json`               | `scripts/scrum/update-pbi-state.sh`                   |
+| `.scrum/state.json`                 | `state.schema.json`                   | `.scrum/scripts/update-state-phase.sh`                |
+| `.scrum/sprint.json`                | `sprint.schema.json`                  | `.scrum/scripts/update-sprint-status.sh`, `set-sprint-developer.sh` |
+| `.scrum/backlog.json`               | `backlog.schema.json`                 | `.scrum/scripts/update-backlog-status.sh`             |
+| `.scrum/communications.json`        | `communications.schema.json`          | `.scrum/scripts/append-communication.sh`              |
+| `.scrum/dashboard.json`             | `dashboard.schema.json`               | `.scrum/scripts/append-dashboard-event.sh`            |
+| `.scrum/pbi/<id>/state.json`        | `pbi-state.schema.json`               | `.scrum/scripts/update-pbi-state.sh`                  |
 
 ## Design choices
 

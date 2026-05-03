@@ -22,7 +22,10 @@ disable-model-invocation: false
 - Source code + test code committed to project (normal paths)
 - .scrum/pbi/<pbi-id>/ artifacts (design, reviews, metrics, feedback,
   summaries, pipeline.log)
-- backlog.json status: in_progress → done | blocked
+- backlog.json status: auto-derived from `pbi/<id>/state.json.phase` by
+  `update-pbi-state.sh` (in_progress while design/impl_ut, review at
+  complete, done at review_complete, blocked at escalated).
+  **Never write `backlog.json.status` directly from this skill.**
 - Notification to SM via Agent Teams
 
 ## Phases (decision tree)
@@ -76,5 +79,8 @@ write escalation_reason, notify SM via Agent Teams. SM handles via the
 ## Exit Criteria
 
 - state.json: `phase = complete` OR `phase = escalated`
-- backlog.json status updated (`done` or `blocked`)
+  (cross-review skill is responsible for the final `complete → review_complete`
+  transition that yields `done` in backlog.json)
+- backlog.json items[].status reflects the projected value (`review` for
+  complete, `blocked` for escalated). The pipeline does not write it directly.
 - SM notified

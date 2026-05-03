@@ -36,7 +36,7 @@ for candidate in \
   fi
 done
 if [ -z "$SCHEMA_DIR" ]; then
-  echo "Error: scrum-state schemas not found (looked beside scripts/scrum/ and under \$PWD/docs/contracts/)" >&2
+  echo "Error: scrum-state schemas not found (looked beside this script and under \$PWD/docs/contracts/scrum-state)" >&2
   exit 67
 fi
 
