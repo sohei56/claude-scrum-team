@@ -200,14 +200,17 @@ draft -> refined -> in_progress -> review -> done
 
 ## Entity: RequirementsDocument
 
-**File**: `.scrum/requirements.md`
+**File**: `docs/requirements.md`
 **Format**: Markdown (not JSON — human-readable document)
 **Owner**: Scrum Master (write once during Requirements Sprint)
 **Readers**: All Developer teammates, Integration Sprint
+**Persistence**: Committed to repo (not runtime state)
 
 This is the single source of truth for what the product must do. Produced
 during the Requirements Sprint (FR-002). Frozen during Development Sprints
-(FR-020). Changes follow the Change Process (FR-016).
+(FR-020). Changes follow the Change Process (FR-016). Lives outside
+`.scrum/` because the document outlives any single Sprint and must
+survive across machine/clone boundaries.
 
 ---
 
@@ -262,7 +265,7 @@ and enabled in the config. Files follow the naming convention
 | quality | S-050 Test Strategy | `quality/S-050-test-strategy.md` |
 | decision-records | D-001 Architecture Decision Record | `decision-records/D-001-auth-api-choice.md` |
 | operations | S-060 Migration / Upgrade | `operations/S-060-v2-migration.md` |
-| docs | D-010 Requirements Document | `docs/D-010-requirements.md` |
+| docs | D-011 README / Feature Documentation | `docs/D-011-readme.md` |
 
 ### YAML Frontmatter
 

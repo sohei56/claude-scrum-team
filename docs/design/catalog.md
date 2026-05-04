@@ -135,7 +135,6 @@ which specs are active for your project, check `docs/design/catalog-config.json`
 
 | ID    | Spec Name                        | Granularity                          |
 |-------|----------------------------------|--------------------------------------|
-| D-010 | Requirements Document            | One per project                      |
 | D-011 | README / Feature Documentation   | One per feature or section           |
 | D-012 | API Reference                    | One per API boundary                 |
 | D-013 | Usage Guide                      | One per feature or workflow          |

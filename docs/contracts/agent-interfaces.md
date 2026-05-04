@@ -33,7 +33,7 @@ responsibilities (what it owns).
 - `.scrum/sprint.json` (creates per Sprint)
 - `.scrum/sprint-history.json` (appends after Sprint completion)
 - `.scrum/improvements.json` (creates and updates)
-- `.scrum/requirements.md` (delegates creation to Developer, stores result)
+- `docs/requirements.md` (delegates creation to Developer, stores result; committed to repo)
 - `docs/design/catalog.md` (enables entries during Sprint Planning)
 - `docs/design/specs/{category}/*.md` (delegates creation to Developers)
 - Developer teammate creation (via Agent Teams)
@@ -122,7 +122,7 @@ body. Below is the reference for all 14 Skills:
 
 ### Inputs
 - PBI assignment from Scrum Master (via Agent Teams task list)
-- `.scrum/requirements.md` (read-only)
+- `docs/requirements.md` (read-only)
 - `docs/design/specs/**/*.md` (read: all existing designs for consistency)
 - `docs/design/catalog.md` (read: to verify enabled entries)
 - `.scrum/improvements.json` (read at Sprint start)
@@ -183,7 +183,7 @@ body. Below is the reference for all 14 Skills:
 ### Inputs
 - Task description from spawning agent (via Task tool prompt)
 - Project files in working directory
-- `.scrum/requirements.md` and `docs/design/specs/**/*.md` (reviewer sub-agents)
+- `docs/requirements.md` and `docs/design/specs/**/*.md` (reviewer sub-agents)
 
 ### Outputs
 - Task result returned to spawning agent
