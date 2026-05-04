@@ -3,7 +3,6 @@
 # Records branch/worktree/base_sha in pbi state.json. Idempotent.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$HERE/../.." && pwd)"
 # shellcheck source=lib/errors.sh
 source "$HERE/lib/errors.sh"
 
