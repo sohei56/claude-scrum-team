@@ -12,6 +12,7 @@ Agents must no longer edit `.scrum/*.json` directly. All writes flow through val
 |---|---|
 | `jq '(.items[] | select(.id == "$PBI")).status = "in_progress"' .scrum/backlog.json > tmp && mv tmp .scrum/backlog.json` | `.scrum/scripts/update-backlog-status.sh "$PBI" in_progress` |
 | Same pattern for `review`, `done`, `blocked`, etc. | `.scrum/scripts/update-backlog-status.sh "$PBI" {draft\|refined\|in_progress\|review\|done\|blocked}` |
+| `jq '.items += [{id:"pbi-NNN",title:"...",status:"draft",...}] \| .next_pbi_id += 1' .scrum/backlog.json > tmp && mv ...` | `.scrum/scripts/add-backlog-item.sh --title <text> [--description <text>] [--ac <criterion>]... [--parent <pbi-id>] [--ux-change]` (allocates id from `next_pbi_id`, prints new pbi-id to stdout) |
 | `jq '.status = "active"' .scrum/sprint.json > tmp && mv tmp .scrum/sprint.json` | `.scrum/scripts/update-sprint-status.sh active` (also: `planning`, `cross_review`, `sprint_review`, `complete`, `failed`) |
 | `jq '.developers["dev-001-s1"].current_pbi = "pbi-007"' .scrum/sprint.json > tmp && mv ...` | `.scrum/scripts/set-sprint-developer.sh dev-001-s1 current_pbi pbi-007` (fields: `status`, `current_pbi`, `current_pbi_phase`) |
 | `jq '.phase = "design"' .scrum/state.json > tmp && mv ...` | `.scrum/scripts/update-state-phase.sh design` |
