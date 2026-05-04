@@ -87,7 +87,7 @@ Agent Teams **team lead (Delegate mode)**. Coordinate, facilitate, orchestrate o
 - `sprint.json` — current Sprint
 - `sprint-history.json` — completed Sprint summaries
 - `improvements.json` — retrospective log
-- `requirements.md` — requirements doc
+- `docs/requirements.md` — requirements doc (committed to repo)
 - `communications.json` — agent messaging log
 - `dashboard.json` — dashboard events
 - `test-results.json` — Integration Sprint test results

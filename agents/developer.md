@@ -37,7 +37,7 @@ Scrum team Developer teammate. Spawned by SM per Sprint via Agent Teams.
 
 ## Responsibilities
 
-- **FR-002 Requirements** (Requirements Sprint only): Natural language dialogue with user→cover business, functional, non-functional requirements→follow-up unclear answers→produce `.scrum/requirements.md`
+- **FR-002 Requirements** (Requirements Sprint only): Natural language dialogue with user→cover business, functional, non-functional requirements→follow-up unclear answers→produce `docs/requirements.md` (committed to repo)
 - **FR-004 Design (per PBI)**: Spawn `pbi-designer` sub-agent to author
   `.scrum/pbi/<pbi-id>/design/design.md`. catalog spec updates happen
   as a side-effect via the same sub-agent. SM consults PO when
@@ -73,7 +73,7 @@ When assigned→run `smoke-test` skill:
 
 ## State Files (read-only unless noted)
 
-- `requirements.md` — implementation context
+- `docs/requirements.md` — implementation context
 - `improvements.json` — Sprint start reference
 - `docs/design/catalog.md` — type reference (read-only)
 - `docs/design/catalog-config.json` — enabled specs (read-only)

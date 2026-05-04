@@ -141,9 +141,11 @@ All project state persists as JSON files (one file per concern) in a
 
 ### Key Technical Details
 - State files: `state.json`, `backlog.json`, `sprint.json`,
-  `improvements.json`, `communications.json`, `dashboard.json`,
-  `requirements.md`
+  `improvements.json`, `communications.json`, `dashboard.json`
 - Subdirectories: `.scrum/reviews/` (cross-review results)
+- Requirements doc: `docs/requirements.md` (committed to repo, not
+  runtime state — frozen during Development Sprints per FR-020,
+  changes via Change Process FR-016)
 - Design documents: `docs/design/specs/{category}/` (governed by `docs/design/catalog.md`)
 - The Scrum Master reads state at Sprint start (fresh context per Sprint).
 - Developer teammates receive only their assigned artifacts.
@@ -436,7 +438,7 @@ NOT by peer Developers reviewing each other's code.
   relied on the awesome-claude-code-subagents external catalog. This was
   replaced because: (a) external catalog availability is unpredictable,
   (b) agent definitions need project-specific customization (e.g.,
-  reading `.scrum/requirements.md` and design docs during review), and
+  reading `docs/requirements.md` and design docs during review), and
   (c) fewer moving parts improves reliability.
 - **Independent reviewer sub-agents over peer review**: Developer peer
   review was replaced because: (a) Developers lack cross-PBI context

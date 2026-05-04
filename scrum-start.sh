@@ -11,6 +11,7 @@
 #   1 — Claude Code CLI not found
 #   2 — (reserved)
 #   3 — Python 3.9+ or TUI dependencies not found
+#   4 — A scrum-team tmux session is already running for this project directory
 #
 # Note: CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 is set process-scoped
 # when launching claude. Users do NOT need to export it globally.
@@ -55,13 +56,41 @@ echo ""
 
 if command -v tmux >/dev/null 2>&1; then
   # tmux available — create the session, optionally with a split dashboard
-  session_name="scrum-team"
+  #
+  # Session name is derived from the project directory so that concurrent
+  # scrum-start.sh runs in *different* projects coexist on a single tmux
+  # server. The hash disambiguates projects that share a basename. A run
+  # inside the *same* project refuses to clobber the existing session
+  # below — the user must close or attach explicitly, since silently
+  # killing it has previously destroyed the predecessor's running Claude
+  # session without warning.
+  if command -v shasum >/dev/null 2>&1; then
+    pwd_hash="$(printf '%s' "$PWD" | shasum | cut -c1-8)"
+  elif command -v sha1sum >/dev/null 2>&1; then
+    pwd_hash="$(printf '%s' "$PWD" | sha1sum | cut -c1-8)"
+  else
+    pwd_hash="$(printf '%s' "$PWD" | cksum | awk '{print $1}')"
+  fi
+  raw_basename="$(basename "$PWD")"
+  session_basename="$(printf '%s' "$raw_basename" | tr -c 'A-Za-z0-9_-' '_')"
+  session_name="scrum-team-${session_basename}-${pwd_hash}"
+
   min_split_cols=120
   term_cols="$(tput cols)"
   term_lines="$(tput lines)"
 
-  # Kill any stale scrum-team session from a previous run
-  tmux kill-session -t "$session_name" 2>/dev/null || true
+  # Refuse to start when a session for this project already exists.
+  # Covers both "another terminal is running it" and "stale session from a
+  # crashed previous run." User picks attach or kill.
+  if tmux has-session -t "=${session_name}" 2>/dev/null; then
+    echo "Error: a scrum-team tmux session is already running for this project." >&2
+    echo "  Session: ${session_name}" >&2
+    echo "  Project: ${PWD}" >&2
+    echo "" >&2
+    echo "Attach to it:  tmux attach-session -t ${session_name}" >&2
+    echo "Or kill it:    tmux kill-session -t ${session_name}" >&2
+    exit 4
+  fi
 
   # Tmux truecolor: ensure the dashboard pane sees a 256-color TERM and that
   # tmux passes through 24-bit RGB escape sequences. Without this, tmux
