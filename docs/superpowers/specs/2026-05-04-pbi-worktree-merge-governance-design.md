@@ -51,10 +51,10 @@ Sprints proceed with the loss undetected until much later.
 Repository root (main worktree)
 ├── .scrum/                              # SSOT (gitignored)
 ├── .scrum/worktrees/                    # PBI working trees (gitignored)
-│   ├── PBI-001/                         # checked out: pbi/PBI-001
+│   ├── pbi-001/                         # checked out: pbi/pbi-001
 │   │   └── .scrum -> ../../../.scrum    # symlink to SSOT
-│   ├── PBI-002/                         # checked out: pbi/PBI-002
-│   └── PBI-003/                         # checked out: pbi/PBI-003
+│   ├── pbi-002/                         # checked out: pbi/pbi-002
+│   └── pbi-003/                         # checked out: pbi/pbi-003
 └── (Developers never touch the main worktree)
 ```
 
