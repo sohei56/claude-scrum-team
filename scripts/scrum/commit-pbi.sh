@@ -25,7 +25,11 @@ if [ "$CUR_BRANCH" != "$EXPECTED_BRANCH" ]; then
   fail E_INVALID_ARG "worktree on wrong branch: have=$CUR_BRANCH expected=$EXPECTED_BRANCH"
 fi
 
-git -C "$WT" add -A
+# Exclude the .scrum symlink that create-pbi-worktree.sh installs back to the
+# main repo SSOT. Without this, `add -A` would stage it (gitignore's `.scrum/`
+# pattern matches directories only, not symlinks of git type 120000) and the
+# symlink would propagate to main on merge.
+git -C "$WT" add -A -- ':!.scrum'
 if git -C "$WT" diff --cached --quiet; then
   printf '[commit-pbi] nothing to commit\n'
   exit 0

@@ -25,8 +25,6 @@ BASE="$(jq -r '.base_sha // ""' "$STATE")"
 HEAD="$(git -C "$WT" rev-parse HEAD)"
 PATHS=()
 while IFS= read -r line; do
-  # Skip the .scrum symlink — it is shared state, not a code artifact.
-  [ "$line" = ".scrum" ] && continue
   PATHS+=("$line")
 done < <(git -C "$WT" diff --name-only "$BASE..HEAD")
 if [ "${#PATHS[@]}" -eq 0 ]; then
