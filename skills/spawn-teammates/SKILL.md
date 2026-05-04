@@ -52,10 +52,16 @@ disable-model-invocation: false
 
 6. **Reconcile backlog.json**: Update all PBI implementer_id/reviewer_id to match final dev-NNN-sN IDs
 7. Update sprint.json→developers[] + developer_count (TUI dashboard reads both)
-8. Spawn Agent Teams teammates (agents/developer.md). Name = exact ID from 5a. Task:
+8. Spawn Agent Teams teammates (agents/developer.md). Name = exact ID
+   from 5a. Compute `PROJECT_ROOT=$(git rev-parse --show-toplevel)` at
+   spawn time and substitute it into the task prompt below in place of
+   `<PROJECT_ROOT>`. Each Developer's `<pbi-id>` is the one assigned to
+   them in 5a/6.
+
+   Task:
    ```
-   Your working directory: /Users/inouesouhei/work/claude-scrum-team/.worktrees/pbi-worktree-merge-governance/.scrum/worktrees/<pbi-id>
-   First action: cd "/Users/inouesouhei/work/claude-scrum-team/.worktrees/pbi-worktree-merge-governance/.scrum/worktrees/<pbi-id>"
+   Your working directory: <PROJECT_ROOT>/.scrum/worktrees/<pbi-id>
+   First action: cd "<PROJECT_ROOT>/.scrum/worktrees/<pbi-id>"
    All file operations and commits must stay inside this directory.
    Use `.scrum/scripts/commit-pbi.sh` for commits — never raw `git commit`.
 

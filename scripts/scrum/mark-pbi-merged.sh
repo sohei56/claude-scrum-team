@@ -7,6 +7,8 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 source "$HERE/lib/errors.sh"
 # shellcheck source=lib/atomic.sh
 source "$HERE/lib/atomic.sh"
+# shellcheck source=lib/derive.sh
+source "$HERE/lib/derive.sh"
 
 [ "$#" -eq 2 ] || fail E_INVALID_ARG "usage: mark-pbi-merged.sh <pbi-id> <merged-sha>"
 PBI="$1"; SHA="$2"
@@ -25,11 +27,12 @@ NOW="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 EXPR=".phase = \"merged\" | .merged_sha = \"$SHA\" | .merged_at = \"$NOW\" | .merge_failure_count = 0"
 atomic_write "$STATE" "$EXPR" "$ROOT/docs/contracts/scrum-state/pbi-state.schema.json"
 
-# Mirror merged_sha + merged_at to backlog item; status→"review" (post-pipeline projection).
+# Mirror merged_sha + merged_at to backlog item; status from derive (SSOT).
+DERIVED="$(derive_backlog_status_from_phase merged)"
 BACKLOG=".scrum/backlog.json"
 BACKLOG_SCHEMA="$ROOT/docs/contracts/scrum-state/backlog.schema.json"
 if [ -f "$BACKLOG" ] && jq -e --arg id "$PBI" '.items | map(select(.id==$id)) | length > 0' "$BACKLOG" >/dev/null; then
-  EXPR_B="(.items[] | select(.id == \"$PBI\")).merged_sha = \"$SHA\" | (.items[] | select(.id == \"$PBI\")).merged_at = \"$NOW\" | (.items[] | select(.id == \"$PBI\")).status = \"review\""
+  EXPR_B="(.items[] | select(.id == \"$PBI\")).merged_sha = \"$SHA\" | (.items[] | select(.id == \"$PBI\")).merged_at = \"$NOW\" | (.items[] | select(.id == \"$PBI\")).status = \"$DERIVED\""
   atomic_write "$BACKLOG" "$EXPR_B" "$BACKLOG_SCHEMA"
 fi
 

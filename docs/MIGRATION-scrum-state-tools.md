@@ -97,3 +97,25 @@ Each of these has a `TODO(scrum-state-tools)` comment in the relevant file point
 | `mark-pbi-merge-failure.sh` | `pbi/<id>/state.json` `phase ∈ merge_*`, `merge_failure`, `merge_failure_count++`; on 3rd consecutive failure: `phase=escalated`, `escalation_reason=stagnation`, backlog `status=blocked` |
 | `cleanup-pbi-worktree.sh` | removes git worktree + `pbi/<id>` branch (post-merge) |
 | `merge-pbi.sh` | orchestrator (calls mark-pbi-merged or mark-pbi-merge-failure + cleanup) |
+
+### Backward compatibility (sprints in flight at upgrade time)
+
+This change extends `cross-review` to require every Sprint PBI at
+`pbi/<id>/state.json.phase ∈ {merged, escalated}`. PBIs from sprints
+that completed under the old (pre-merge-governance) flow may sit at
+`phase=complete` or `phase=review_complete` with no `branch` /
+`worktree` / `base_sha` in `state.json`.
+
+If you upgrade a project with sprints in flight, choose one of:
+
+- (A) Let the in-flight sprint finish under the old flow. Skip
+  `cross-review` precondition by manually advancing each PBI's
+  `state.phase` to `merged` via
+  `update-pbi-state.sh <pbi-id> phase merged`. Then run
+  `cross-review` and `sprint-review` as usual. Future sprints use the
+  new flow.
+- (B) Drop the in-flight sprint and replan. New sprints follow the
+  new flow from the start.
+
+For new projects: no migration needed. The new flow is in effect from
+Sprint 1.

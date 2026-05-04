@@ -50,6 +50,38 @@ teardown() { [ -n "${TEST_TMP:-}" ] && [ -d "$TEST_TMP" ] && rm -rf "$TEST_TMP";
   ! echo "$output" | grep -q "merge: pbi-001"
 }
 
+@test "merge-pbi: merge_conflict — main has competing change on the same file" {
+  # The PBI branch already has file.txt = "hello" committed (from setup).
+  # Land a competing version on main BEFORE attempting the merge.
+  echo "world" > file.txt
+  git add file.txt
+  git commit -q -m "main: competing change to file.txt"
+  PRE_MAIN_HEAD="$(git rev-parse HEAD)"
+
+  run env SCRUM_VALIDATOR_OVERRIDE=jsonschema-cli SCRUM_SKIP_QUALITY_GATE=1 "$PROJECT_ROOT/scripts/scrum/merge-pbi.sh" pbi-001
+  [ "$status" -ne 0 ]
+
+  # Phase records the conflict.
+  run jq -r '.phase' .scrum/pbi/pbi-001/state.json
+  [ "$output" = "merge_conflict" ]
+
+  # merge_failure.kind is conflict, paths includes file.txt.
+  run jq -r '.merge_failure.kind' .scrum/pbi/pbi-001/state.json
+  [ "$output" = "conflict" ]
+  run jq -r '.merge_failure.paths | index("file.txt")' .scrum/pbi/pbi-001/state.json
+  [ "$output" != "null" ]
+
+  # main HEAD restored — no merge commit lingers from a half-completed attempt.
+  run git rev-parse HEAD
+  [ "$output" = "$PRE_MAIN_HEAD" ]
+
+  # PBI branch and worktree still exist (rollback preserves them for the
+  # Developer to rebase + retry).
+  [ -d .scrum/worktrees/pbi-001 ]
+  run git show-ref --verify --quiet refs/heads/pbi/pbi-001
+  [ "$status" -eq 0 ]
+}
+
 @test "merge-pbi: refuses non-ready_to_merge phase" {
   jq '.phase = "design"' .scrum/pbi/pbi-001/state.json > "${TMPDIR:-/tmp}/x" && mv "${TMPDIR:-/tmp}/x" .scrum/pbi/pbi-001/state.json
   run env SCRUM_VALIDATOR_OVERRIDE=jsonschema-cli SCRUM_SKIP_QUALITY_GATE=1 "$PROJECT_ROOT/scripts/scrum/merge-pbi.sh" pbi-001

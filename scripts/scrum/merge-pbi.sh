@@ -71,8 +71,11 @@ done
 if [ "${#MISSING[@]}" -gt 0 ]; then
   CSV="${MISSING[*]}"
   CSV="${CSV// /,}"
-  git reset --hard "$PRE_HEAD" >/dev/null
+  # Record the failure BEFORE rolling back so state stays consistent even if
+  # the reset fails (e.g., disk error, locked working tree).
   "$HERE/mark-pbi-merge-failure.sh" "$PBI" artifact_missing "$PRE_HEAD" "$CSV"
+  git reset --hard "$PRE_HEAD" >/dev/null \
+    || fail E_INVALID_ARG "CRITICAL: rollback failed after artifact_missing — main is at merged commit, manual intervention required (PRE_HEAD=$PRE_HEAD)"
   fail E_INVALID_ARG "artifact_missing: $CSV"
 fi
 
@@ -81,8 +84,10 @@ if [ "${SCRUM_SKIP_QUALITY_GATE:-0}" != "1" ]; then
   REPORT=".scrum/pbi/$PBI/quality-gate-out.log"
   mkdir -p ".scrum/pbi/$PBI"
   if ! "$ROOT/hooks/quality-gate.sh" >"$REPORT" 2>&1; then
-    git reset --hard "$PRE_HEAD" >/dev/null
+    # Record the failure BEFORE rolling back (see artifact_missing path).
     "$HERE/mark-pbi-merge-failure.sh" "$PBI" regression "$PRE_HEAD" "$REPORT"
+    git reset --hard "$PRE_HEAD" >/dev/null \
+      || fail E_INVALID_ARG "CRITICAL: rollback failed after regression — main is at merged commit, manual intervention required (PRE_HEAD=$PRE_HEAD; report=$REPORT)"
     fail E_INVALID_ARG "merge_regression — see $REPORT"
   fi
 fi
