@@ -84,3 +84,16 @@ The current wrapper set covers the pbi-pipeline migration and the four migrated 
 5. **Read-side validation** — `dashboard/app.py` and the various hooks that read `.scrum/*.json` do not validate against the schemas. Defensive read-side patches (e.g. UnicodeDecodeError handling) stay; schema-driven validation is a future hardening pass.
 
 Each of these has a `TODO(scrum-state-tools)` comment in the relevant file pointing back to this document. Until they land, sprint-planning step 11.2 (and likely 9 and 10) **will fail at runtime** when the hook fires.
+
+## Worktree / merge governance wrappers (2026-05-04)
+
+| Wrapper | Writes |
+|---|---|
+| `freeze-sprint-base.sh` | `sprint.base_sha`, `sprint.base_sha_captured_at` (once per Sprint) |
+| `create-pbi-worktree.sh` | `pbi/<id>/state.json` `branch`, `worktree`, `base_sha`; creates git worktree + `.scrum` symlink |
+| `commit-pbi.sh` | git commit on `pbi/<id>` branch + `pbi/<id>/state.json.head_sha` |
+| `mark-pbi-ready-to-merge.sh` | `pbi/<id>/state.json` `phase=ready_to_merge`, `head_sha`, `paths_touched`, `ready_at`; backlog item `status=review` |
+| `mark-pbi-merged.sh` | `pbi/<id>/state.json` `phase=merged`, `merged_sha`, `merged_at`, `merge_failure_count=0`; backlog item `merged_sha`, `merged_at` |
+| `mark-pbi-merge-failure.sh` | `pbi/<id>/state.json` `phase ∈ merge_*`, `merge_failure`, `merge_failure_count++`; on 3rd consecutive failure: `phase=escalated`, `escalation_reason=stagnation`, backlog `status=blocked` |
+| `cleanup-pbi-worktree.sh` | removes git worktree + `pbi/<id>` branch (post-merge) |
+| `merge-pbi.sh` | orchestrator (calls mark-pbi-merged or mark-pbi-merge-failure + cleanup) |
