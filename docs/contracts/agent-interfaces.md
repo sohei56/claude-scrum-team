@@ -51,7 +51,7 @@ responsibilities (what it owns).
 | FR-006 | Assign implementers (one per PBI). Sprint-end review is owned by SM via cross-review (FR-009 Layer 2) — no reviewer assigned per PBI in backlog |
 | FR-007 | Calculate Developer count: min(refined PBIs, 6) |
 | FR-008 | Avoid dependent PBIs in same Sprint (use `depends_on_pbi_ids`) |
-| FR-009 | Orchestrate cross-review at Sprint end: SM spawns `codex-code-reviewer` (fallback `code-reviewer`) and `security-reviewer` per merged PBI, collects results, drives fix loop until PASS |
+| FR-009 | Orchestrate cross-review at Sprint end: SM spawns `codex-code-reviewer` (fallback `code-reviewer`) and `security-reviewer` for each PBI at `status ∈ {awaiting_cross_review, escalated}`, collects results, drives fix loop (FAIL → `in_progress_impl` for Developer rework) until PASS reaches `status: done` |
 | FR-010 | Present Sprint Review, conditional live demo (based on `ux_change` field) |
 | FR-011 | Report remaining scope and progress |
 | FR-012 | Record and consolidate retrospective improvements |
@@ -96,9 +96,9 @@ body. Below is the reference for all 14 Skills:
 | `sprint-planning` | `state.json` → `phase: backlog_created \| retrospective`; `backlog.json` → refined PBIs | `sprint.json` (created); `backlog.json` → `items[].sprint_id`, `implementer_id`; oversized PBIs split into child PBIs with `parent_pbi_id` set; `state.json` → `phase: sprint_planning` |
 | `spawn-teammates` | `sprint.json` → `pbi_ids`, `developer_count`; `backlog.json` → assigned PBIs | `sprint.json` → `developers[]` (populated, `assigned_work.implement`), `status: "active"`; Agent Teams teammates spawned |
 | `install-subagents` | PBI assignment (task context); project-managed agent definitions | `.claude/agents/*.md` (installed); `sprint.json` → `developers[].sub_agents` (at runtime) |
-| `pbi-pipeline` | `state.json` → `phase: sprint_planning \| pbi_pipeline_active`; `sprint.json` → `developers[]`; `docs/design/catalog.md`; existing `docs/design/specs/**/*.md`; `requirements.md`; `.scrum/config.json` (coverage thresholds) | Source code; test files; `docs/design/specs/{category}/*.md` (catalog spec updates as side-effect); `.scrum/pbi/<pbi-id>/{state,design,impl,ut,metrics,feedback,pipeline.log}` (see `data-model.md` § PbiPipelineState); `backlog.json` → `items[].status: refined → in_progress → review`; `state.json` → `phase: pbi_pipeline_active` |
+| `pbi-pipeline` | `state.json` → `phase: sprint_planning \| pbi_pipeline_active`; `sprint.json` → `developers[]`; `docs/design/catalog.md`; existing `docs/design/specs/**/*.md`; `requirements.md`; `.scrum/config.json` (coverage thresholds) | Source code; test files; `docs/design/specs/{category}/*.md` (catalog spec updates as side-effect); `.scrum/pbi/<pbi-id>/{state,design,impl,ut,metrics,feedback,pipeline.log}` (see `data-model.md` § PbiPipelineState); `backlog.json` → `items[].status` walks the Developer-managed slice (`in_progress_design → in_progress_impl ⇄ in_progress_pbi_review ⇄ in_progress_ut_run → in_progress_merge`); on termination-gate trip flips to `escalated`; `state.json` → `phase: pbi_pipeline_active` |
 | `pbi-escalation-handler` | Developer notification `[<pbi-id>] ESCALATED reason=<reason>`; `.scrum/pbi/<pbi-id>/state.json`; `.scrum/pbi/<pbi-id>/pipeline.log` | `.scrum/pbi/<pbi-id>/escalation-resolution.md`; SM decision (retry / split / hold / human-escalate) |
-| `cross-review` | `state.json` → `phase: pbi_pipeline_active \| review`; `backlog.json` → all Sprint PBIs whose `pbi-pipeline` reached `phase: complete`; `requirements.md`; relevant `docs/design/specs/**/*.md`; per-PBI pipeline final reviews at `.scrum/pbi/<pbi-id>/{impl,ut}/review-r{last}.md` (read for context, not re-evaluated) | `sprint.json` → `status: "cross_review"`; `.scrum/pbi/<pbi-id>/state.json` → `phase: review_complete` (backlog.status auto-projects to `done`); `backlog.json` → `items[].review_doc_path`; `reviews/<pbi-id>-review.md`; `state.json` → `phase: review` |
+| `cross-review` | `state.json` → `phase: pbi_pipeline_active \| review`; `backlog.json` → all Sprint PBIs at `status ∈ {awaiting_cross_review, escalated}`; `requirements.md`; relevant `docs/design/specs/**/*.md`; per-PBI pipeline final reviews at `.scrum/pbi/<pbi-id>/{impl,ut}/review-r{last}.md` (read for context, not re-evaluated) | `sprint.json` → `status: "cross_review"`; `backlog.json` → `items[].status: awaiting_cross_review → cross_review → done` on PASS, or `cross_review → in_progress_impl` on FAIL (Developer fixes on top of merged code); `items[].review_doc_path`; `reviews/<pbi-id>-review.md`; `state.json` → `phase: review` |
 | `sprint-review` | `state.json` → `phase: review`; `sprint.json`; `backlog.json` | `sprint.json` → `status: "sprint_review"`; `sprint-history.json` → `sprints[]` (appended); `state.json` → `phase: sprint_review` |
 | `retrospective` | `state.json` → `phase: sprint_review`; `improvements.json` (existing improvements and `last_consolidation_sprint`); `sprint.json` → `id` (for consolidation check) | `improvements.json` → `entries[]` (appended), stale entries archived every 3 Sprints (`status: archived`, `archived_at` set, `last_consolidation_sprint` updated); `sprint.json` → `status: "complete"`; `state.json` → `phase: retrospective` |
 | `integration-sprint` | `state.json` → `phase: retrospective`; user confirmation | `.scrum/test-results.json` (structured test results from automated testing); `state.json` → `phase: integration_sprint → complete` |
@@ -362,16 +362,16 @@ Line 3: Agents: SM:active Dev1:impl(PBI-7) Dev2:review(PBI-5)
 - **Validation**: Uses `validate_json_file` to verify state files before parsing
 
 ### PreToolUse Hook
-- **Script**: `hooks/phase-gate.sh`
-- **Reads**: `.scrum/state.json` current phase; `docs/design/catalog.md`
+- **Script**: `hooks/status-gate.sh` (renamed from `phase-gate.sh` in v2)
+- **Reads**: `.scrum/state.json` current `phase` (project workflow); `.scrum/backlog.json` current PBI `status` (12-value enum); `docs/design/catalog.md`
 - **Output**: `permissionDecision` (`allow`, `deny`, or `ask`)
 - **Logging**: Logs all deny decisions to `.scrum/hooks.log`
-- **Purpose**: Gate tool usage by current phase. Examples:
-  - During `design` phase: deny `Edit` on source files
-  - During `design` phase: deny `Write`/`Edit` under `docs/design/specs/`
+- **Purpose**: Gate tool usage by project workflow phase and per-PBI status. Examples:
+  - During `in_progress_design` PBI status: deny `Edit` on source/test files
+  - During any `in_progress_*` status: deny `Write`/`Edit` under `docs/design/specs/`
     if target file has no enabled entry in `docs/design/catalog.md`
-  - During `sprint_review` phase: deny code modifications
-  - During `requirements_sprint` phase: deny source file creation
+  - During `sprint_review` workflow phase: deny code modifications
+  - During `requirements_sprint` workflow phase: deny source file creation
 
 ### Stop Hook
 - **Script**: `hooks/completion-gate.sh`

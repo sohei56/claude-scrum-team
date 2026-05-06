@@ -373,18 +373,20 @@ Observe implementation and verify Developers use support sub-agents.
   enforcing black-box UT discipline. Verdicts (PASS/FAIL with
   structured findings) feed the pipeline's deterministic termination
   gates (success / stagnation / divergence / hard cap N=5). **Layer
-  2 (Sprint-end cross-review)**: after all per-PBI pipelines reach
-  `phase: complete`, the Scrum Master runs the `cross-review` skill
-  which spawns `codex-code-reviewer` (primary cross-model code review)
-  and `security-reviewer` for cross-cutting integration / security
+  2 (Sprint-end cross-review)**: after each per-PBI merge, the PBI
+  is queued at `status: awaiting_cross_review`. At Sprint end the
+  Scrum Master runs the `cross-review` skill which transitions each
+  queued PBI to `status: cross_review` and spawns
+  `codex-code-reviewer` (primary cross-model code review) and
+  `security-reviewer` for cross-cutting integration / security
   perspective. When the `codex` CLI is unavailable, `cross-review`
   logs a warning and falls back to `code-reviewer` (Claude-based) for
   the code-quality pass. Per-PBI review files at
   `.scrum/pbi/<pbi-id>/{impl,ut}/review-r{last}.md` are read for
   context but NOT re-evaluated. Review issues MUST be either fixed
-  within the Sprint or logged as new PBIs. The same Codex-fallback
-  rule applies to Layer 1 reviewers (`codex-impl-reviewer`,
-  `codex-ut-reviewer`).
+  within the Sprint (PBI returns to `status: in_progress_impl`) or
+  logged as new PBIs. The same Codex-fallback rule applies to
+  Layer 1 reviewers (`codex-impl-reviewer`, `codex-ut-reviewer`).
 
 - **FR-010**: At Sprint Review, the Scrum Master MUST present the
   Increment with a change summary. A live demo MUST be performed
@@ -414,10 +416,15 @@ Observe implementation and verify Developers use support sub-agents.
 - **FR-014**: The system MUST provide a TUI dashboard that runs
   alongside the conversation and displays the following panels:
   (a) **Sprint Overview** — Sprint Goal, selected PBIs, assigned
-  Developers, and current phase;
-  (b) **Real-time PBI Progress Board** — each PBI's status
-  (`draft` -> `refined` -> `in_progress` -> `review` -> `done`)
-  updated as Developers work;
+  Developers, and current project workflow phase
+  (`state.json.phase`, e.g. `pbi_pipeline_active`);
+  (b) **Real-time PBI Progress Board** — each PBI's 12-value
+  status (SM-managed:
+  `draft → refined → blocked → awaiting_cross_review →
+  cross_review → escalated → done`; Developer-managed:
+  `in_progress_design → in_progress_impl ⇄ in_progress_pbi_review
+  ⇄ in_progress_ut_run → in_progress_merge`) updated as work
+  progresses;
   (c) **Communication Log** — messages exchanged between agents
   (Scrum Master <-> Developers, Developer <-> Developer);
   (d) **File Change Log** — files created, modified, or deleted
@@ -435,17 +442,21 @@ Observe implementation and verify Developers use support sub-agents.
   Developers are notified.
 
 - **FR-017**: A PBI meets the Definition of Done when its
-  `pbi-pipeline` reaches `phase: complete`. The pipeline's success
-  gate requires ALL of: `codex-impl-reviewer` verdict PASS,
-  `codex-ut-reviewer` verdict PASS, test failures = 0, test exec
-  errors = 0, uncaught exceptions = 0, C0 coverage ≥ `c0_threshold`
-  (default 100%), C1 coverage ≥ `c1_threshold` (default 100%; the
-  threshold may only be relaxed via `.scrum/config.json` for
-  partial-C1 languages — ad-hoc relaxation is forbidden), and every
-  pragma exclusion has a recorded justification (`reason_source !=
-  "missing"` in `pragma-audit-r{n}.json`). Existing tests must
-  continue to pass (no regressions); linter/formatter must pass.
-  The Sprint-end `cross-review` (FR-009 Layer 2) MUST also complete.
+  `backlog.json.items[].status` reaches `done`. The pipeline's
+  success gate (driving the PBI from `in_progress_ut_run` to
+  `in_progress_merge`) requires ALL of: `codex-impl-reviewer`
+  verdict PASS, `codex-ut-reviewer` verdict PASS, test failures = 0,
+  test exec errors = 0, uncaught exceptions = 0, C0 coverage ≥
+  `c0_threshold` (default 100%), C1 coverage ≥ `c1_threshold`
+  (default 100%; the threshold may only be relaxed via
+  `.scrum/config.json` for partial-C1 languages — ad-hoc relaxation
+  is forbidden), and every pragma exclusion has a recorded
+  justification (`reason_source != "missing"` in
+  `pragma-audit-r{n}.json`). Existing tests must continue to pass
+  (no regressions); linter/formatter must pass. After per-PBI merge
+  succeeds the PBI sits at `awaiting_cross_review`; the Sprint-end
+  `cross-review` (FR-009 Layer 2) transitions it through
+  `cross_review` and PASS reaches `done`.
 
 - **FR-018**: The system MUST be launchable via a shell script
   (`scrum-start.sh`) that the user runs from the CLI. The
@@ -491,14 +502,18 @@ Observe implementation and verify Developers use support sub-agents.
   needed to achieve the Product Goal. Managed by the Scrum Master.
   PBIs start coarse-grained and are progressively refined.
 
-- **Product Backlog Item (PBI)**: A unit of work with a 6-state
-  lifecycle: `draft` → `refined` → `in_progress` → `review` →
-  `done` (meets Definition of Done), with `blocked` as an escalated
-  state (resolved by SM `pbi-escalation-handler`). Each refined PBI
-  produces three deliverables: design document, implementation, and
-  tests. Design is completed and reviewed before implementation
-  begins. Full schema and validation rules in `docs/data-model.md`
-  § PBI.
+- **Product Backlog Item (PBI)**: A unit of work with a 12-state
+  lifecycle split between SM-managed (`draft`, `refined`, `blocked`,
+  `awaiting_cross_review`, `cross_review`, `escalated`, `done`) and
+  Developer-managed (`in_progress_design`, `in_progress_impl`,
+  `in_progress_pbi_review`, `in_progress_ut_run`,
+  `in_progress_merge`) states. `escalated` is the gate-trip /
+  merge-failure state resolved by SM `pbi-escalation-handler`;
+  `blocked` is an SM-decided hold for external blockers. Each
+  refined PBI produces three deliverables: design document,
+  implementation, and tests. Design is completed and reviewed before
+  implementation begins. Full schema and transition graph in
+  `docs/data-model.md` § PBI.
 
 - **Sprint Backlog**: The Sprint Goal plus the set of refined PBIs
   selected for the Sprint, with assigned implementers and
@@ -626,7 +641,7 @@ Observe implementation and verify Developers use support sub-agents.
 - Q: Where are project artifacts stored on disk? A: A `.scrum/` directory in the project root with flat JSON files (one file per concern: `state.json`, `backlog.json`, `sprint.json`, etc.) and a `reviews/` subdirectory. Design documents live separately under `docs/design/specs/{category}/`, governed by `docs/design/catalog.md`.
 - Q: What serialization format for state files? A: JSON — one file per concern (e.g., `state.json`, `backlog.json`, `improvements.json`).
 - Q: How are cross-Sprint context limits managed? A: Fresh context per Sprint — the Scrum Master (team lead) reads state files from disk at Sprint start; Developer teammates receive only their assigned artifacts (PBI, relevant design docs, requirements).
-- Q: What are the explicit PBI lifecycle states? A: 5 states: `draft` (coarse-grained) -> `refined` (implementation-ready) -> `in_progress` -> `review` -> `done`.
+- Q: What are the explicit PBI lifecycle states? A: 12 states (v2 schema), actor-split. SM-managed: `draft`, `refined`, `blocked`, `awaiting_cross_review`, `cross_review`, `escalated`, `done`. Developer-managed: `in_progress_design`, `in_progress_impl`, `in_progress_pbi_review`, `in_progress_ut_run`, `in_progress_merge`. The legacy 6-state model (`draft → refined → in_progress → review → done | blocked`) was replaced when the `pbi-state.json.phase` field was removed; status is the sole SSOT.
 - Q: Can Agent Teams teammates use specialist sub-agents from the catalog? A: Yes — teammates are full Claude Code sessions that load `.claude/agents/` automatically. They install sub-agent `.md` files from the catalog and use them via the Task tool. This is distinct from Agent Teams itself: teammates coordinate via shared task list and messaging, while sub-agents are ephemeral workers within a teammate's session.
 
 ### 2026-02-21

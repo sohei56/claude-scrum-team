@@ -233,14 +233,14 @@ execute.
   data dependencies and side effects explicit and testable.
   ```markdown
   ## Inputs (required state)
-  - `state.json` -> `phase` (must be `sprint_planning`)
+  - `state.json` -> `phase` (must be `sprint_planning`; project-level workflow)
   - `backlog.json` -> `items[]` (PBIs with `status: refined`)
   - `sprint.json` -> `id`, `goal`, `pbi_ids`
 
   ## Outputs (files/keys updated)
   - `sprint.json` -> `developers[]` (populated with spawned teammates)
-  - `state.json` -> `phase` (transitions to `design`)
-  - `backlog.json` -> `items[].implementer_id`
+  - `state.json` -> `phase` (transitions to `pbi_pipeline_active`)
+  - `backlog.json` -> `items[].implementer_id`, `items[].status` (assigned PBIs flip to `in_progress_design`)
   ```
 
 - Each Skill declares Inputs, Outputs, preconditions, steps, exit
