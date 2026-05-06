@@ -4,18 +4,11 @@
 
 ```text
 scrum-start.sh           # Entry point — validates prereqs, launches tmux
-agents/                  # Agent and sub-agent definitions
+agents/                  # Agent + 9 sub-agent definitions (top-level: scrum-master, developer; sub-agents listed in docs/contracts/sub-agents.md)
   scrum-master.md        # Team lead (Delegate mode)
   developer.md           # Developer teammate (PBI pipeline conductor)
-  code-reviewer.md       # Independent code review (spawned by Scrum Master)
-  security-reviewer.md   # Security vulnerability scanning (spawned by Scrum Master)
-  codex-code-reviewer.md # Cross-model code review via Codex CLI (Sprint-end)
-  pbi-designer.md        # PBI design author (spawned by Developer)
-  pbi-implementer.md     # Implementation author — no test writes (spawned by Developer)
-  pbi-ut-author.md       # Black-box test author — no impl reads (spawned by Developer)
-  codex-design-reviewer.md  # Critical design review (spawned by Developer)
-  codex-impl-reviewer.md    # Critical impl review — no test visibility (spawned by Developer)
-  codex-ut-reviewer.md      # Critical UT review — no impl visibility (spawned by Developer)
+  # Sub-agents: code-reviewer, security-reviewer, codex-code-reviewer (Sprint-end cross-review),
+  # pbi-{designer,implementer,ut-author}, codex-{design,impl,ut}-reviewer (PBI pipeline)
 skills/                  # 16 Skills (15 Scrum ceremonies + 1 maintenance) — YAML frontmatter + Markdown
   backlog-refinement/    # Refine PBIs from coarse to sprint-ready
   change-process/        # Manage changes to frozen design docs

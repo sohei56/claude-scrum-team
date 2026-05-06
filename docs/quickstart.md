@@ -124,14 +124,11 @@ prerequisites.
 ## Key Concepts
 
 ### Agents
-- `agents/scrum-master.md` — Team lead in **Delegate mode** (coordination
-  only). Preloads all 14 ceremony Skills.
+- `agents/scrum-master.md` — Team lead in **Delegate mode**.
 - `agents/developer.md` — Teammate template, spawned per Sprint.
-- `agents/code-reviewer.md` — Independent code review (spawned by Scrum Master during cross-review).
-- `agents/security-reviewer.md` — Security vulnerability scanning (spawned by Scrum Master during cross-review).
-- `agents/codex-code-reviewer.md` — Cross-model review via OpenAI Codex CLI (optional, spawned by Scrum Master).
-- `agents/pbi-{designer,implementer,ut-author}.md` — PBI Pipeline workers (spawned per Round by Developer).
-- `agents/codex-{design,impl,ut}-reviewer.md` — PBI Pipeline critical reviewers (cross-model via Codex CLI).
+- Sub-agents (cross-review + PBI pipeline) — see
+  [docs/contracts/sub-agents.md](contracts/sub-agents.md) for the full
+  catalog with roles and tool sandboxes.
 
 ### Skills
 Markdown files in `.claude/skills/<name>/SKILL.md` encapsulating Scrum

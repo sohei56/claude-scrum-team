@@ -88,13 +88,8 @@ tree. Top-level layout: `scrum-start.sh` (entry point), `agents/`,
 
 ## Key Files
 
-- `agents/scrum-master.md` — Team lead (Delegate mode)
-- `agents/developer.md` — Teammate template (spawned per Sprint)
-- `agents/code-reviewer.md` — Independent code review sub-agent
-- `agents/security-reviewer.md` — Security vulnerability scanning sub-agent
-- `agents/codex-code-reviewer.md` — Cross-model review via Codex CLI
-- `agents/pbi-{designer,implementer,ut-author}.md` — PBI Pipeline workers (spawned per Round by Developer)
-- `agents/codex-{design,impl,ut}-reviewer.md` — Critical reviewers for PBI Pipeline (cross-model via Codex)
+- `agents/scrum-master.md`, `agents/developer.md` — top-level agents
+- Sub-agents (cross-review + PBI pipeline) — see [docs/contracts/sub-agents.md](docs/contracts/sub-agents.md)
 - `docs/design/catalog.md` — Design document type reference (read-only in working dirs)
 - `docs/design/catalog-config.json` — Editable list of enabled spec IDs
 - `docs/` — Project documentation (requirements, architecture, data model, contracts, quickstart)

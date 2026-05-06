@@ -588,12 +588,10 @@ Observe implementation and verify Developers use support sub-agents.
   process-scoped by `scrum-start.sh` — users do NOT need to export
   it globally. Agent Teams is an experimental feature as of
   February 2026.
-- Specialist sub-agents (`code-reviewer`, `security-reviewer`,
-  `codex-code-reviewer`, plus PBI Pipeline sub-agents `pbi-designer`,
-  `pbi-implementer`, `pbi-ut-author`, `codex-design-reviewer`,
-  `codex-impl-reviewer`, `codex-ut-reviewer`) are project-managed in
-  the `agents/` directory and distributed by `setup-user.sh`. No
-  external catalog dependency.
+- Specialist sub-agents are project-managed in the `agents/`
+  directory and distributed by `setup-user.sh`. No external catalog
+  dependency. The full catalog (cross-review + PBI pipeline) is in
+  `docs/contracts/sub-agents.md`.
 - The user's environment supports TUI rendering (standard terminal
   emulator with basic ANSI support).
 - Python 3.9+ is installed and available on the user's PATH (TUI
