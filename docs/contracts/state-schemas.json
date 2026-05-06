@@ -43,12 +43,17 @@
         },
         "status": {
           "type": "string",
-          "enum": ["draft", "refined", "in_progress", "review", "done"]
+          "enum": [
+            "draft", "refined", "blocked",
+            "in_progress_design", "in_progress_impl", "in_progress_pbi_review",
+            "in_progress_ut_run", "in_progress_merge",
+            "awaiting_cross_review", "cross_review",
+            "escalated", "done"
+          ]
         },
         "priority": { "type": "integer", "minimum": 1 },
         "sprint_id": { "type": ["string", "null"] },
         "implementer_id": { "type": ["string", "null"] },
-        "reviewer_id": { "type": ["string", "null"] },
         "design_doc_paths": {
           "type": "array",
           "items": { "type": "string" }
@@ -87,17 +92,12 @@
         "id": { "type": "string", "pattern": "^dev-\\d+-s\\d+$" },
         "assigned_work": {
           "type": "object",
-          "required": ["implement", "review"],
+          "required": ["implement"],
           "properties": {
             "implement": {
               "type": "array",
               "items": { "type": "string" },
               "description": "PBI IDs this Developer implements"
-            },
-            "review": {
-              "type": "array",
-              "items": { "type": "string" },
-              "description": "PBI IDs this Developer reviews (round-robin assigned)"
             }
           },
           "additionalProperties": false

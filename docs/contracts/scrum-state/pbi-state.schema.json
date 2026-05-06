@@ -2,16 +2,10 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "PBI pipeline internal state",
   "type": "object",
-  "required": ["pbi_id", "phase", "started_at", "updated_at"],
+  "required": ["pbi_id", "started_at", "updated_at"],
   "additionalProperties": false,
   "properties": {
     "pbi_id": {"type": "string", "pattern": "^pbi-[0-9]+$"},
-    "phase": {"enum": [
-      "design", "impl_ut", "complete",
-      "ready_to_merge", "merged",
-      "merge_conflict", "merge_artifact_missing", "merge_regression",
-      "review_complete", "escalated"
-    ]},
     "design_round": {"type": "integer", "minimum": 0},
     "impl_round": {"type": "integer", "minimum": 0},
     "design_status": {"enum": ["pending", "in_review", "fail", "pass"]},
@@ -29,7 +23,10 @@
         "requirements_unclear",
         "coverage_tool_error",
         "coverage_tool_unavailable",
-        "catalog_lock_timeout"
+        "catalog_lock_timeout",
+        "merge_conflict",
+        "merge_artifact_missing",
+        "merge_regression"
       ]
     },
     "branch": {"type": "string", "pattern": "^pbi/pbi-[0-9]+$"},
