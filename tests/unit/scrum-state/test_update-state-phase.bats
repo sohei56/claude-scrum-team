@@ -1,20 +1,14 @@
 #!/usr/bin/env bats
 # tests/unit/scrum-state/test_update-state-phase.bats
 
+load lib/helpers.bash
+
 setup() {
-  export SCRUM_VALIDATOR_OVERRIDE=jsonschema-cli
-  PROJECT_ROOT="$(cd "${BATS_TEST_DIRNAME}/../../.." && pwd)"
-  TEST_TMP="$(mktemp -d /tmp/claude/upd-state-phase.XXXXXX 2>/dev/null || mktemp -d "${TMPDIR:-/tmp}/upd-state-phase.XXXXXX")"
-  cd "$TEST_TMP" || exit 1
-  mkdir -p .scrum docs/contracts/scrum-state
-  cp "$PROJECT_ROOT/docs/contracts/scrum-state/state.schema.json" docs/contracts/scrum-state/
-  cp "$PROJECT_ROOT/tests/fixtures/valid-state.json" .scrum/state.json
+  scrum_state_setup state.schema.json valid-state.json state.json upd-state-phase
 }
 
 teardown() {
-  if [ -n "${TEST_TMP:-}" ] && [ -d "$TEST_TMP" ]; then
-    rm -rf "$TEST_TMP"
-  fi
+  scrum_state_teardown
 }
 
 @test "update-state-phase: implementation → review" {
