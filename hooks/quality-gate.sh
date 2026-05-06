@@ -131,57 +131,56 @@ get_changed_files() {
   fi
 }
 
+# Run a linter against changed files of a given extension. Echoes a
+# space-separated list of files that failed the linter (empty on pass).
+# Usage: check_linter_on_extension <linter_cmd> <ext> <linter_args...>
+# Returns 0 if the linter is unavailable (caller treats as no-op).
+check_linter_on_extension() {
+  local cmd="$1"
+  local ext="$2"
+  shift 2
+  command -v "$cmd" >/dev/null 2>&1 || return 0
+
+  local files failed=""
+  files="$(get_changed_files "$ext")"
+  [ -n "$files" ] || return 0
+  while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    [ -f "$f" ] || continue
+    if ! "$cmd" "$@" "$f" >/dev/null 2>&1; then
+      failed="${failed}${failed:+, }${f}"
+    fi
+  done <<EOF
+$files
+EOF
+  if [ -n "$failed" ]; then
+    printf '%s' "$failed"
+    return 1
+  fi
+  return 0
+}
+
 # Check if code passes linter (if linter tools are available)
 # Scopes checks to files changed in the current branch, not all project files.
 check_linter() {
   local pbi_id="$1"
   local linter_available=false
   local linter_passed=true
+  local failed
 
-  # Check shellcheck availability
   if command -v shellcheck >/dev/null 2>&1; then
     linter_available=true
-    # Run shellcheck on changed shell scripts only
-    local shell_files
-    shell_files="$(get_changed_files "sh")"
-    if [ -n "$shell_files" ]; then
-      local failed_files=""
-      while IFS= read -r sf; do
-        [ -z "$sf" ] && continue
-        [ -f "$sf" ] || continue
-        if ! shellcheck "$sf" >/dev/null 2>&1; then
-          failed_files="${failed_files}${failed_files:+, }${sf}"
-          linter_passed=false
-        fi
-      done <<EOF
-$shell_files
-EOF
-      if [ "$linter_passed" = "false" ]; then
-        warn "PBI ${pbi_id}: shellcheck reported issues in: ${failed_files}"
-      fi
+    if ! failed="$(check_linter_on_extension shellcheck sh)"; then
+      warn "PBI ${pbi_id}: shellcheck reported issues in: ${failed}"
+      linter_passed=false
     fi
   fi
 
-  # Check ruff availability (Python linter)
   if command -v ruff >/dev/null 2>&1; then
     linter_available=true
-    local py_files
-    py_files="$(get_changed_files "py")"
-    if [ -n "$py_files" ]; then
-      local failed_py=""
-      while IFS= read -r pf; do
-        [ -z "$pf" ] && continue
-        [ -f "$pf" ] || continue
-        if ! ruff check "$pf" --quiet >/dev/null 2>&1; then
-          failed_py="${failed_py}${failed_py:+, }${pf}"
-          linter_passed=false
-        fi
-      done <<EOF
-$py_files
-EOF
-      if [ -n "$failed_py" ]; then
-        warn "PBI ${pbi_id}: ruff reported issues in: ${failed_py}"
-      fi
+    if ! failed="$(check_linter_on_extension ruff py check --quiet)"; then
+      warn "PBI ${pbi_id}: ruff reported issues in: ${failed}"
+      linter_passed=false
     fi
   fi
 

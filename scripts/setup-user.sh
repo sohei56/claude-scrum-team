@@ -9,6 +9,23 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 TARGET_DIR="$(pwd)"
 
+# copy_tree <source_glob> <target_dir> [executable_bool]
+# Copies each file matching the unquoted source glob into target_dir,
+# creating target_dir first. Sets executable bit when executable_bool=true.
+copy_tree() {
+  local source_glob="$1"
+  local target_dir="$2"
+  local make_exec="${3:-false}"
+  mkdir -p "$target_dir"
+  for f in $source_glob; do
+    [ -e "$f" ] || continue
+    cp "$f" "$target_dir/"
+    if [ "$make_exec" = "true" ]; then
+      chmod +x "$target_dir/$(basename "$f")"
+    fi
+  done
+}
+
 echo "=== claude-scrum-team: Project Setup ==="
 echo ""
 
@@ -39,8 +56,7 @@ echo ""
 
 # --- Copy agent definitions ---
 echo "Copying agent definitions to $TARGET_DIR/.claude/agents/..."
-mkdir -p "$TARGET_DIR/.claude/agents"
-cp "$PROJECT_ROOT/agents/"*.md "$TARGET_DIR/.claude/agents/"
+copy_tree "$PROJECT_ROOT/agents/*.md" "$TARGET_DIR/.claude/agents"
 
 # --- Copy skill definitions ---
 echo "Copying skill definitions to $TARGET_DIR/.claude/skills/..."
@@ -59,19 +75,8 @@ done
 
 # --- Copy hook scripts ---
 echo "Copying hook scripts to $TARGET_DIR/.claude/hooks/..."
-mkdir -p "$TARGET_DIR/.claude/hooks/lib"
-for hook_file in "$PROJECT_ROOT/hooks/"*.sh; do
-  if [ -f "$hook_file" ]; then
-    cp "$hook_file" "$TARGET_DIR/.claude/hooks/"
-    chmod +x "$TARGET_DIR/.claude/hooks/$(basename "$hook_file")"
-  fi
-done
-# Copy hook library files
-for lib_file in "$PROJECT_ROOT/hooks/lib/"*.sh; do
-  if [ -f "$lib_file" ]; then
-    cp "$lib_file" "$TARGET_DIR/.claude/hooks/lib/"
-  fi
-done
+copy_tree "$PROJECT_ROOT/hooks/*.sh" "$TARGET_DIR/.claude/hooks" true
+copy_tree "$PROJECT_ROOT/hooks/lib/*.sh" "$TARGET_DIR/.claude/hooks/lib"
 
 # --- Copy scrum-state SSOT wrappers ---
 # pre-tool-use-scrum-state-guard blocks raw writes to .scrum/*.json. Without
@@ -79,18 +84,8 @@ done
 # Deploy under .scrum/scripts/ to keep framework artifacts out of the user's
 # scripts/ tree (where they were easy to confuse with project deliverables).
 echo "Copying scrum-state wrappers to $TARGET_DIR/.scrum/scripts/..."
-mkdir -p "$TARGET_DIR/.scrum/scripts/lib"
-for wrapper in "$PROJECT_ROOT/scripts/scrum/"*.sh; do
-  if [ -f "$wrapper" ]; then
-    cp "$wrapper" "$TARGET_DIR/.scrum/scripts/"
-    chmod +x "$TARGET_DIR/.scrum/scripts/$(basename "$wrapper")"
-  fi
-done
-for wrapper_lib in "$PROJECT_ROOT/scripts/scrum/lib/"*.sh; do
-  if [ -f "$wrapper_lib" ]; then
-    cp "$wrapper_lib" "$TARGET_DIR/.scrum/scripts/lib/"
-  fi
-done
+copy_tree "$PROJECT_ROOT/scripts/scrum/*.sh" "$TARGET_DIR/.scrum/scripts" true
+copy_tree "$PROJECT_ROOT/scripts/scrum/lib/*.sh" "$TARGET_DIR/.scrum/scripts/lib"
 
 # Clean up wrappers from the legacy deploy location (scripts/scrum/) so they
 # don't shadow the new layout. Only removes files we recognize as ours; leaves

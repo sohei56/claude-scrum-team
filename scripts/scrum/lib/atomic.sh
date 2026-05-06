@@ -74,7 +74,8 @@ atomic_write() {
 }
 
 _iso_utc_now() {
-  # Match the format used by hooks/dashboard-event.sh elsewhere: ISO8601 UTC with seconds.
+  # Mirrors hooks/lib/validate.sh::get_timestamp (authoritative). Kept inline to
+  # avoid a circular dep between scripts/scrum/lib and hooks/lib.
   date -u +"%Y-%m-%dT%H:%M:%SZ"
 }
 

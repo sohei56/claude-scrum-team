@@ -59,52 +59,36 @@ is_design_spec_path() {
   esac
 }
 
-# Check whether a spec ID exists in catalog.md (any table row).
-# Design spec files follow the pattern: docs/design/specs/{category}/{id}-{slug}.md
-# We extract the ID prefix (e.g. "S-001") and look for it in catalog.md.
-has_catalog_entry() {
-  local path="$1"
-  if [ ! -f "$CATALOG_FILE" ]; then
-    return 1
-  fi
-
+# Extract the spec ID (e.g. "S-001") from the basename of a spec path.
+# Echoes empty string if the basename does not match the spec ID pattern.
+# Spec files follow: docs/design/specs/{category}/{id}-{slug}.md
+extract_spec_id() {
   local filename spec_id
-  filename="$(basename "$path")"
+  filename="$(basename "$1")"
   spec_id="$(echo "$filename" | sed -E 's/^([A-Z]+-[0-9]+)-.*/\1/')"
-
   if [ -z "$spec_id" ] || [ "$spec_id" = "$filename" ]; then
-    return 1
+    echo ""
+    return
   fi
+  echo "$spec_id"
+}
 
-  # Check if spec ID appears in any catalog table row
-  if grep -qE "\\|\\s*${spec_id}\\s*\\|" "$CATALOG_FILE" 2>/dev/null; then
-    return 0
-  fi
-
-  return 1
+# Check whether a spec ID exists in catalog.md (any table row).
+has_catalog_entry() {
+  local spec_id
+  spec_id="$(extract_spec_id "$1")"
+  [ -z "$spec_id" ] && return 1
+  [ -f "$CATALOG_FILE" ] || return 1
+  grep -qE "\\|\\s*${spec_id}\\s*\\|" "$CATALOG_FILE" 2>/dev/null
 }
 
 # Check whether a spec ID is enabled in catalog-config.json.
 is_enabled_in_config() {
-  local path="$1"
-  if [ ! -f "$CONFIG_FILE" ]; then
-    return 1
-  fi
-
-  local filename spec_id
-  filename="$(basename "$path")"
-  spec_id="$(echo "$filename" | sed -E 's/^([A-Z]+-[0-9]+)-.*/\1/')"
-
-  if [ -z "$spec_id" ] || [ "$spec_id" = "$filename" ]; then
-    return 1
-  fi
-
-  # Check if spec_id is in the enabled array
-  if jq -e --arg id "$spec_id" '.enabled | index($id) != null' "$CONFIG_FILE" >/dev/null 2>&1; then
-    return 0
-  fi
-
-  return 1
+  local spec_id
+  spec_id="$(extract_spec_id "$1")"
+  [ -z "$spec_id" ] && return 1
+  [ -f "$CONFIG_FILE" ] || return 1
+  jq -e --arg id "$spec_id" '.enabled | index($id) != null' "$CONFIG_FILE" >/dev/null 2>&1
 }
 
 # shellcheck disable=SC2317,SC2329 # kept for external use and testability
