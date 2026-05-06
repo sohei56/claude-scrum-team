@@ -15,6 +15,7 @@ disable-model-invocation: false
 ## Outputs
 
 - `.scrum/test-results.json`
+- `CLAUDE.md` — project root, fully regenerated at release (directory structure + system architecture + conventions, ~200 lines target). **Overwrites prior content including manual edits**
 - state.json → phase: "integration_sprint"→"complete" when release-ready
 
 ## Preconditions
@@ -45,7 +46,15 @@ disable-model-invocation: false
    c. Consolidate full defect list→user confirms complete
 7. **Defect→PBI**: Each confirmed defect→backlog.json PBI (status: draft→immediately refined, acceptance_criteria: expected vs actual, priority by severity). **No fix without assigned PBI — non-negotiable**
 8. **Return to Development Sprint**: state.json → phase: "backlog_created"→normal Sprint cycle (Refinement→Planning→Design→Implementation→Review→Sprint Review→Retrospective)→after fix Sprint→re-evaluate Product Goal→re-enter Integration Sprint
-9. **Release decision**: User confirms release-ready→state.json phase: "complete". Not ready→identify remaining work→Development Sprint
+9. **Release decision**: User confirms release-ready→
+   a. **CLAUDE.md regeneration**: Delegate Developer→fully regenerate `CLAUDE.md` at project root:
+      - **Directory structure** (current state, scanned from filesystem)
+      - **System architecture overview** (components, data flow, key integrations)
+      - **Tech stack + key conventions** (commands, code style, status flows)
+      - Target ~200 lines (目安). Exceeded→warn user, do not block
+      - **Full regeneration**: prior content overwritten. Warn user before write if existing CLAUDE.md has content not derivable from requirements.md/code (manual edits at risk)
+   b. state.json phase: "complete"
+   Not ready→identify remaining work→Development Sprint
 
 Ref: FR-013
 
@@ -54,4 +63,4 @@ Ref: FR-013
 - test-results.json exists (passed or passed_with_skips)
 - All test categories executed or skipped
 - UAT completed with feedback
-- Release confirmed→phase: "complete" OR new PBIs created
+- Release confirmed→`CLAUDE.md` regenerated + phase: "complete" OR new PBIs created
