@@ -157,10 +157,10 @@ teardown() {
 }
 
 # ---------------------------------------------------------------------------
-# phase-gate.sh
+# status-gate.sh
 # ---------------------------------------------------------------------------
 
-@test "phase-gate.sh allows Edit during implementation" {
+@test "status-gate.sh allows Edit during implementation" {
   mkdir -p .scrum
   cp "$FIXTURES_DIR/valid-state.json" .scrum/state.json  # phase=implementation
 
@@ -168,7 +168,7 @@ teardown() {
   local event_json
   event_json='{"tool_name":"Edit","tool_input":{"file_path":"src/main.py"}}'
 
-  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/phase-gate.sh'"
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/status-gate.sh'"
   assert_success
 
   # Decision should be allow
@@ -177,7 +177,7 @@ teardown() {
   [ "$decision" = "allow" ]
 }
 
-@test "phase-gate.sh denies source Edit during design" {
+@test "status-gate.sh denies source Edit during design" {
   mkdir -p .scrum
   cp "$FIXTURES_DIR/hook-state-design.json" .scrum/state.json  # phase=design
 
@@ -185,7 +185,7 @@ teardown() {
   local event_json
   event_json='{"tool_name":"Edit","tool_input":{"file_path":"src/main.py"}}'
 
-  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/phase-gate.sh'"
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/status-gate.sh'"
   assert_success
 
   # Decision should be deny
@@ -194,14 +194,14 @@ teardown() {
   [ "$decision" = "deny" ]
 }
 
-@test "phase-gate.sh denies source Edit during sprint_planning" {
+@test "status-gate.sh denies source Edit during sprint_planning" {
   mkdir -p .scrum
   jq -n '{"phase": "sprint_planning", "current_sprint_id": "sprint-001"}' > .scrum/state.json
 
   local event_json
   event_json='{"tool_name":"Edit","tool_input":{"file_path":"src/main.py"}}'
 
-  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/phase-gate.sh'"
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/status-gate.sh'"
   assert_success
 
   local decision
@@ -209,14 +209,14 @@ teardown() {
   [ "$decision" = "deny" ]
 }
 
-@test "phase-gate.sh denies source Write during sprint_planning" {
+@test "status-gate.sh denies source Write during sprint_planning" {
   mkdir -p .scrum
   jq -n '{"phase": "sprint_planning", "current_sprint_id": "sprint-001"}' > .scrum/state.json
 
   local event_json
   event_json='{"tool_name":"Write","tool_input":{"file_path":"src/new_file.py"}}'
 
-  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/phase-gate.sh'"
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/status-gate.sh'"
   assert_success
 
   local decision
@@ -224,14 +224,14 @@ teardown() {
   [ "$decision" = "deny" ]
 }
 
-@test "phase-gate.sh denies source Edit during retrospective" {
+@test "status-gate.sh denies source Edit during retrospective" {
   mkdir -p .scrum
   jq -n '{"phase": "retrospective", "current_sprint_id": "sprint-001"}' > .scrum/state.json
 
   local event_json
   event_json='{"tool_name":"Edit","tool_input":{"file_path":"src/main.py"}}'
 
-  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/phase-gate.sh'"
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/status-gate.sh'"
   assert_success
 
   local decision
@@ -239,14 +239,14 @@ teardown() {
   [ "$decision" = "deny" ]
 }
 
-@test "phase-gate.sh denies Write to docs/design/catalog.md" {
+@test "status-gate.sh denies Write to docs/design/catalog.md" {
   mkdir -p .scrum
   echo '{"phase": "design"}' > .scrum/state.json
 
   local event_json
   event_json='{"tool_name":"Write","tool_input":{"file_path":"docs/design/catalog.md"}}'
 
-  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/phase-gate.sh'"
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/status-gate.sh'"
   assert_success
 
   local decision
@@ -254,14 +254,14 @@ teardown() {
   [ "$decision" = "deny" ]
 }
 
-@test "phase-gate.sh denies Edit to docs/design/catalog.md in any phase" {
+@test "status-gate.sh denies Edit to docs/design/catalog.md in any phase" {
   mkdir -p .scrum
   echo '{"phase": "implementation"}' > .scrum/state.json
 
   local event_json
   event_json='{"tool_name":"Edit","tool_input":{"file_path":"docs/design/catalog.md"}}'
 
-  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/phase-gate.sh'"
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/status-gate.sh'"
   assert_success
 
   local decision
@@ -269,7 +269,7 @@ teardown() {
   [ "$decision" = "deny" ]
 }
 
-@test "phase-gate.sh denies design spec write when ID not in catalog-config.json" {
+@test "status-gate.sh denies design spec write when ID not in catalog-config.json" {
   mkdir -p .scrum docs/design
   echo '{"phase": "implementation"}' > .scrum/state.json
   printf '| ID | Spec Name | Granularity |\n|---|---|---|\n| S-030 | Screen Design | One per screen |\n' > docs/design/catalog.md
@@ -278,7 +278,7 @@ teardown() {
   local event_json
   event_json='{"tool_name":"Write","tool_input":{"file_path":"docs/design/specs/ui/S-030-screen-design.md"}}'
 
-  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/phase-gate.sh'"
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/status-gate.sh'"
   assert_success
 
   local decision
@@ -286,7 +286,7 @@ teardown() {
   [ "$decision" = "deny" ]
 }
 
-@test "phase-gate.sh denies design spec write when ID not in catalog.md" {
+@test "status-gate.sh denies design spec write when ID not in catalog.md" {
   mkdir -p .scrum docs/design
   echo '{"phase": "design"}' > .scrum/state.json
   printf '| ID | Spec Name | Granularity |\n|---|---|---|\n| S-001 | System Architecture | One per project |\n' > docs/design/catalog.md
@@ -295,7 +295,7 @@ teardown() {
   local event_json
   event_json='{"tool_name":"Write","tool_input":{"file_path":"docs/design/specs/ui/S-030-screen-design.md"}}'
 
-  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/phase-gate.sh'"
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/status-gate.sh'"
   assert_success
 
   local decision
@@ -303,7 +303,7 @@ teardown() {
   [ "$decision" = "deny" ]
 }
 
-@test "phase-gate.sh allows design spec write when ID in both catalog.md and config" {
+@test "status-gate.sh allows design spec write when ID in both catalog.md and config" {
   mkdir -p .scrum docs/design
   echo '{"phase": "design"}' > .scrum/state.json
   printf '| ID | Spec Name | Granularity |\n|---|---|---|\n| S-030 | Screen Design | One per screen |\n' > docs/design/catalog.md
@@ -312,7 +312,7 @@ teardown() {
   local event_json
   event_json='{"tool_name":"Write","tool_input":{"file_path":"docs/design/specs/ui/S-030-screen-design.md"}}'
 
-  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/phase-gate.sh'"
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/status-gate.sh'"
   assert_success
 
   local decision
@@ -320,7 +320,7 @@ teardown() {
   [ "$decision" = "allow" ]
 }
 
-@test "phase-gate.sh enforces catalog in implementation phase too" {
+@test "status-gate.sh enforces catalog in implementation phase too" {
   mkdir -p .scrum docs/design
   echo '{"phase": "implementation"}' > .scrum/state.json
   printf '| ID | Spec Name | Granularity |\n|---|---|---|\n| S-030 | Screen Design | One per screen |\n' > docs/design/catalog.md
@@ -329,7 +329,7 @@ teardown() {
   local event_json
   event_json='{"tool_name":"Write","tool_input":{"file_path":"docs/design/specs/ui/S-030-screen-design.md"}}'
 
-  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/phase-gate.sh'"
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/status-gate.sh'"
   assert_success
 
   local decision
@@ -337,7 +337,7 @@ teardown() {
   [ "$decision" = "allow" ]
 }
 
-@test "phase-gate.sh allows metadata file Edit during sprint_planning" {
+@test "status-gate.sh allows metadata file Edit during sprint_planning" {
   mkdir -p .scrum
   jq -n '{"phase": "sprint_planning", "current_sprint_id": "sprint-001"}' > .scrum/state.json
 
@@ -345,7 +345,7 @@ teardown() {
   local event_json
   event_json='{"tool_name":"Edit","tool_input":{"file_path":".scrum/backlog.json"}}'
 
-  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/phase-gate.sh'"
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/status-gate.sh'"
   assert_success
 
   local decision

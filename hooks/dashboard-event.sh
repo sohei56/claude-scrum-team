@@ -104,14 +104,17 @@ is_pbi_pipeline_agent() {
 }
 
 # Update .scrum/dashboard.json.pbi_pipelines for the given PBI id.
-# Replaces (or inserts) the entry for the PBI with current phase/round/agents.
+# Replaces (or inserts) the entry for the PBI with current status/round/agents.
 # event_type: "start" | "stop"
+# PBI status is read from backlog.json (12-value SSOT) — pbi-state.json no
+# longer carries phase after the status/phase unification.
 update_pbi_pipelines() {
   local pbi_id="$1" agent_name="$2" event_type="$3"
   [ -z "$pbi_id" ] && return 0
   ensure_dashboard_file
   local now; now="$(get_timestamp)"
   local sprint_file=".scrum/sprint.json"
+  local backlog_file=".scrum/backlog.json"
 
   local dev="unknown"
   if [ -f "$sprint_file" ]; then
@@ -119,16 +122,21 @@ update_pbi_pipelines() {
     [ -z "$dev" ] && dev="unknown"
   fi
 
-  local phase round
-  phase="$(get_pbi_pipeline_state "$pbi_id" phase unknown)"
-  if [ "$phase" = "design" ]; then
+  local pbi_status round
+  if [ -f "$backlog_file" ]; then
+    pbi_status="$(jq -r --arg id "$pbi_id" '.items[]? | select(.id == $id) | .status // "unknown"' "$backlog_file" 2>/dev/null)"
+    [ -z "$pbi_status" ] && pbi_status="unknown"
+  else
+    pbi_status="unknown"
+  fi
+  if [ "$pbi_status" = "in_progress_design" ]; then
     round="$(get_pbi_pipeline_state "$pbi_id" design_round 0)"
   else
     round="$(get_pbi_pipeline_state "$pbi_id" impl_round 0)"
   fi
 
   local tmp="${DASHBOARD_FILE}.tmp.$$"
-  jq --arg id "$pbi_id" --arg dev "$dev" --arg phase "$phase" \
+  jq --arg id "$pbi_id" --arg dev "$dev" --arg pbi_status "$pbi_status" \
      --argjson round "$round" --arg now "$now" --arg agent "$agent_name" \
      --arg ev "$event_type" '
     .pbi_pipelines = (.pbi_pipelines // []) |
@@ -136,7 +144,7 @@ update_pbi_pipelines() {
     .pbi_pipelines += [{
       pbi_id: $id,
       developer: $dev,
-      phase: $phase,
+      status: $pbi_status,
       round: $round,
       active_subagents: (if $ev == "start" then [$agent] else [] end),
       last_event_at: $now
@@ -368,7 +376,7 @@ case "$hook_type" in
       --arg detail "$detail" \
       '{
         "timestamp": $ts,
-        "type": "phase_transition",
+        "type": "status_transition",
         "agent_id": $agent,
         "file_path": null,
         "change_type": null,
@@ -473,7 +481,7 @@ case "$hook_type" in
     ;;
 
   *)
-    # Other hook types — emit as phase_transition (closest valid schema type)
+    # Other hook types — emit as status_transition (closest valid schema type)
     tool_name="$(echo "$hook_event" | jq -r '.tool_name // empty')"
     reason="$(echo "$hook_event" | jq -r '.reason // empty')"
     user_prompt="$(echo "$hook_event" | jq -r '.user_prompt // empty' | head -c 100)"
@@ -494,7 +502,7 @@ case "$hook_type" in
       --arg detail "$detail" \
       '{
         "timestamp": $ts,
-        "type": "phase_transition",
+        "type": "status_transition",
         "agent_id": $agent,
         "file_path": null,
         "change_type": null,

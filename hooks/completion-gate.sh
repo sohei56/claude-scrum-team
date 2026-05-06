@@ -181,26 +181,24 @@ EOF
     ;;
 
   pbi_pipeline_active)
-    # All active PBI pipelines must be either 'complete' or 'escalated'.
+    # All active PBI pipelines must be terminal (done) or escalated.
     # Escalated PBIs additionally require a recorded resolution.
+    # Status is read from backlog.json (12-value SSOT) — pbi-state.json no
+    # longer carries phase after the status/phase unification.
     active_pipelines="$(jq -r '.active_pbi_pipelines[]?' "$STATE_FILE" 2>/dev/null)"
     blocked_pipelines=""
     while IFS= read -r pbi_id; do
       [ -z "$pbi_id" ] && continue
-      if [ ! -f ".scrum/pbi/$pbi_id/state.json" ]; then
-        blocked_pipelines="${blocked_pipelines}${blocked_pipelines:+, }${pbi_id} (no state.json)"
-        continue
-      fi
-      pbi_phase="$(get_pbi_pipeline_state "$pbi_id" phase unknown)"
-      case "$pbi_phase" in
-        complete) ;;
+      pbi_status="$(get_pbi_status "$pbi_id")"
+      case "$pbi_status" in
+        done|awaiting_cross_review|cross_review) ;;
         escalated)
           if [ ! -f ".scrum/pbi/$pbi_id/escalation-resolution.md" ]; then
             blocked_pipelines="${blocked_pipelines}${blocked_pipelines:+, }${pbi_id} (escalated, no resolution)"
           fi
           ;;
         *)
-          blocked_pipelines="${blocked_pipelines}${blocked_pipelines:+, }${pbi_id} (phase: ${pbi_phase})"
+          blocked_pipelines="${blocked_pipelines}${blocked_pipelines:+, }${pbi_id} (status: ${pbi_status})"
           ;;
       esac
     done <<EOF
@@ -208,7 +206,7 @@ $active_pipelines
 EOF
 
     if [ -n "$blocked_pipelines" ]; then
-      block_stop "PBI Pipeline phase: pipelines incomplete or unresolved: ${blocked_pipelines}. All PBI pipelines must be 'complete' or 'escalated' (with resolution recorded) before stopping."
+      block_stop "PBI Pipeline phase: pipelines incomplete or unresolved: ${blocked_pipelines}. All PBI pipelines must be 'done' / 'awaiting_cross_review' / 'cross_review' or 'escalated' (with resolution recorded) before stopping."
     fi
     allow_stop
     ;;

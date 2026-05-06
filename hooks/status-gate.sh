@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
-# phase-gate.sh — PreToolUse hook
-# Gates tools by current Scrum phase and enforces design catalog governance.
-# Reads .scrum/state.json for the current phase, docs/design/catalog.md for
-# document type validation, docs/design/catalog-config.json for enablement state,
-# and the hook event JSON (Claude Code PreToolUse payload) from stdin.
+# status-gate.sh — PreToolUse hook
+# Gates tools by current Scrum project phase and enforces design catalog
+# governance. Reads .scrum/state.json for the current project phase,
+# docs/design/catalog.md for document type validation,
+# docs/design/catalog-config.json for enablement state, and the hook event
+# JSON (Claude Code PreToolUse payload) from stdin.
 # Outputs a permissionDecision JSON object.
+#
+# Note: this hook reads the project-level Scrum phase from .scrum/state.json
+# (which retains its `phase` field for the Sprint state machine: design,
+# implementation, sprint_planning, ...). It is unrelated to the per-PBI
+# 12-value status enum stored in .scrum/backlog.json.items[].status.
 set -euo pipefail
 
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -26,12 +32,12 @@ allow() {
 
 deny() {
   local reason="$1"
-  log_hook "phase-gate" "WARN" "Denied: $reason"
+  log_hook "status-gate" "WARN" "Denied: $reason"
   jq -n --arg r "$reason" '{"decision": "deny", "reason": $r}'
   exit 0
 }
 
-# shellcheck disable=SC2317,SC2329 # called indirectly by future phase rules
+# shellcheck disable=SC2317,SC2329 # called indirectly by future gating rules
 ask() {
   jq -n '{"decision": "ask"}'
   exit 0
