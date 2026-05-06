@@ -18,9 +18,7 @@ flags only. There is no `phase` field; status is the sole SSOT.
 | Ready-to-merge handoff | `in_progress_merge` |
 | Termination-gate escalation | `escalated` |
 
-Backlog statuses outside that set (`draft / refined / blocked /
-awaiting_cross_review / cross_review / done`) are SM-managed and
-MUST NOT be written by this skill.
+The 7 SM-managed status values (see [docs/data-model.md § State Transitions: status](../../../docs/data-model.md#state-transitions-status-12-value-enum-actor-split)) MUST NOT be written by this skill.
 
 ## Schema: `.scrum/pbi/<pbi-id>/state.json`
 

@@ -74,6 +74,8 @@ Self-run ceremonies (sprint-review, retrospective) handle the transition in thei
 
 ## Status Ownership (12-value status SSOT)
 
+Full enum + ASCII transition graph: see [docs/data-model.md § State Transitions: status](../docs/data-model.md#state-transitions-status-12-value-enum-actor-split).
+
 SM owns these `backlog.json.items[].status` values:
 
 - `draft` — newly created PBI, not yet refined

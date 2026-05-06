@@ -36,8 +36,7 @@ in_progress_design  → in_progress_impl ⇄ in_progress_pbi_review ⇄ in_progr
                                                                                   → escalated  (any stage; via termination gate)
 ```
 
-`draft / refined / blocked / awaiting_cross_review / cross_review /
-escalated / done` are SM-side and must NOT be written by this skill.
+The 7 SM-managed status values (see [docs/data-model.md § State Transitions: status](../../docs/data-model.md#state-transitions-status-12-value-enum-actor-split)) MUST NOT be written by this skill.
 
 ## Stages (decision tree)
 

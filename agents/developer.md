@@ -70,6 +70,8 @@ When assigned→run `smoke-test` skill:
 
 ## Status Ownership (12-value status SSOT)
 
+Full enum + ASCII transition graph: see [docs/data-model.md § State Transitions: status](../docs/data-model.md#state-transitions-status-12-value-enum-actor-split).
+
 Developer owns these `backlog.json.items[].status` values:
 
 - `in_progress_design` — design Round active (pbi-designer + codex-design-reviewer)
