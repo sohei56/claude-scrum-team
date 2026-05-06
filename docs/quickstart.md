@@ -107,50 +107,12 @@ command -v shellcheck && echo "shellcheck: OK"
 
 ## Repository Layout
 
-```
-claude-scrum-team/
-├── scrum-start.sh           # Entry point — launches tmux + Claude Code + dashboard
-├── agents/
-│   ├── scrum-master.md      # Scrum Master agent definition (team lead)
-│   └── developer.md         # Developer teammate template
-├── skills/
-│   ├── sprint-planning/      # Sprint Planning ceremony
-│   ├── spawn-teammates/      # Reproducible teammate creation
-│   ├── install-subagents/    # Reproducible sub-agent selection from catalog
-│   ├── design/         # Design phase orchestration
-│   ├── implementation/ # Implementation phase orchestration
-│   ├── cross-review/         # Cross-review process
-│   ├── sprint-review/        # Sprint Review ceremony
-│   ├── retrospective/        # Retrospective ceremony
-│   ├── requirements-sprint/  # Requirements Sprint ceremony
-│   ├── integration-sprint/   # Integration Sprint ceremony
-│   ├── backlog-refinement/   # PBI refinement process
-│   ├── change-process/       # FR-016 Change Process
-│   ├── scaffold-design-spec/ # Template stub creation on catalog enable
-│   └── smoke-test/           # Automated test execution and HTTP smoke testing
-├── hooks/
-│   ├── status-gate.sh       # PreToolUse: gates tools by status
-│   ├── session-context.sh   # SessionStart: injects status context
-│   ├── completion-gate.sh   # Stop: verifies exit criteria
-│   ├── quality-gate.sh      # TaskCompleted: enforces DoD
-│   └── dashboard-event.sh   # PostToolUse/TeammateIdle: feeds dashboard + comms
-├── dashboard/
-│   └── app.py               # Textual TUI dashboard (4-panel real-time view)
-├── scripts/
-│   ├── statusline.sh        # Status line (compact 3-line view)
-│   ├── setup-user.sh        # End user setup
-│   └── setup-dev.sh         # Contributor setup (installs dev deps)
-├── tests/                   # bats-core test suite
-│   ├── unit/
-│   ├── lint/
-│   ├── integration/
-│   ├── fixtures/
-│   └── test_helper/         # bats-support, bats-assert (submodules)
-├── docs/design/
-│   ├── catalog.md           # Design document governance
-│   └── specs/{category}/    # Design documents per catalog entries
-└── docs/                    # Project documentation (requirements, architecture, data model, contracts, quickstart)
-```
+See [CLAUDE.md § Project Structure](../CLAUDE.md) for the canonical
+tree. The repository is organized as: `agents/` (Scrum Master,
+Developer, and 6 PBI-pipeline + 3 cross-review sub-agent
+definitions), `skills/` (16 Skills covering all Scrum ceremonies
+plus the cleanup-audit maintenance skill), `hooks/`, `dashboard/`,
+`scripts/`, `tests/`, `docs/`, and the runtime `.scrum/` directory.
 
 ## Running Tests
 

@@ -81,22 +81,10 @@ Follow the task-based commit strategy (Constitution IV):
 
 ## Project Structure
 
-```
-scrum-start.sh           # Entry point
-agents/                  # Agent definitions (scrum-master, developer, code-reviewer, security-reviewer, codex-code-reviewer, pbi-{designer,implementer,ut-author}, codex-{design,impl,ut}-reviewer)
-skills/                  # ceremony Skills
-hooks/                   # Sprint cycle enforcement hooks
-dashboard/               # Textual TUI dashboard
-scripts/                 # Setup and utility scripts
-tests/                   # bats-core test suite
-  unit/                  # Shell script function tests
-  lint/                  # Agent/skill definition validation
-  integration/           # Script composition tests
-  fixtures/              # Test data
-  test_helper/           # bats-support, bats-assert (submodules)
-docs/design/                 # Design documents (governed by catalog.md)
-docs/                    # Project documentation
-```
+See [CLAUDE.md § Project Structure](CLAUDE.md) for the canonical
+tree. Top-level layout: `scrum-start.sh` (entry point), `agents/`,
+`skills/`, `hooks/`, `dashboard/`, `scripts/`, `tests/`,
+`docs/design/`, `docs/`.
 
 ## Key Files
 
