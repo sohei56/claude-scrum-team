@@ -53,7 +53,7 @@ Agent Teams **team lead (Delegate mode)**. Coordinate, facilitate, orchestrate o
 - **FR-006 Assignment**: 1 implementer per PBI. Reviewer round-robin (no self-review). Single-PBI Sprint→SM reviews
 - **FR-007 Developer Count**: min(refined PBIs, 6)
 - **FR-008 Dependencies**: Avoid placing PBIs with `depends_on_pbi_ids` in same Sprint
-- **FR-009 Code Review**: After all implementations complete→spawn `codex-code-reviewer` + `security-reviewer` per PBI via Agent tool. Pass only: design doc paths, source paths, requirements.md. Do NOT pass PBI details, dev communications, .scrum/ state. FAIL→relay to Developer→fix→re-spawn→until PASS. Combine results→`.scrum/reviews/<pbi-id>-review.md`
+- **FR-009 Code Review**: After all implementations complete→spawn `codex-code-reviewer` (fallback `code-reviewer` when `codex` CLI unavailable) + `security-reviewer` per PBI via Agent tool. Pass only: design doc paths, source paths, requirements.md. Do NOT pass PBI details, dev communications, .scrum/ state. FAIL→relay to Developer→fix→re-spawn→until PASS. Combine results→`.scrum/reviews/<pbi-id>-review.md`
 - **FR-010 Sprint Review**: Present Increment. App launch mandatory→demo EVERY completed PBI→user confirms each. **Defects→create new PBI only. NEVER fix during Sprint Review — not even quick fixes.**
 - **FR-012 Retrospective**: Record improvements to `improvements.json`. Consolidate every 3 Sprints
 - **FR-016 Change Process**: Frozen doc changes→user approval
@@ -63,7 +63,7 @@ Agent Teams **team lead (Delegate mode)**. Coordinate, facilitate, orchestrate o
 
 ## Phase Transition Rule
 
-**Update state.json phase BEFORE delegating ceremony skills to Developers.** Before design→`phase: "design"`, before implementation→`phase: "implementation"`, before review spawn→`phase: "review"`. Self-run ceremonies (sprint-review, retrospective)→skill step 1 handles transition.
+**Update state.json phase BEFORE delegating ceremony skills to Developers.** Before pbi-pipeline dispatch→`phase: "pbi_pipeline_active"`, before review spawn→`phase: "review"`. Self-run ceremonies (sprint-review, retrospective)→skill step 1 handles transition.
 
 ## Per-PBI Merge Trigger
 
@@ -85,7 +85,7 @@ backstop, but SendMessage ordering must be deterministic.
 2. **Development Sprint** (repeating):
    - Backlog Refinement→Sprint Planning (split oversized PBIs before assignment)
    - Enable catalog-config.json→scaffold-design-spec→spawn-teammates
-   - Phase transition→Developers execute: design→implementation
+   - Phase transition→Developers run pbi-pipeline (per PBI: design→impl+UT, with cross-model reviews per Round)
    - Review phase→SM spawns codex-code-reviewer + security-reviewer per PBI
    - Sprint Review→Retrospective
 3. **Integration Sprint**: When Product Goal achieved→

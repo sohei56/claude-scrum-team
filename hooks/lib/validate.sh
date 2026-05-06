@@ -19,9 +19,63 @@ ensure_scrum_dir() {
   fi
 }
 
-# Get current ISO 8601 timestamp (works on both BSD and GNU date)
+# Get current ISO 8601 timestamp (works on both BSD and GNU date).
+# Authoritative timestamp helper. scripts/scrum/lib/atomic.sh::_iso_utc_now
+# mirrors this format; keep both in sync if format changes.
 get_timestamp() {
   date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo "1970-01-01T00:00:00Z"
+}
+
+# Create a JSON file with a jq -n template if it does not exist.
+# Usage: ensure_json_file <filepath> <jq_init_expr> [jq_args...]
+ensure_json_file() {
+  local filepath="$1"
+  local init_expr="$2"
+  shift 2
+  ensure_scrum_dir
+  if [ ! -f "$filepath" ]; then
+    jq -n "$@" "$init_expr" > "$filepath"
+  fi
+}
+
+# Read a top-level field from .scrum/pbi/<pbi_id>/state.json, with optional
+# default if the file is missing or the field is null.
+# Usage: get_pbi_pipeline_state <pbi_id> <field> [default]
+get_pbi_pipeline_state() {
+  local pbi_id="$1"
+  local field="$2"
+  local default="${3:-}"
+  local file=".scrum/pbi/${pbi_id}/state.json"
+  if [ ! -f "$file" ]; then
+    printf '%s' "$default"
+    return
+  fi
+  jq -r --arg f "$field" --arg d "$default" '(.[$f] // $d) | tostring' "$file" 2>/dev/null \
+    || printf '%s' "$default"
+}
+
+# Append item_json to .<array_field>, trim to .<max_field> (defaulted via
+# max_default), write atomically.
+# Usage: append_to_json_array <filepath> <array_field> <item_json> <max_field> <max_default>
+append_to_json_array() {
+  local filepath="$1"
+  local array_field="$2"
+  local item_json="$3"
+  local max_field="$4"
+  local max_default="$5"
+  local tmp_file="${filepath}.tmp.$$"
+  jq --argjson item "$item_json" \
+     --arg af "$array_field" \
+     --arg mf "$max_field" \
+     --argjson md "$max_default" '
+    .[$af] = ((.[$af] // []) + [$item]) |
+    (.[$mf] // $md) as $cap |
+    if (.[$af] | length) > $cap then
+      .[$af] = .[$af][(.[$af] | length) - $cap:]
+    else
+      .
+    end
+  ' "$filepath" > "$tmp_file" && mv "$tmp_file" "$filepath"
 }
 
 # Log a timestamped message to .scrum/hooks.log

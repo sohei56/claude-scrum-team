@@ -14,6 +14,7 @@ disable-model-invocation: false
 ## Outputs
 
 - `docs/requirements.md` — business, functional, non-functional requirements (committed to repo)
+- `CLAUDE.md` — project root, ~200 lines target (project overview + cautions). Created if missing; existing→user choice
 - `state.json` → new→requirements_sprint→backlog_created
 - `backlog.json` — initial coarse-grained PBIs + `next_pbi_id`
 
@@ -35,7 +36,13 @@ disable-model-invocation: false
 5. Produce `docs/requirements.md` with structured sections (create `docs/` dir if missing)
 6. SM creates `backlog.json`: coarse PBIs (status: "draft"), set `next_pbi_id`, set `product_goal`
 7. Present requirements summary + initial backlog→user confirmation
-8. Update `state.json` → `phase: "backlog_created"`. Terminate Requirements Sprint Developer
+8. **CLAUDE.md initialization** (project root):
+   - Exists→ask user: overwrite / append / skip
+   - Not exists or user chose overwrite/append→Developer writes/updates `CLAUDE.md`:
+     - **Project overview**: purpose, users, key features (from requirements.md)
+     - **Cautions level only**: key constraints, security concerns, critical conventions. No detailed architecture/directory structure (Integration Sprint regenerates that)
+     - Target ~200 lines (目安). Exceeded→warn user, do not block
+9. Update `state.json` → `phase: "backlog_created"`. Terminate Requirements Sprint Developer
 
 Ref: FR-002
 
@@ -43,5 +50,6 @@ Ref: FR-002
 
 - `requirements.md` exists (business + functional + non-functional covered)
 - `backlog.json` exists (≥1 draft PBI)
+- `CLAUDE.md` exists at project root (created or user-confirmed skip/append)
 - state.json phase: "backlog_created"
 - User confirmed

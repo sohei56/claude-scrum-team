@@ -187,12 +187,11 @@ EOF
     blocked_pipelines=""
     while IFS= read -r pbi_id; do
       [ -z "$pbi_id" ] && continue
-      pbi_state_file=".scrum/pbi/$pbi_id/state.json"
-      if [ ! -f "$pbi_state_file" ]; then
+      if [ ! -f ".scrum/pbi/$pbi_id/state.json" ]; then
         blocked_pipelines="${blocked_pipelines}${blocked_pipelines:+, }${pbi_id} (no state.json)"
         continue
       fi
-      pbi_phase="$(jq -r '.phase // "unknown"' "$pbi_state_file" 2>/dev/null || echo unknown)"
+      pbi_phase="$(get_pbi_pipeline_state "$pbi_id" phase unknown)"
       case "$pbi_phase" in
         complete) ;;
         escalated)

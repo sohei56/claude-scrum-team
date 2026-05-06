@@ -11,33 +11,17 @@ HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 DASHBOARD_FILE=".scrum/dashboard.json"
 MAX_EVENTS=100
 
-# Initialize dashboard.json if it does not exist
 ensure_dashboard_file() {
-  ensure_scrum_dir
-  if [ ! -f "$DASHBOARD_FILE" ]; then
-    jq -n --argjson max "$MAX_EVENTS" '{"events": [], "max_events": $max}' > "$DASHBOARD_FILE"
-  fi
+  # shellcheck disable=SC2016  # $max is a jq variable, not shell expansion.
+  ensure_json_file "$DASHBOARD_FILE" \
+    '{"events": [], "max_events": $max}' \
+    --argjson max "$MAX_EVENTS"
 }
 
-# Append an event to dashboard.json, trimming oldest if over cap
 append_dashboard_event() {
   local event_json="$1"
   ensure_dashboard_file
-
-  local tmp_file
-  tmp_file="${DASHBOARD_FILE}.tmp.$$"
-
-  local file_max
-  file_max="$(jq '.max_events // 100' "$DASHBOARD_FILE" 2>/dev/null || echo "$MAX_EVENTS")"
-
-  jq --argjson evt "$event_json" --argjson max "$file_max" '
-    .events += [$evt] |
-    if (.events | length) > $max then
-      .events = .events[(.events | length) - $max:]
-    else
-      .
-    end
-  ' "$DASHBOARD_FILE" > "$tmp_file" && mv "$tmp_file" "$DASHBOARD_FILE"
+  append_to_json_array "$DASHBOARD_FILE" events "$event_json" max_events "$MAX_EVENTS"
 }
 
 # ---------------------------------------------------------------------------

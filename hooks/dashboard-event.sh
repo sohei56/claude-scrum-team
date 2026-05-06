@@ -20,66 +20,30 @@ MAX_MESSAGES=200
 # Helpers
 # ---------------------------------------------------------------------------
 
-# Initialize dashboard.json if it does not exist
 ensure_dashboard_file() {
-  ensure_scrum_dir
-  if [ ! -f "$DASHBOARD_FILE" ]; then
-    jq -n --argjson max "$MAX_EVENTS" '{"events": [], "max_events": $max}' > "$DASHBOARD_FILE"
-  fi
+  # shellcheck disable=SC2016  # $max is a jq variable, not shell expansion.
+  ensure_json_file "$DASHBOARD_FILE" \
+    '{"events": [], "max_events": $max}' \
+    --argjson max "$MAX_EVENTS"
 }
 
-# Initialize communications.json if it does not exist
 ensure_comms_file() {
-  ensure_scrum_dir
-  if [ ! -f "$COMMS_FILE" ]; then
-    jq -n --argjson max "$MAX_MESSAGES" '{"messages": [], "max_messages": $max}' > "$COMMS_FILE"
-  fi
+  # shellcheck disable=SC2016  # $max is a jq variable, not shell expansion.
+  ensure_json_file "$COMMS_FILE" \
+    '{"messages": [], "max_messages": $max}' \
+    --argjson max "$MAX_MESSAGES"
 }
 
-# Append an event to dashboard.json, trimming oldest if over cap
 append_dashboard_event() {
   local event_json="$1"
   ensure_dashboard_file
-
-  local tmp_file
-  tmp_file="${DASHBOARD_FILE}.tmp.$$"
-
-  # Read current max_events from file (default to MAX_EVENTS)
-  local file_max
-  file_max="$(jq '.max_events // 100' "$DASHBOARD_FILE" 2>/dev/null || echo "$MAX_EVENTS")"
-
-  # Append new event and trim to max_events (keep newest)
-  jq --argjson evt "$event_json" --argjson max "$file_max" '
-    .events += [$evt] |
-    if (.events | length) > $max then
-      .events = .events[(.events | length) - $max:]
-    else
-      .
-    end
-  ' "$DASHBOARD_FILE" > "$tmp_file" && mv "$tmp_file" "$DASHBOARD_FILE"
+  append_to_json_array "$DASHBOARD_FILE" events "$event_json" max_events "$MAX_EVENTS"
 }
 
-# Append a message to communications.json, trimming oldest if over cap
 append_comms_message() {
   local message_json="$1"
   ensure_comms_file
-
-  local tmp_file
-  tmp_file="${COMMS_FILE}.tmp.$$"
-
-  # Read current max_messages from file (default to MAX_MESSAGES)
-  local file_max
-  file_max="$(jq '.max_messages // 200' "$COMMS_FILE" 2>/dev/null || echo "$MAX_MESSAGES")"
-
-  # Append new message and trim to max_messages (keep newest)
-  jq --argjson msg "$message_json" --argjson max "$file_max" '
-    .messages += [$msg] |
-    if (.messages | length) > $max then
-      .messages = .messages[(.messages | length) - $max:]
-    else
-      .
-    end
-  ' "$COMMS_FILE" > "$tmp_file" && mv "$tmp_file" "$COMMS_FILE"
+  append_to_json_array "$COMMS_FILE" messages "$message_json" max_messages "$MAX_MESSAGES"
 }
 
 # Map a session ID to a friendly developer name via session-map.json
@@ -147,7 +111,6 @@ update_pbi_pipelines() {
   [ -z "$pbi_id" ] && return 0
   ensure_dashboard_file
   local now; now="$(get_timestamp)"
-  local pbi_state_file=".scrum/pbi/$pbi_id/state.json"
   local sprint_file=".scrum/sprint.json"
 
   local dev="unknown"
@@ -156,14 +119,12 @@ update_pbi_pipelines() {
     [ -z "$dev" ] && dev="unknown"
   fi
 
-  local phase="unknown" round=0
-  if [ -f "$pbi_state_file" ]; then
-    phase="$(jq -r '.phase // "unknown"' "$pbi_state_file" 2>/dev/null || echo unknown)"
-    if [ "$phase" = "design" ]; then
-      round="$(jq -r '.design_round // 0' "$pbi_state_file" 2>/dev/null || echo 0)"
-    else
-      round="$(jq -r '.impl_round // 0' "$pbi_state_file" 2>/dev/null || echo 0)"
-    fi
+  local phase round
+  phase="$(get_pbi_pipeline_state "$pbi_id" phase unknown)"
+  if [ "$phase" = "design" ]; then
+    round="$(get_pbi_pipeline_state "$pbi_id" design_round 0)"
+  else
+    round="$(get_pbi_pipeline_state "$pbi_id" impl_round 0)"
   fi
 
   local tmp="${DASHBOARD_FILE}.tmp.$$"
