@@ -137,18 +137,12 @@ completion they run `.scrum/scripts/mark-pbi-ready-to-merge.sh`
 and notify SM `[<pbi-id>] PBI_READY_TO_MERGE`.
 
 SM merges per-PBI immediately by running the `pbi-merge` skill
-which calls `.scrum/scripts/merge-pbi.sh`:
-1. `--no-ff` merge into main
-2. verify every `paths_touched` file is on HEAD
-3. set backlog `status=awaiting_cross_review`, mirror `merged_sha`
-   to backlog, remove worktree + branch
-
-Quality verification (lint/test) is performed Sprint-end by
-`cross-review`, not per-PBI merge. Two failure paths (merge conflict,
-missing artifact) roll back main and instruct the Developer to fix on
-`pbi/<id>` and re-notify. Three consecutive failures of any kind set
-backlog `status=escalated` (with `escalation_reason` and
-`merge_failure.kind` recorded) and trigger `pbi-escalation-handler`.
+(see [skills/pbi-merge/SKILL.md](skills/pbi-merge/SKILL.md) for
+the full protocol: `--no-ff` merge, `paths_touched` verification,
+SendMessage matrix for `conflict` / `artifact_missing`, and
+3-strike escalation to `pbi-escalation-handler`). Quality
+verification (lint/test) is performed Sprint-end by `cross-review`,
+not per-PBI merge.
 
 In **deployed target projects** (registered via `setup-user.sh`), the
 hook `pre-tool-use-no-branch-ops.sh` blocks raw `git checkout -b`,
