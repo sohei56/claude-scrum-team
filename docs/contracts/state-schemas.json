@@ -238,7 +238,7 @@
         "timestamp": { "type": "string", "format": "date-time" },
         "type": {
           "type": "string",
-          "enum": ["task_completed", "teammate_idle", "file_changed", "phase_transition", "subagent_start", "subagent_stop"]
+          "enum": ["task_completed", "teammate_idle", "file_changed", "status_transition", "subagent_start", "subagent_stop"]
         },
         "agent_id": { "type": ["string", "null"] },
         "pbi_id": { "type": ["string", "null"] },
