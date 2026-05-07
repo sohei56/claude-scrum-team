@@ -682,7 +682,7 @@ class ScrumDashboard(App):
         yield Vertical(
             TestResultsPanel(id="test-results"),
             Static(
-                "[bold]PBI Board[/bold] [dim](status • round • dev • agents)[/dim]",
+                "[bold]PBI Board[/bold] [dim](status • round • dev • updated)[/dim]",
                 id="pbi-title",
             ),
             UnifiedPbiBoard(id="pbi-board"),
