@@ -38,12 +38,6 @@ deny() {
   exit 0
 }
 
-# shellcheck disable=SC2317,SC2329 # called indirectly by future gating rules
-ask() {
-  jq -n '{"decision": "ask"}'
-  exit 0
-}
-
 # Check whether a file path targets source code (not metadata / config).
 # Source files live outside .scrum/, docs/, agents/, skills/,
 # hooks/, scripts/, dashboard/, tests/, and common dot-directories.
@@ -96,12 +90,6 @@ is_enabled_in_config() {
   [ -z "$spec_id" ] && return 1
   [ -f "$CONFIG_FILE" ] || return 1
   jq -e --arg id "$spec_id" '.enabled | index($id) != null' "$CONFIG_FILE" >/dev/null 2>&1
-}
-
-# shellcheck disable=SC2317,SC2329 # kept for external use and testability
-has_enabled_catalog_entry() {
-  local path="$1"
-  has_catalog_entry "$path" && is_enabled_in_config "$path"
 }
 
 # Extract target file path from tool_input JSON.
