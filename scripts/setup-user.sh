@@ -137,24 +137,6 @@ echo "Copying scrum-state wrappers to $TARGET_DIR/.scrum/scripts/..."
 copy_tree "$PROJECT_ROOT/scripts/scrum/*.sh" "$TARGET_DIR/.scrum/scripts" true
 copy_tree "$PROJECT_ROOT/scripts/scrum/lib/*.sh" "$TARGET_DIR/.scrum/scripts/lib"
 
-# Clean up wrappers from the legacy deploy location (scripts/scrum/) so they
-# don't shadow the new layout. Only removes files we recognize as ours; leaves
-# any unrelated files the user may have placed there.
-legacy_dir="$TARGET_DIR/scripts/scrum"
-if [ -d "$legacy_dir" ]; then
-  for wrapper in "$PROJECT_ROOT/scripts/scrum/"*.sh; do
-    [ -f "$legacy_dir/$(basename "$wrapper")" ] && rm -f "$legacy_dir/$(basename "$wrapper")"
-  done
-  if [ -d "$legacy_dir/lib" ]; then
-    for wrapper_lib in "$PROJECT_ROOT/scripts/scrum/lib/"*.sh; do
-      [ -f "$legacy_dir/lib/$(basename "$wrapper_lib")" ] && rm -f "$legacy_dir/lib/$(basename "$wrapper_lib")"
-    done
-    rmdir "$legacy_dir/lib" 2>/dev/null || true
-  fi
-  rmdir "$legacy_dir" 2>/dev/null || true
-  rmdir "$TARGET_DIR/scripts" 2>/dev/null || true
-fi
-
 # --- Copy PBI Pipeline configuration template ---
 # Provide .scrum-config.example.json so users can copy it to .scrum/config.json
 # and adapt to their project's test_runner / coverage_tool. Only copies if the

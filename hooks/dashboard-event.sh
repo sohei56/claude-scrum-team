@@ -449,38 +449,6 @@ case "$hook_type" in
       append_comms_message "$message_json"
     fi
     ;;
-
-  *)
-    # Other hook types — emit as status_transition (closest valid schema type)
-    tool_name="$(echo "$hook_event" | jq -r '.tool_name // empty')"
-    reason="$(echo "$hook_event" | jq -r '.reason // empty')"
-    user_prompt="$(echo "$hook_event" | jq -r '.user_prompt // empty' | head -c 100)"
-
-    if [ -n "$tool_name" ]; then
-      detail="Tool: ${tool_name}"
-    elif [ -n "$user_prompt" ]; then
-      detail="User: ${user_prompt}"
-    elif [ -n "$reason" ]; then
-      detail="Event (${hook_type}): ${reason}"
-    else
-      detail="Event: ${hook_type}"
-    fi
-
-    event_json="$(jq -n \
-      --arg ts "$timestamp" \
-      --arg agent "$agent_id" \
-      --arg detail "$detail" \
-      '{
-        "timestamp": $ts,
-        "type": "status_transition",
-        "agent_id": $agent,
-        "file_path": null,
-        "change_type": null,
-        "detail": $detail
-      }')"
-
-    append_dashboard_event "$event_json"
-    ;;
 esac
 
 exit 0
