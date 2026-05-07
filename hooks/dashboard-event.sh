@@ -9,35 +9,22 @@ set -euo pipefail
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=lib/validate.sh
 . "$HOOK_DIR/lib/validate.sh"
+# shellcheck source=lib/dashboard.sh
+. "$HOOK_DIR/lib/dashboard.sh"
 
-DASHBOARD_FILE=".scrum/dashboard.json"
 COMMS_FILE=".scrum/communications.json"
 SESSION_MAP=".scrum/session-map.json"
-MAX_EVENTS=100
 MAX_MESSAGES=200
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-ensure_dashboard_file() {
-  # shellcheck disable=SC2016  # $max is a jq variable, not shell expansion.
-  ensure_json_file "$DASHBOARD_FILE" \
-    '{"events": [], "max_events": $max}' \
-    --argjson max "$MAX_EVENTS"
-}
-
 ensure_comms_file() {
   # shellcheck disable=SC2016  # $max is a jq variable, not shell expansion.
   ensure_json_file "$COMMS_FILE" \
     '{"messages": [], "max_messages": $max}' \
     --argjson max "$MAX_MESSAGES"
-}
-
-append_dashboard_event() {
-  local event_json="$1"
-  ensure_dashboard_file
-  append_to_json_array "$DASHBOARD_FILE" events "$event_json" max_events "$MAX_EVENTS"
 }
 
 append_comms_message() {
