@@ -111,10 +111,11 @@ command -v shellcheck && echo "shellcheck: OK"
 
 See [CLAUDE.md § Project Structure](../CLAUDE.md) for the canonical
 tree. The repository is organized as: `agents/` (Scrum Master,
-Developer, and 6 PBI-pipeline + 3 cross-review sub-agent
-definitions), `skills/` (16 Skills covering all Scrum ceremonies
-plus the cleanup-audit maintenance skill), `hooks/`, `dashboard/`,
-`scripts/`, `tests/`, `docs/`, and the runtime `.scrum/` directory.
+Developer, and 6 PBI-pipeline + 5 cross-review sub-agent
+definitions), `skills/` (15 Skills covering all Scrum ceremonies),
+`.claude/skills/` (dev-only skills for this repo, e.g. cleanup-audit),
+`hooks/`, `dashboard/`, `scripts/`, `tests/`, `docs/`, and the runtime
+`.scrum/` directory.
 
 ## Running Tests and Linting
 

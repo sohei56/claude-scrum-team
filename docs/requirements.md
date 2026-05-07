@@ -207,11 +207,14 @@ in real time.
 ### User Story 5 - Project-Managed Specialist Sub-Agents (Priority: P5)
 
 The system provides project-managed specialist sub-agents that
-support the Scrum workflow. During cross-review, the Scrum Master
-spawns independent reviewer sub-agents (`code-reviewer`,
-`security-reviewer`, and optionally `codex-code-reviewer`) to
-evaluate each PBI's implementation against requirements and
-design documents. During implementation, Developer teammates
+support the Scrum workflow. During Sprint-end cross-review, the
+Scrum Master spawns 5 aspect-specialized reviewer sub-agents in
+parallel (`requirement-conformance-reviewer`,
+`functional-quality-reviewer`, `security-reviewer`,
+`maintainability-reviewer`, `docs-consistency-reviewer`) over the
+whole Sprint to evaluate the merged Increment along requirement
+coverage, cross-PBI functional quality, security, maintainability,
+and docs consistency. During implementation, Developer teammates
 install PBI Pipeline sub-agents (`pbi-*`, `codex-*-reviewer`)
 via the `install-subagents` Skill. All sub-agent definitions are
 maintained in the project's `agents/` directory and distributed
@@ -224,24 +227,40 @@ Observe implementation and verify Developers use support sub-agents.
 
 **Acceptance Scenarios**:
 
-1. **Given** all implementers have completed their work,
+1. **Given** all implementers have completed their work and merged,
    **When** the Scrum Master invokes the `cross-review` Skill,
-   **Then** independent reviewer sub-agents (`codex-code-reviewer`,
-   `security-reviewer`) are spawned and review each PBI against
-   the requirements document and design documents.
+   **Then** 5 aspect reviewer sub-agents
+   (`requirement-conformance-reviewer`,
+   `functional-quality-reviewer`, `security-reviewer`,
+   `maintainability-reviewer`, `docs-consistency-reviewer`) are
+   spawned in parallel and review the **whole Sprint Increment**
+   against `requirements.md` and design documents. Findings tag
+   PBIs by reverse-lookup against `paths_touched`.
 
-2. **Given** the OpenAI Codex CLI is unavailable,
-   **When** the Scrum Master invokes cross-review,
-   **Then** `code-reviewer` (Claude-based) is spawned in place of
-   `codex-code-reviewer`; `security-reviewer` runs in parallel as
-   usual. A warning is logged.
+2. **Given** an aspect-1/2/3 reviewer (req-conformance /
+   functional-quality / security) returns a Critical|High Finding
+   on a PBI, **When** cross-review processes the verdict, **Then**
+   that PBI is reverted to `status: in_progress_impl` and the
+   Developer is re-engaged to fix.
 
-3. **Given** Sprint Planning assigns a PBI to a Developer teammate,
+3. **Given** an aspect-4/5 reviewer (maintainability /
+   docs-consistency) returns a Critical|High Finding on a PBI,
+   **When** cross-review processes the verdict, **Then** the PBI
+   itself proceeds to `done` and a follow-up draft PBI is appended
+   to the backlog (title prefix
+   `[cross-review-followup:<pbi-id>:<aspect>]`, `parent_pbi_id`
+   set, dedup on title).
+
+4. **Given** Sprint Planning assigns a PBI to a Developer teammate,
    **When** the Developer prepares for implementation,
    **Then** the Developer verifies PBI Pipeline sub-agents
    (`pbi-designer`, `pbi-implementer`, `pbi-ut-author`,
    `codex-design-reviewer`, `codex-impl-reviewer`,
-   `codex-ut-reviewer`) are installed under `.claude/agents/`.
+   `codex-ut-reviewer`) AND cross-review reviewer sub-agents
+   (`requirement-conformance-reviewer`,
+   `functional-quality-reviewer`, `security-reviewer`,
+   `maintainability-reviewer`, `docs-consistency-reviewer`) are
+   installed under `.claude/agents/`.
 
 ---
 
@@ -376,17 +395,27 @@ Observe implementation and verify Developers use support sub-agents.
   2 (Sprint-end cross-review)**: after each per-PBI merge, the PBI
   is queued at `status: awaiting_cross_review`. At Sprint end the
   Scrum Master runs the `cross-review` skill which transitions each
-  queued PBI to `status: cross_review` and spawns
-  `codex-code-reviewer` (primary cross-model code review) and
-  `security-reviewer` for cross-cutting integration / security
-  perspective. When the `codex` CLI is unavailable, `cross-review`
-  logs a warning and falls back to `code-reviewer` (Claude-based) for
-  the code-quality pass. Per-PBI review files at
+  queued PBI to `status: cross_review` and runs static analysis
+  once (Python `ruff`, Shell `shellcheck`) before spawning **5
+  aspect-specialized reviewers in parallel over the whole Sprint
+  (no per-PBI fan-out)**:
+  `requirement-conformance-reviewer`, `functional-quality-reviewer`
+  (cross-PBI seams only), `security-reviewer`,
+  `maintainability-reviewer` (dead-code claims grounded in static
+  analysis), and `docs-consistency-reviewer` (`docs/**` vs.
+  implementation drift). Findings tag PBIs by `paths_touched`
+  reverse-lookup; multi-PBI Findings are copied to each affected
+  PBI digest. Per-PBI review files at
   `.scrum/pbi/<pbi-id>/{impl,ut}/review-r{last}.md` are read for
-  context but NOT re-evaluated. Review issues MUST be either fixed
-  within the Sprint (PBI returns to `status: in_progress_impl`) or
-  logged as new PBIs. The same Codex-fallback rule applies to
-  Layer 1 reviewers (`codex-impl-reviewer`, `codex-ut-reviewer`).
+  context but NOT re-evaluated. **FAIL routing splits by aspect:**
+  aspect 1/2/3 Critical|High → PBI returns to
+  `status: in_progress_impl` (Developer fix loop, full 5-aspect
+  re-evaluation on re-merge); aspect 4/5 Critical|High → PBI
+  proceeds to `done` and a follow-up draft PBI is appended to the
+  backlog with title prefix `[cross-review-followup:<pbi-id>:<aspect>]`
+  and `parent_pbi_id` set (dedup by title). The Codex-fallback
+  rule still applies to Layer 1 reviewers (`codex-impl-reviewer`,
+  `codex-ut-reviewer`).
 
 - **FR-010**: At Sprint Review, the Scrum Master MUST present the
   Increment with a change summary. A live demo MUST be performed
@@ -553,9 +582,11 @@ Observe implementation and verify Developers use support sub-agents.
 
 - **SC-003**: Every Development Sprint produces at least one
   Increment that meets the Definition of Done, including
-  Sprint-end cross-review by independent reviewer sub-agents
-  (`codex-code-reviewer` and `security-reviewer`) spawned by
-  the Scrum Master.
+  Sprint-end cross-review by 5 aspect-specialized reviewer
+  sub-agents (`requirement-conformance-reviewer`,
+  `functional-quality-reviewer`, `security-reviewer`,
+  `maintainability-reviewer`, `docs-consistency-reviewer`) spawned
+  in parallel by the Scrum Master.
 
 - **SC-004**: The user can understand project status at any time
   through the TUI dashboard without inspecting code, logs, or
@@ -617,7 +648,7 @@ Observe implementation and verify Developers use support sub-agents.
 
 ### 2026-04-12
 
-- Q: How does cross-review work now that it uses independent sub-agents instead of peer Developers? A: The Scrum Master invokes the `cross-review` Skill, which spawns `code-reviewer` and `security-reviewer` (and optionally `codex-code-reviewer`) as sub-agents via the Task tool. These reviewer sub-agents read requirements and design docs to evaluate implementation. This replaces the earlier model where Developer teammates reviewed each other's code. FR-009 and FR-019 updated accordingly.
+- Q: How does cross-review work now that it uses independent sub-agents instead of peer Developers? A: The Scrum Master invokes the `cross-review` Skill, which runs static analysis once and then spawns 5 aspect-specialized sub-agents in parallel (`requirement-conformance-reviewer`, `functional-quality-reviewer`, `security-reviewer`, `maintainability-reviewer`, `docs-consistency-reviewer`) via the Task tool. Each reviews the **whole Sprint Increment**, not per-PBI; Findings carry PBI tags via `paths_touched` reverse-lookup. Aspect 1/2/3 FAIL reverts the PBI to `in_progress_impl`; aspect 4/5 FAIL spawns a follow-up draft PBI. This replaces the earlier model where Developer teammates reviewed each other's code, and supersedes the 2026-04-12 Codex-CLI-based single `codex-code-reviewer` design (the Codex-CLI cross-model review remains in Layer 1 per-PBI via `codex-impl-reviewer` / `codex-ut-reviewer`). FR-009 and FR-019 updated accordingly.
 - Q: Where do specialist sub-agents come from? A: All sub-agents are project-managed in `agents/` and distributed by `setup-user.sh`. The external awesome-claude-code-subagents catalog dependency was removed. FR-019 and User Story 5 updated.
 
 ### 2026-02-26

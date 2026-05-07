@@ -53,7 +53,7 @@ Agent Teams **team lead (Delegate mode)**. Coordinate, facilitate, orchestrate o
 - **FR-006 Assignment**: 1 implementer per PBI (1 Developer = 1 PBI). No per-PBI reviewer assignment — Sprint-end cross-review owned by SM (see FR-009 Layer 2)
 - **FR-007 Developer Count**: min(refined PBIs, 6)
 - **FR-008 Dependencies**: Avoid placing PBIs with `depends_on_pbi_ids` in same Sprint
-- **FR-009 Code Review**: After all implementations complete→spawn `codex-code-reviewer` (fallback `code-reviewer` when `codex` CLI unavailable) + `security-reviewer` per PBI via Agent tool. Pass only: design doc paths, source paths, requirements.md. Do NOT pass PBI details, dev communications, .scrum/ state. FAIL→relay to Developer→fix→re-spawn→until PASS. Combine results→`.scrum/reviews/<pbi-id>-review.md`
+- **FR-009 Code Review**: After all implementations complete→run static analysis once, then spawn 5 aspect reviewers in parallel via Agent tool — `requirement-conformance-reviewer`, `functional-quality-reviewer`, `security-reviewer`, `maintainability-reviewer`, `docs-consistency-reviewer`. Each reviews the **whole Sprint** (no per-PBI fan-out). Findings tag PBIs via `paths_touched` reverse-lookup. FAIL routing splits by aspect: aspects 1/2/3 (req-conformance / functional-quality / security) Critical|High → revert PBI to `in_progress_impl`; aspects 4/5 (maintainability / docs-consistency) Critical|High → append follow-up PBI to backlog (title prefix `[cross-review-followup:<pbi-id>:<aspect>]`, `parent_pbi_id` set, dedup by title). Per-PBI digest at `.scrum/reviews/<pbi-id>-review.md`; raw aspect output at `.scrum/reviews/aspect-<aspect>-review.md`. Re-loop on aspect 1/2/3 FAIL only.
 - **FR-010 Sprint Review**: Present Increment. App launch mandatory→demo EVERY completed PBI→user confirms each. **Defects→create new PBI only. NEVER fix during Sprint Review — not even quick fixes.**
 - **FR-012 Retrospective**: Record improvements to `improvements.json`. Consolidate every 3 Sprints
 - **FR-016 Change Process**: Frozen doc changes→user approval
@@ -118,7 +118,7 @@ macOS / Linux), but SendMessage ordering must be deterministic.
    - Backlog Refinement→Sprint Planning (split oversized PBIs before assignment)
    - Enable catalog-config.json→scaffold-design-spec→spawn-teammates
    - Sprint phase transition→Developers run pbi-pipeline (per PBI: in_progress_design → in_progress_impl ⇄ in_progress_pbi_review ⇄ in_progress_ut_run → in_progress_merge, with cross-model reviews per Round)
-   - Sprint-end cross-review→SM runs cross-review skill (sets PBIs `awaiting_cross_review → cross_review → done`) and spawns codex-code-reviewer + security-reviewer per PBI
+   - Sprint-end cross-review→SM runs cross-review skill (sets PBIs `awaiting_cross_review → cross_review → done`) and spawns 5 aspect reviewers (requirement-conformance / functional-quality / security / maintainability / docs-consistency) in parallel over the whole Sprint
    - Sprint Review→Retrospective
 3. **Integration Sprint**: When Product Goal achieved→
    - Spawn 1-2 Developer teammates for testing→delegate smoke-test

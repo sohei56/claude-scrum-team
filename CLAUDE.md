@@ -4,12 +4,12 @@
 
 ```text
 scrum-start.sh           # Entry point — validates prereqs, launches tmux
-agents/                  # Agent + 9 sub-agent definitions (top-level: scrum-master, developer; sub-agents listed in docs/contracts/sub-agents.md)
+agents/                  # Agent + 11 sub-agent definitions (top-level: scrum-master, developer; sub-agents listed in docs/contracts/sub-agents.md)
   scrum-master.md        # Team lead (Delegate mode)
   developer.md           # Developer teammate (PBI pipeline conductor)
-  # Sub-agents: code-reviewer, security-reviewer, codex-code-reviewer (Sprint-end cross-review),
-  # pbi-{designer,implementer,ut-author}, codex-{design,impl,ut}-reviewer (PBI pipeline)
-skills/                  # 16 Skills (15 Scrum ceremonies + 1 maintenance) — YAML frontmatter + Markdown
+  # Sprint-end cross-review (5-aspect parallel): requirement-conformance-reviewer, functional-quality-reviewer, security-reviewer, maintainability-reviewer, docs-consistency-reviewer
+  # PBI pipeline (per Round): pbi-{designer,implementer,ut-author}, codex-{design,impl,ut}-reviewer
+skills/                  # 15 Skills (Scrum ceremonies) — YAML frontmatter + Markdown, deployed to target projects via setup-user.sh
   backlog-refinement/    # Refine PBIs from coarse to sprint-ready
   change-process/        # Manage changes to frozen design docs
   cross-review/          # Sprint-end cross-cutting quality gate
@@ -25,6 +25,7 @@ skills/                  # 16 Skills (15 Scrum ceremonies + 1 maintenance) — Y
   spawn-teammates/       # Spawn developer teammates for sprint
   sprint-planning/       # Sprint planning and PBI assignment
   sprint-review/         # Sprint review ceremony
+.claude/skills/          # Dev-only skills for THIS repo (not deployed to target projects)
   cleanup-audit/         # 8-axis multi-agent repo hygiene audit (read-only)
 hooks/                   # Claude Code hooks (status/path/scrum-state/branch-ops guards, completion + quality + stop-failure gates, dashboard events, session context)
   lib/                   # Shared hook helpers (validation, logging)

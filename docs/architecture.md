@@ -421,8 +421,8 @@ NOT by peer Developers reviewing each other's code.
   the Developer, and (c) Codex cross-model review adds a second opinion
   from a different AI model.
 - Sub-agents use the `tools` frontmatter field for tool sandboxing
-  (e.g., code-reviewer is read-only) and context isolation via the
-  Task tool.
+  (all cross-review reviewers are read-only) and context isolation via
+  the Task tool.
 
 ### Alternatives Considered
 - **External catalog (awesome-claude-code-subagents)**: Original R9-v1.
@@ -430,16 +430,19 @@ NOT by peer Developers reviewing each other's code.
 - **Developer peer review**: Original FR-009 model. Rejected — lacks
   cross-PBI context and design-doc awareness.
 - **Skills instead of agents**: Rejected — sub-agents need context
-  isolation, model routing (`codex-code-reviewer`), and tool sandboxing.
+  isolation, model routing, and tool sandboxing.
 
 ### Key Technical Details
 - **Sub-agent catalog**: full list, roles, and tool sandbox in
   `docs/contracts/sub-agents.md`.
 - Distributed via `setup-user.sh` to `.claude/agents/`.
 - Cross-review flow: Scrum Master invokes the `cross-review` skill,
-  which spawns `codex-code-reviewer` (primary) + `security-reviewer`
-  via the Task tool. `code-reviewer` is the fallback when the `codex`
-  CLI is unavailable.
+  which runs a static analysis pass and then spawns 5 aspect
+  reviewers in parallel via the Task tool —
+  `requirement-conformance-reviewer`, `functional-quality-reviewer`,
+  `security-reviewer`, `maintainability-reviewer`,
+  `docs-consistency-reviewer`. Each reviewer ingests the whole Sprint;
+  Findings carry PBI tags via `paths_touched` reverse-lookup.
 - PBI Pipeline: the Developer conductor spawns `pbi-*` workers and
   `codex-*-reviewer` critics per Round (see R10).
 - Runtime tracking: `sprint.json` → `developers[].sub_agents` records
