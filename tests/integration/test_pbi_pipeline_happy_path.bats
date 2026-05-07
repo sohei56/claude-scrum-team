@@ -30,12 +30,14 @@ EOF
 EOF
 
   cat > .scrum/sprint.json <<'EOF'
-{ "sprint_id": "sprint-001",
+{ "id": "sprint-001",
   "status": "active",
+  "started_at": "2026-05-07T00:00:00Z",
   "developers": [
     { "id": "dev-001-s1",
-      "assigned_pbis": ["pbi-001"],
+      "assigned_work": {"implement": ["pbi-001"]},
       "current_pbi": "pbi-001",
+      "status": "active",
       "sub_agents": [] }
   ]
 }
