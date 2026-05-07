@@ -81,7 +81,7 @@ _SCHEMA_FOR_FILE = {
 STATUS_COLORS = {
     # SM-managed (green family + neutrals)
     "draft": "dim",
-    "refined": "green",
+    "refined": "yellow",
     "blocked": "red",
     "awaiting_cross_review": "bright_green",
     "cross_review": "bright_green",
