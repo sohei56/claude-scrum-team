@@ -8,9 +8,10 @@
 # Outputs a permissionDecision JSON object.
 #
 # Note: this hook reads the project-level Scrum phase from .scrum/state.json
-# (which retains its `phase` field for the Sprint state machine: design,
-# implementation, sprint_planning, ...). It is unrelated to the per-PBI
-# 12-value status enum stored in .scrum/backlog.json.items[].status.
+# (which retains its `phase` field for the Sprint state machine:
+# sprint_planning, pbi_pipeline_active, review, sprint_review, ...). It is
+# unrelated to the per-PBI 12-value status enum stored in
+# .scrum/backlog.json.items[].status.
 set -euo pipefail
 
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -34,12 +35,6 @@ deny() {
   local reason="$1"
   log_hook "status-gate" "WARN" "Denied: $reason"
   jq -n --arg r "$reason" '{"decision": "deny", "reason": $r}'
-  exit 0
-}
-
-# shellcheck disable=SC2317,SC2329 # called indirectly by future gating rules
-ask() {
-  jq -n '{"decision": "ask"}'
   exit 0
 }
 
@@ -95,12 +90,6 @@ is_enabled_in_config() {
   [ -z "$spec_id" ] && return 1
   [ -f "$CONFIG_FILE" ] || return 1
   jq -e --arg id "$spec_id" '.enabled | index($id) != null' "$CONFIG_FILE" >/dev/null 2>&1
-}
-
-# shellcheck disable=SC2317,SC2329 # kept for external use and testability
-has_enabled_catalog_entry() {
-  local path="$1"
-  has_catalog_entry "$path" && is_enabled_in_config "$path"
 }
 
 # Extract target file path from tool_input JSON.
@@ -208,11 +197,11 @@ if [ "$phase" = "pbi_pipeline_active" ]; then
   esac
 fi
 
-# Source code gating: only implementation, review, and pbi_pipeline_active phases allow source edits
+# Source code gating: only review and pbi_pipeline_active phases allow source edits
 if is_source_file "$target_path"; then
   case "$phase" in
-    implementation|review|pbi_pipeline_active) ;;
-    *) deny "$phase phase: source code changes not allowed. Only permitted during implementation/review." ;;
+    review|pbi_pipeline_active) ;;
+    *) deny "$phase phase: source code changes not allowed. Only permitted during pbi_pipeline_active/review." ;;
   esac
 fi
 

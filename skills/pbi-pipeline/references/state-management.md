@@ -18,9 +18,7 @@ flags only. There is no `phase` field; status is the sole SSOT.
 | Ready-to-merge handoff | `in_progress_merge` |
 | Termination-gate escalation | `escalated` |
 
-Backlog statuses outside that set (`draft / refined / blocked /
-awaiting_cross_review / cross_review / done`) are SM-managed and
-MUST NOT be written by this skill.
+The 7 SM-managed status values (see [docs/data-model.md § State Transitions: status](../../../docs/data-model.md#state-transitions-status-12-value-enum-actor-split)) MUST NOT be written by this skill.
 
 ## Schema: `.scrum/pbi/<pbi-id>/state.json`
 
@@ -46,7 +44,7 @@ MUST NOT be written by this skill.
 stagnation | divergence | max_rounds | budget_exhausted |
 requirements_unclear | coverage_tool_error | coverage_tool_unavailable |
 catalog_lock_timeout |
-merge_conflict | merge_artifact_missing | merge_regression
+merge_conflict | merge_artifact_missing
 ```
 
 The merge-* values are written by SM-side `mark-pbi-merge-failure.sh`,
@@ -150,8 +148,6 @@ escalates:
 - Backlog status was already written by the Developer
   (`in_progress_merge` via `mark-pbi-ready-to-merge.sh`, or
   `escalated` via `update-backlog-status.sh`).
-- Add `pipeline_summary` to backlog.json item (rounds, final coverage)
-  via a separate jq invocation (status is not part of the summary write).
 
 ## New fields (worktree / merge governance)
 

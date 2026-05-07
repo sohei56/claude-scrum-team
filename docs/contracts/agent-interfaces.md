@@ -51,7 +51,7 @@ responsibilities (what it owns).
 | FR-006 | Assign implementers (one per PBI). Sprint-end review is owned by SM via cross-review (FR-009 Layer 2) — no reviewer assigned per PBI in backlog |
 | FR-007 | Calculate Developer count: min(refined PBIs, 6) |
 | FR-008 | Avoid dependent PBIs in same Sprint (use `depends_on_pbi_ids`) |
-| FR-009 | Orchestrate cross-review at Sprint end: SM spawns `codex-code-reviewer` (fallback `code-reviewer`) and `security-reviewer` for each PBI at `status ∈ {awaiting_cross_review, escalated}`, collects results, drives fix loop (FAIL → `in_progress_impl` for Developer rework) until PASS reaches `status: done` |
+| FR-009 | Orchestrate cross-review at Sprint end: SM runs static analysis once, then spawns 5 aspect reviewers in parallel over the whole Sprint — `requirement-conformance-reviewer`, `functional-quality-reviewer`, `security-reviewer`, `maintainability-reviewer`, `docs-consistency-reviewer`. Aspect 1/2/3 Critical\|High → PBI reverts to `in_progress_impl`; aspect 4/5 Critical\|High → append follow-up PBI (title prefix `[cross-review-followup:<pbi-id>:<aspect>]`). Loop until every Sprint PBI reaches `status: done`. |
 | FR-010 | Present Sprint Review, conditional live demo (based on `ux_change` field) |
 | FR-011 | Report remaining scope and progress |
 | FR-012 | Record and consolidate retrospective improvements |
@@ -98,7 +98,7 @@ body. Below is the reference for all 14 Skills:
 | `install-subagents` | PBI assignment (task context); project-managed agent definitions | `.claude/agents/*.md` (installed); `sprint.json` → `developers[].sub_agents` (at runtime) |
 | `pbi-pipeline` | `state.json` → `phase: sprint_planning \| pbi_pipeline_active`; `sprint.json` → `developers[]`; `docs/design/catalog.md`; existing `docs/design/specs/**/*.md`; `requirements.md`; `.scrum/config.json` (coverage thresholds) | Source code; test files; `docs/design/specs/{category}/*.md` (catalog spec updates as side-effect); `.scrum/pbi/<pbi-id>/{state,design,impl,ut,metrics,feedback,pipeline.log}` (see `data-model.md` § PbiPipelineState); `backlog.json` → `items[].status` walks the Developer-managed slice (`in_progress_design → in_progress_impl ⇄ in_progress_pbi_review ⇄ in_progress_ut_run → in_progress_merge`); on termination-gate trip flips to `escalated`; `state.json` → `phase: pbi_pipeline_active` |
 | `pbi-escalation-handler` | Developer notification `[<pbi-id>] ESCALATED reason=<reason>`; `.scrum/pbi/<pbi-id>/state.json`; `.scrum/pbi/<pbi-id>/pipeline.log` | `.scrum/pbi/<pbi-id>/escalation-resolution.md`; SM decision (retry / split / hold / human-escalate) |
-| `cross-review` | `state.json` → `phase: pbi_pipeline_active \| review`; `backlog.json` → all Sprint PBIs at `status ∈ {awaiting_cross_review, escalated}`; `requirements.md`; relevant `docs/design/specs/**/*.md`; per-PBI pipeline final reviews at `.scrum/pbi/<pbi-id>/{impl,ut}/review-r{last}.md` (read for context, not re-evaluated) | `sprint.json` → `status: "cross_review"`; `backlog.json` → `items[].status: awaiting_cross_review → cross_review → done` on PASS, or `cross_review → in_progress_impl` on FAIL (Developer fixes on top of merged code); `items[].review_doc_path`; `reviews/<pbi-id>-review.md`; `state.json` → `phase: review` |
+| `cross-review` | `state.json` → `phase: pbi_pipeline_active \| review`; `backlog.json` → all Sprint PBIs at `status ∈ {awaiting_cross_review, escalated}` (incl. `paths_touched`); `requirements.md`; relevant `docs/design/specs/**/*.md`; `sprint.json.base_sha`; per-PBI pipeline final reviews at `.scrum/pbi/<pbi-id>/{impl,ut}/review-r{last}.md` (read for context, not re-evaluated) | `sprint.json` → `status: "cross_review"`; `.scrum/reviews/static-analysis-r{n}.json` (per-round tool output for `maintainability-reviewer`); `.scrum/reviews/sprint-impl-diff.txt` (non-doc diff for `docs-consistency-reviewer`); `.scrum/reviews/aspect-<aspect>-review.md` (5 raw aspect outputs); `.scrum/reviews/<pbi-id>-review.md` (per-PBI digest); `backlog.json` → `items[].status: awaiting_cross_review → cross_review → done` on aspect-1/2/3 PASS, or `cross_review → in_progress_impl` on aspect-1/2/3 FAIL; aspect-4/5 FAIL → new draft PBI appended (title prefix `[cross-review-followup:<pbi-id>:<aspect>]`, `parent_pbi_id` set, dedup); `items[].review_doc_path`; `state.json` → `phase: review` |
 | `sprint-review` | `state.json` → `phase: review`; `sprint.json`; `backlog.json` | `sprint.json` → `status: "sprint_review"`; `sprint-history.json` → `sprints[]` (appended); `state.json` → `phase: sprint_review` |
 | `retrospective` | `state.json` → `phase: sprint_review`; `improvements.json` (existing improvements and `last_consolidation_sprint`); `sprint.json` → `id` (for consolidation check) | `improvements.json` → `entries[]` (appended), stale entries archived every 3 Sprints (`status: archived`, `archived_at` set, `last_consolidation_sprint` updated); `sprint.json` → `status: "complete"`; `state.json` → `phase: retrospective` |
 | `integration-sprint` | `state.json` → `phase: retrospective`; user confirmation | `.scrum/test-results.json` (structured test results from automated testing); `state.json` → `phase: integration_sprint → complete` |
@@ -162,9 +162,11 @@ body. Below is the reference for all 14 Skills:
 **Role**: Ephemeral worker within the spawning agent's session
 
 Full sub-agent catalog (roles, spawning parents, tool sandboxes) in
-`docs/contracts/sub-agents.md`. Cross-review uses `codex-code-reviewer`
-(primary) + `security-reviewer`, with `code-reviewer` as fallback when
-the `codex` CLI is unavailable. PBI Pipeline uses `pbi-{designer,
+`docs/contracts/sub-agents.md`. Cross-review uses 5 aspect-specialized
+reviewers in parallel over the whole Sprint:
+`requirement-conformance-reviewer`, `functional-quality-reviewer`,
+`security-reviewer`, `maintainability-reviewer`,
+`docs-consistency-reviewer`. PBI Pipeline uses `pbi-{designer,
 implementer, ut-author}` workers and `codex-{design, impl, ut}-reviewer`
 critics per Round.
 

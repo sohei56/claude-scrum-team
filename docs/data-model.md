@@ -44,7 +44,6 @@ Valid phases:
 - `retrospective` — Sprint Retrospective
 - `integration_sprint` — Integration Sprint in progress
 - `complete` — product released
-- `design`, `implementation` — legacy values retained read-only for backward-compatible dashboards. Not used by the current flow.
 
 ---
 
@@ -79,7 +78,6 @@ Valid phases:
 | `design_doc_paths` | string[] | Paths to design documents relative to project root (catalog specs in `docs/design/specs/`, plus PBI working design at `.scrum/pbi/<pbi-id>/design/design.md`) |
 | `review_doc_path` | string \| null | Path to review results relative to project root |
 | `catalog_targets` | string[] | Catalog spec paths the PBI may touch. Recorded by `sprint-planning` skill; used to prevent parallel write contention (Layer 1 of `catalog-contention` defense). |
-| `pipeline_summary` | object \| null | Set by `pbi-pipeline` on completion. Fields: `design_rounds`, `impl_rounds`, `final_c0`, `final_c1`, `final_test_count`, `completed_at`, `escalation_reason` (null on success). |
 | `depends_on_pbi_ids` | string[] | IDs of PBIs that must be completed before this one (used by FR-008) |
 | `ux_change` | boolean | Whether this PBI involves UX changes (determines live demo in FR-010) |
 | `parent_pbi_id` | string \| null | ID of the coarse-grained PBI this was refined from |
@@ -164,9 +162,11 @@ State descriptions:
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | string | Unique identifier (e.g., `"sprint-001"`) |
-| `goal` | string | Sprint Goal text |
-| `type` | enum | `"requirements"`, `"development"`, or `"integration"` |
-| `status` | enum | `"planning"`, `"active"`, `"cross_review"`, `"sprint_review"`, `"complete"` |
+| `goal` | string \| null | Sprint Goal text |
+| `base_sha` | string \| null | Captured `git rev-parse HEAD` at Sprint start (hex sha, 7-40 chars). PBI worktrees fork from this commit. Set once by `freeze-sprint-base.sh`; never re-written. |
+| `base_sha_captured_at` | ISO 8601 string \| null | When `base_sha` was captured (set by `freeze-sprint-base.sh`). |
+| `type` | enum | `"development"` or `"integration"` |
+| `status` | enum | `"planning"`, `"active"`, `"cross_review"`, `"sprint_review"`, `"complete"`, `"failed"` |
 | `pbi_ids` | string[] | IDs of PBIs in the Sprint Backlog |
 | `developer_count` | integer | Number of Developer teammates: min(refined PBIs, 6) |
 | `developers` | Developer[] | Active Developer teammate definitions |
@@ -181,7 +181,7 @@ State descriptions:
 | `assigned_work` | object | PBI assignments |
 | `assigned_work.implement` | string[] | PBI IDs this Developer implements (per-PBI review is handled inside `pbi-pipeline`; Sprint-end cross-review is owned by SM) |
 | `current_pbi` | string \| null | PBI ID currently being driven through `pbi-pipeline` (1 PBI at a time, sequential). Null between PBIs. |
-| `status` | enum | `"active"`, `"idle"`, `"failed"` |
+| `status` | enum | `"active"` or `"failed"` (the dashboard renders `"unknown"` when no entry exists; not a writable value) |
 | `sub_agents` | string[] | Names of specialist sub-agents actually invoked via the Task tool (runtime-populated, not candidates) |
 
 > **Note**: The legacy `current_pbi_phase` field was removed in v2. The
@@ -397,7 +397,7 @@ messages with sender, recipient, and timestamp.
 | `sender_id` | string | Agent ID of the sender (e.g., `"scrum-master"`, `"dev-001-s3"`) |
 | `sender_role` | string | Human-readable role (e.g., `"Scrum Master"`, `"Developer"`) |
 | `recipient_id` | string \| null | Agent ID of the recipient; null = broadcast to all |
-| `type` | enum | Message type: `"task_assignment"`, `"progress_update"`, `"review_request"`, `"review_result"`, `"phase_notification"`, `"change_request"`, `"file_change"`, `"agent_spawn"`, `"status_change"`, `"session_event"` |
+| `type` | enum | Message type. SSOT: `docs/contracts/scrum-state/communications.schema.json`. Allowed values: `"file_change"`, `"tool_use"`, `"status_transition"`, `"subagent_start"`, `"subagent_stop"`, `"task_completed"`, `"teammate_idle"`, `"agent_spawn"`, `"progress_update"`, `"status_change"`, `"report"`, `"review"`, `"escalation"`, `"info"`. |
 | `content` | string | Human-readable message summary |
 
 ### Rules
@@ -550,7 +550,7 @@ context.
 | `ready_at` | ISO 8601 string \| null | Timestamp the Developer signalled ready-for-merge |
 | `merged_sha` | string \| null | Merge commit SHA on main |
 | `merged_at` | ISO 8601 string \| null | Merge completion timestamp |
-| `merge_failure` | object \| null | `{kind, detail, occurred_at}` when most recent merge failed |
+| `merge_failure` | object \| null | `{kind, paths, pre_head_at_failure}` when most recent merge failed |
 | `merge_failure_count` | integer | Consecutive merge failures (resets on success; ≥3 → status `escalated`) |
 | `started_at` | ISO 8601 string | PBI pipeline start timestamp |
 | `updated_at` | ISO 8601 string | Last state mutation timestamp |
@@ -565,7 +565,7 @@ context.
 stagnation | divergence | max_rounds | budget_exhausted |
 requirements_unclear | coverage_tool_error | coverage_tool_unavailable |
 catalog_lock_timeout |
-merge_conflict | merge_artifact_missing | merge_regression
+merge_conflict | merge_artifact_missing
 ```
 
 ### Companion artifacts (under `.scrum/pbi/<pbi-id>/`)
@@ -596,7 +596,7 @@ merge_conflict | merge_artifact_missing | merge_regression
 
 - The conductor MUST update `state.json` atomically (temp file + rename).
 - Backlog `status: in_progress_merge` requires all four `*_status` fields to be `"pass"`.
-- Backlog `status: escalated` requires `escalation_reason` to be non-null. When the cause is a merge failure, `merge_failure.kind` MUST also be set to one of `merge_conflict`, `merge_artifact_missing`, `merge_regression`.
+- Backlog `status: escalated` requires `escalation_reason` to be non-null. When the cause is a merge failure, `merge_failure.kind` MUST also be set to one of `conflict`, `artifact_missing` (corresponding `escalation_reason` values are `merge_conflict`, `merge_artifact_missing`).
 - `coverage_status: pending` is permanent when `.scrum/config.json.coverage_tool` is `null` (project-wide coverage skip declared); evaluation logic skips this gate.
 
 ---

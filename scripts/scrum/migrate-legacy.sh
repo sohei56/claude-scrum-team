@@ -2,13 +2,23 @@
 # migrate-legacy.sh — convert pre-SSOT .scrum/*.json to current schema.
 #
 # Targets the artifacts the dashboard reads at top level:
-#   .scrum/backlog.json   — rename .pbis -> .items, lowercase ids, drop unknown fields
-#   .scrum/sprint.json    — lowercase pbi_ids, ensure started_at, lowercase per-dev refs
-#   .scrum/state.json     — rename current_sprint -> current_sprint_id, normalize dates
+#   .scrum/backlog.json   — rename .pbis -> .items, lowercase ids, drop unknown
+#                           fields, remap legacy 6-value status to 12-value enum
+#   .scrum/sprint.json    — lowercase pbi_ids, ensure started_at, lowercase
+#                           per-dev refs
+#   .scrum/state.json     — rename current_sprint -> current_sprint_id, remap
+#                           legacy phase values (design / implementation ->
+#                           pbi_pipeline_active), normalize dates
 #
 # Per-PBI files (.scrum/pbi/*/state.json) are NOT rewritten: their schema is
-# strict and projects in flight legitimately carry richer fields. The dashboard
-# pipeline pane already tolerates legacy phase vocab via PBI_STATE_PHASE_NORMALIZE.
+# strict and projects in flight legitimately carry richer fields. The legacy
+# pbi-state.json `phase` field was removed in v2 — readers consult
+# backlog.json.items[].status (12-value SSOT) instead.
+#
+# WARNING: status migration here is best-effort phase-blind remap. v1
+# `in_progress` collapses to `in_progress_design`; v1 `review` collapses to
+# `awaiting_cross_review`. Manual review of any in-flight PBIs is recommended
+# before relying on the migrated state. This script is the sole v1 -> v2 path.
 #
 # Idempotent: a second run reports "already canonical".
 # Usage: scripts/scrum/migrate-legacy.sh [--dry-run]
@@ -23,6 +33,10 @@ esac
 
 SCRUM_DIR=".scrum"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/errors.sh
+source "$SCRIPT_DIR/lib/errors.sh"
+# shellcheck source=lib/atomic.sh
+source "$SCRIPT_DIR/lib/atomic.sh"
 
 # Locate scrum-state schemas. Try the source repo layout and the target
 # project layout (where setup-user.sh copies them).
@@ -35,18 +49,15 @@ for candidate in \
     break
   fi
 done
-if [ -z "$SCHEMA_DIR" ]; then
-  echo "Error: scrum-state schemas not found (looked beside this script and under \$PWD/docs/contracts/scrum-state)" >&2
-  exit 67
-fi
+[ -n "$SCHEMA_DIR" ] || fail E_FILE_MISSING \
+  "scrum-state schemas not found (looked beside this script and under \$PWD/docs/contracts/scrum-state)"
 
 if [ ! -d "$SCRUM_DIR" ]; then
   echo "No .scrum/ directory in $PWD — nothing to migrate."
   exit 0
 fi
 
-iso_now() { date -u +"%Y-%m-%dT%H:%M:%SZ"; }
-NOW="$(iso_now)"
+NOW="$(_iso_utc_now)"
 
 # _diff_strings <a> <b>
 # Print a unified diff of two strings without bash/POSIX process substitution
@@ -58,28 +69,6 @@ _diff_strings() {
   printf '%s\n' "$b" > "$d/after"
   diff -u "$d/before" "$d/after" | head -30 || true
   rm -rf "$d"
-}
-
-# validate_json <json_path> <schema_path>
-# Uses python3+jsonschema. Returns 0 on valid, prints error to stderr otherwise.
-validate_json() {
-  local json_path="$1" schema_path="$2"
-  python3 - "$json_path" "$schema_path" <<'PY' 2>&1
-import json, sys
-try:
-    import jsonschema
-except ImportError:
-    print("jsonschema package missing; install with: pip install jsonschema", file=sys.stderr)
-    sys.exit(2)
-json_path, schema_path = sys.argv[1], sys.argv[2]
-data = json.load(open(json_path))
-schema = json.load(open(schema_path))
-try:
-    jsonschema.validate(data, schema)
-except jsonschema.ValidationError as exc:
-    print(f"validation error: {exc.message}", file=sys.stderr)
-    sys.exit(1)
-PY
 }
 
 # apply_migration <path> <jq_expr> <schema_path>
@@ -113,7 +102,7 @@ apply_migration() {
   printf '%s\n' "$after" > "$tmp"
 
   local err
-  if err="$(validate_json "$tmp" "$schema")"; then
+  if err="$(_validate_against_schema "$tmp" "$schema" 2>&1)"; then
     cp "$path" "${path}.legacy.bak"
     mv "$tmp" "$path"
     echo "    -> migrated (.legacy.bak saved)"
@@ -126,14 +115,15 @@ apply_migration() {
 
 echo "Migrating $SCRUM_DIR (schemas: $SCHEMA_DIR)..."
 [ "$DRY_RUN" = 1 ] && echo "  (dry-run)"
+printf 'WARNING: for status migration after v1 -> v2, use this script carefully — phase-blind remap is best-effort. Manual review of any in_progress PBIs is recommended.\n' >&2
 
 # --- backlog.json ---
 # Rename .pbis -> .items, lowercase PBI ids, lowercase depends_on refs,
 # drop fields the schema does not allow (additionalProperties: false on items),
 # and remap legacy 6-value status to the 12-value enum (best-effort —
 # without phase context, in_progress maps to in_progress_design and
-# review maps to awaiting_cross_review; PBI-G's migrate-status-v2.sh
-# does the precise phase-aware mapping when pbi-state.json is available).
+# review maps to awaiting_cross_review). See WARNING above: manual review
+# of any in_progress PBIs after migration is recommended.
 BACKLOG_EXPR='
   (if has("pbis") then .items = .pbis | del(.pbis) else . end)
   | .items |= ((. // []) | map(
@@ -189,7 +179,7 @@ if [ -f "$SCRUM_DIR/sprint.json" ]; then
     else
       tmp="$SCRUM_DIR/sprint.json.tmp.$$"
       printf '%s\n' "$after" > "$tmp"
-      if err="$(validate_json "$tmp" "$SCHEMA_DIR/sprint.schema.json")"; then
+      if err="$(_validate_against_schema "$tmp" "$SCHEMA_DIR/sprint.schema.json" 2>&1)"; then
         cp "$SCRUM_DIR/sprint.json" "$SCRUM_DIR/sprint.json.legacy.bak"
         mv "$tmp" "$SCRUM_DIR/sprint.json"
         echo "    -> migrated (.legacy.bak saved)"
@@ -204,12 +194,17 @@ else
 fi
 
 # --- state.json ---
-# Rename .current_sprint -> .current_sprint_id (preserving null), normalize
-# created_at / updated_at if they are date-only strings.
+# Rename .current_sprint -> .current_sprint_id (preserving null), remap legacy
+# phase values (design / implementation -> pbi_pipeline_active; both were
+# removed from the v2 enum), normalize created_at / updated_at if they are
+# date-only strings.
 STATE_EXPR='
   (if has("current_sprint")
    then (.current_sprint_id //= .current_sprint) | del(.current_sprint)
    else . end)
+  | (if (.phase == "design" or .phase == "implementation")
+     then .phase = "pbi_pipeline_active"
+     else . end)
   | (if (.created_at // "" | type) == "string" and (.created_at | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$"))
      then .created_at += "T00:00:00Z" else . end)
   | (if (.updated_at // "" | type) == "string" and (.updated_at | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$"))
