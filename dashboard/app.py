@@ -150,8 +150,6 @@ PHASE_FLOW = [
     ("requirements_sprint", "Requirements"),
     ("backlog_created", "Backlog Created"),
     ("sprint_planning", "Sprint Planning"),
-    ("design", "Design"),
-    ("implementation", "Implementation"),
     ("pbi_pipeline_active", "PBI Pipelines Running"),
     ("review", "Review"),
     ("sprint_review", "Sprint Review"),
