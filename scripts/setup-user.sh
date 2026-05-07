@@ -401,8 +401,11 @@ else
 fi
 
 # --- Check Codex CLI for cross-model code review ---
-# The codex-code-reviewer agent calls `codex review` directly via CLI.
-# When codex is not installed, the agent falls back to Claude-based review.
+# The codex-{design,impl,ut}-reviewer sub-agents call `codex` directly via
+# CLI for per-PBI cross-model review (Layer 1 in the PBI Pipeline). When
+# codex is not installed, those sub-agents fall back to Claude-based review.
+# Sprint-end cross-review (Layer 2) is independent of codex and runs the
+# 5 aspect-specialized reviewer sub-agents regardless.
 
 if command -v codex >/dev/null 2>&1; then
   echo ""

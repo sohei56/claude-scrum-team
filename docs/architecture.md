@@ -215,6 +215,7 @@ execute.
     spawn-teammates/SKILL.md         # Teammate creation (reproducible)
     install-subagents/SKILL.md       # Sub-agent selection from catalog (reproducible)
     pbi-pipeline/SKILL.md            # Per-PBI multi-sub-agent pipeline (R10)
+    pbi-merge/SKILL.md               # SM-side per-PBI merge orchestration
     pbi-escalation-handler/SKILL.md  # SM-side pbi-pipeline escalation handler
     cross-review/SKILL.md            # Sprint-end cross-cutting quality gate
     sprint-review/SKILL.md           # Sprint Review ceremony
