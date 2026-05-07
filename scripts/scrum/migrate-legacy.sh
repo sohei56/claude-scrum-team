@@ -33,6 +33,10 @@ esac
 
 SCRUM_DIR=".scrum"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/errors.sh
+source "$SCRIPT_DIR/lib/errors.sh"
+# shellcheck source=lib/atomic.sh
+source "$SCRIPT_DIR/lib/atomic.sh"
 
 # Locate scrum-state schemas. Try the source repo layout and the target
 # project layout (where setup-user.sh copies them).
@@ -45,18 +49,15 @@ for candidate in \
     break
   fi
 done
-if [ -z "$SCHEMA_DIR" ]; then
-  echo "Error: scrum-state schemas not found (looked beside this script and under \$PWD/docs/contracts/scrum-state)" >&2
-  exit 67
-fi
+[ -n "$SCHEMA_DIR" ] || fail E_FILE_MISSING \
+  "scrum-state schemas not found (looked beside this script and under \$PWD/docs/contracts/scrum-state)"
 
 if [ ! -d "$SCRUM_DIR" ]; then
   echo "No .scrum/ directory in $PWD — nothing to migrate."
   exit 0
 fi
 
-iso_now() { date -u +"%Y-%m-%dT%H:%M:%SZ"; }
-NOW="$(iso_now)"
+NOW="$(_iso_utc_now)"
 
 # _diff_strings <a> <b>
 # Print a unified diff of two strings without bash/POSIX process substitution
@@ -68,28 +69,6 @@ _diff_strings() {
   printf '%s\n' "$b" > "$d/after"
   diff -u "$d/before" "$d/after" | head -30 || true
   rm -rf "$d"
-}
-
-# validate_json <json_path> <schema_path>
-# Uses python3+jsonschema. Returns 0 on valid, prints error to stderr otherwise.
-validate_json() {
-  local json_path="$1" schema_path="$2"
-  python3 - "$json_path" "$schema_path" <<'PY' 2>&1
-import json, sys
-try:
-    import jsonschema
-except ImportError:
-    print("jsonschema package missing; install with: pip install jsonschema", file=sys.stderr)
-    sys.exit(2)
-json_path, schema_path = sys.argv[1], sys.argv[2]
-data = json.load(open(json_path))
-schema = json.load(open(schema_path))
-try:
-    jsonschema.validate(data, schema)
-except jsonschema.ValidationError as exc:
-    print(f"validation error: {exc.message}", file=sys.stderr)
-    sys.exit(1)
-PY
 }
 
 # apply_migration <path> <jq_expr> <schema_path>
@@ -123,7 +102,7 @@ apply_migration() {
   printf '%s\n' "$after" > "$tmp"
 
   local err
-  if err="$(validate_json "$tmp" "$schema")"; then
+  if err="$(_validate_against_schema "$tmp" "$schema" 2>&1)"; then
     cp "$path" "${path}.legacy.bak"
     mv "$tmp" "$path"
     echo "    -> migrated (.legacy.bak saved)"
@@ -200,7 +179,7 @@ if [ -f "$SCRUM_DIR/sprint.json" ]; then
     else
       tmp="$SCRUM_DIR/sprint.json.tmp.$$"
       printf '%s\n' "$after" > "$tmp"
-      if err="$(validate_json "$tmp" "$SCHEMA_DIR/sprint.schema.json")"; then
+      if err="$(_validate_against_schema "$tmp" "$SCHEMA_DIR/sprint.schema.json" 2>&1)"; then
         cp "$SCRUM_DIR/sprint.json" "$SCRUM_DIR/sprint.json.legacy.bak"
         mv "$tmp" "$SCRUM_DIR/sprint.json"
         echo "    -> migrated (.legacy.bak saved)"
