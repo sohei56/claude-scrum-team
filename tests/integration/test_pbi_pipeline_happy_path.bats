@@ -9,8 +9,9 @@ setup() {
   cd "$TEST_TMP" || exit 1
 
   # Minimum viable .scrum layout
-  mkdir -p .scrum docs/design/specs hooks/lib
+  mkdir -p .scrum docs/design/specs hooks/lib scripts/lib
   cp -r "${BATS_TEST_DIRNAME}/../../hooks/lib/"* hooks/lib/
+  cp -r "${BATS_TEST_DIRNAME}/../../scripts/lib/"* scripts/lib/
   cp "${BATS_TEST_DIRNAME}/../fixtures/fake-codex.sh" .
   chmod +x fake-codex.sh
 
@@ -99,7 +100,7 @@ set_backlog_status() {
   echo "# Design for $PBI_ID" > "$PBI_DIR/design/design.md"
 
   # Simulate codex-design-reviewer via fake-codex
-  source hooks/lib/codex-invoke.sh
+  source scripts/lib/codex-invoke.sh
   echo "stub instructions" > "$TEST_TMP/instr.md"
   codex_review_or_fallback "$TEST_TMP/instr.md" "$PBI_DIR/design/review-r1.md"
 
@@ -137,7 +138,7 @@ set_backlog_status() {
   }' > "$PBI_DIR/state.json"
   set_backlog_status "$PBI_ID" "in_progress_pbi_review"
 
-  source hooks/lib/codex-invoke.sh
+  source scripts/lib/codex-invoke.sh
   echo "stub" > "$TEST_TMP/instr.md"
   codex_review_or_fallback "$TEST_TMP/instr.md" "$PBI_DIR/impl/review-r1.md"
   codex_review_or_fallback "$TEST_TMP/instr.md" "$PBI_DIR/ut/review-r1.md"

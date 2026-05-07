@@ -493,7 +493,7 @@ by default).
 - Skill: `skills/pbi-pipeline/` (orchestrator SKILL.md + 8 references)
 - SM-side escalation: `skills/pbi-escalation-handler/SKILL.md`
 - Path enforcement hook: `hooks/pre-tool-use-path-guard.sh`
-- Codex invocation: `hooks/lib/codex-invoke.sh`
+- Codex invocation: `scripts/lib/codex-invoke.sh`
 - Per-PBI state: `.scrum/pbi/<pbi-id>/state.json` and
   `pipeline.log`
 - Catalog write contention: 3-layer defense (sprint-planning

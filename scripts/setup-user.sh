@@ -124,6 +124,14 @@ echo "Copying hook scripts to $TARGET_DIR/.claude/hooks/..."
 copy_tree "$PROJECT_ROOT/hooks/*.sh" "$TARGET_DIR/.claude/hooks" true
 copy_tree "$PROJECT_ROOT/hooks/lib/*.sh" "$TARGET_DIR/.claude/hooks/lib"
 
+# --- Copy non-hook shared agent helpers ---
+# `scripts/lib/codex-invoke.sh` is sourced by codex-* reviewer agents during
+# PBI-pipeline review steps. It is not a hook helper, so it lives outside
+# `.claude/hooks/lib/`. The codex-design-reviewer.md instruction sources it
+# at `scripts/lib/codex-invoke.sh` (relative to project root).
+echo "Copying agent helpers to $TARGET_DIR/scripts/lib/..."
+copy_tree "$PROJECT_ROOT/scripts/lib/*.sh" "$TARGET_DIR/scripts/lib"
+
 # --- Ensure .scrum/ is gitignored (must run BEFORE any .scrum/ write) ---
 echo "Ensuring .scrum/ is gitignored in $TARGET_DIR..."
 ensure_gitignore_excludes_scrum
