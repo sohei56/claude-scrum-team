@@ -383,6 +383,55 @@ teardown() {
   [ "$status" -eq 2 ]
 }
 
+@test "completion-gate.sh emits compressed status-grouped count for pbi_pipeline_active" {
+  # Verify the block message is a status-grouped count (not per-PBI listing)
+  # to keep context noise low when the hook fires on every SM turn-end.
+  mkdir -p .scrum
+  cp "$FIXTURES_DIR/valid-state.json" .scrum/state.json
+  cp "$FIXTURES_DIR/valid-sprint.json" .scrum/sprint.json
+  jq '.items = [
+    {"id":"pbi-001","status":"in_progress_design","priority":1,"name":"a","description":"x","sized":true},
+    {"id":"pbi-002","status":"in_progress_design","priority":2,"name":"b","description":"x","sized":true},
+    {"id":"pbi-003","status":"in_progress_impl","priority":3,"name":"c","description":"x","sized":true},
+    {"id":"pbi-004","status":"in_progress_merge","priority":4,"name":"d","description":"x","sized":true},
+    {"id":"pbi-005","status":"done","priority":5,"name":"e","description":"x","sized":true}
+  ]' "$FIXTURES_DIR/valid-backlog.json" > .scrum/backlog.json
+
+  run bash "$PROJECT_ROOT/hooks/completion-gate.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"3 in-flight"* ]]
+  [[ "$output" == *"2 design"* ]]
+  [[ "$output" == *"1 impl"* ]]
+  # in_progress_merge (terminal Dev status) and done (terminal) are excluded
+  [[ "$output" != *"merge"* ]]
+  [[ "$output" != *"pbi-001"* ]]
+}
+
+@test "completion-gate.sh lists escalated PBI ids when resolution missing" {
+  # Escalated PBIs are rare and require operator action; keep ID listing.
+  mkdir -p .scrum
+  cp "$FIXTURES_DIR/valid-state.json" .scrum/state.json
+  cp "$FIXTURES_DIR/valid-sprint.json" .scrum/sprint.json
+  jq '.items[0].status = "escalated" | .items[0].id = "pbi-007"' "$FIXTURES_DIR/valid-backlog.json" > .scrum/backlog.json
+
+  run bash "$PROJECT_ROOT/hooks/completion-gate.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"escalated without resolution"* ]]
+  [[ "$output" == *"pbi-007"* ]]
+}
+
+@test "completion-gate.sh allows stop when escalated PBI has resolution recorded" {
+  mkdir -p .scrum
+  cp "$FIXTURES_DIR/valid-state.json" .scrum/state.json
+  cp "$FIXTURES_DIR/valid-sprint.json" .scrum/sprint.json
+  jq '.items[0].status = "escalated" | .items[0].id = "pbi-007"' "$FIXTURES_DIR/valid-backlog.json" > .scrum/backlog.json
+  mkdir -p .scrum/pbi/pbi-007
+  echo "resolved" > .scrum/pbi/pbi-007/escalation-resolution.md
+
+  run bash "$PROJECT_ROOT/hooks/completion-gate.sh"
+  assert_success
+}
+
 @test "completion-gate.sh allows stop when active PBI pipeline terminal" {
   mkdir -p .scrum
   # pbi-001 reached awaiting_cross_review (terminal); not derived as active.
