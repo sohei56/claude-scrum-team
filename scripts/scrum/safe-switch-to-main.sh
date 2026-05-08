@@ -15,16 +15,13 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=lib/errors.sh
 source "$HERE/lib/errors.sh"
+# shellcheck source=lib/git-guards.sh
+source "$HERE/lib/git-guards.sh"
 
 [ "$#" -eq 0 ] || fail E_INVALID_ARG "usage: safe-switch-to-main.sh"
 
-if [ -n "$(git ls-files .scrum/ 2>/dev/null)" ]; then
-  fail E_INVALID_ARG ".scrum/ is tracked in git — switching branches would silently delete state files. Recover with: git rm -r --cached .scrum/ && echo '.scrum/' >> .gitignore"
-fi
-
-if git status --porcelain | grep -qv '^??'; then
-  fail E_INVALID_ARG "working tree has uncommitted tracked changes — refuse to switch"
-fi
+assert_scrum_untracked
+assert_clean_worktree "refuse to switch"
 
 # Confirm `main` exists.
 if ! git show-ref --verify --quiet refs/heads/main; then

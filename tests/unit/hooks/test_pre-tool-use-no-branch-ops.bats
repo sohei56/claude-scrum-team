@@ -53,3 +53,50 @@ setup() {
   run bash -c "echo '{\"tool_name\":\"Read\",\"tool_input\":{\"file_path\":\"x\"}}' | $HOOK"
   [ "$status" -eq 0 ]
 }
+
+# `git -C <path> <verb>` form: prior regex only matched `git <verb>` and
+# silently let raw merge/push/rebase from worktrees through.
+@test "blocks: git -C wt checkout -b" {
+  run bash -c "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git -C .scrum/worktrees/pbi-001 checkout -b foo\"}}' | $HOOK"
+  [ "$status" -ne 0 ]
+}
+
+@test "blocks: git -C wt switch -c" {
+  run bash -c "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git -C .scrum/worktrees/pbi-001 switch -c foo\"}}' | $HOOK"
+  [ "$status" -ne 0 ]
+}
+
+@test "blocks: git -C wt branch newname" {
+  run bash -c "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git -C .scrum/worktrees/pbi-001 branch newname\"}}' | $HOOK"
+  [ "$status" -ne 0 ]
+}
+
+@test "blocks: git -C wt merge" {
+  run bash -c "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git -C .scrum/worktrees/pbi-001 merge other\"}}' | $HOOK"
+  [ "$status" -ne 0 ]
+}
+
+@test "blocks: git -C wt push" {
+  run bash -c "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git -C .scrum/worktrees/pbi-001 push origin foo\"}}' | $HOOK"
+  [ "$status" -ne 0 ]
+}
+
+@test "blocks: git -C wt rebase" {
+  run bash -c "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git -C .scrum/worktrees/pbi-001 rebase main\"}}' | $HOOK"
+  [ "$status" -ne 0 ]
+}
+
+@test "allows: git -C wt status" {
+  run bash -c "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git -C .scrum/worktrees/pbi-001 status\"}}' | $HOOK"
+  [ "$status" -eq 0 ]
+}
+
+@test "blocks: git --git-dir=.git merge" {
+  run bash -c "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git --git-dir=.git merge other\"}}' | $HOOK"
+  [ "$status" -ne 0 ]
+}
+
+@test "blocks: git --work-tree=. push" {
+  run bash -c "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git --work-tree=. push origin main\"}}' | $HOOK"
+  [ "$status" -ne 0 ]
+}

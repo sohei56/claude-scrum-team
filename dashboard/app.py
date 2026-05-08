@@ -521,12 +521,7 @@ class CommunicationLog(RichLog):
             recipient = msg.get("recipient_id") or "all"
             content = msg.get("content", "")
 
-            # Format timestamp to HH:MM:SS
-            try:
-                dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-                ts_short = dt.strftime("%H:%M:%S")
-            except (ValueError, AttributeError, TypeError):
-                ts_short = str(ts)[:8]
+            ts_short = _format_ts_short(ts)
 
             role_str = f" ({role})" if role else ""
             recipient_str = f" → {recipient}" if recipient != "all" else ""
@@ -537,6 +532,20 @@ class CommunicationLog(RichLog):
 
 # Round count above this is highlighted as a stagnation hint.
 PIPELINE_ROUND_WARN_THRESHOLD = 2
+
+
+def _format_ts_short(ts: str | None) -> str:
+    """Render an ISO-8601 timestamp as ``HH:MM:SS``.
+
+    Falls back to the first 8 characters of the raw value when parsing
+    fails (matches prior inline behavior across both message and event
+    log panels).
+    """
+    try:
+        dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+        return dt.strftime("%H:%M:%S")
+    except (ValueError, AttributeError, TypeError):
+        return str(ts)[:8]
 
 
 def _humanize_age(ts: str | None, now: datetime) -> str:
@@ -605,11 +614,7 @@ class WorkLog(RichLog):
             change = evt.get("change_type") or ""
             detail = evt.get("detail", "")
 
-            try:
-                dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-                ts_short = dt.strftime("%H:%M:%S")
-            except (ValueError, AttributeError, TypeError):
-                ts_short = str(ts)[:8]
+            ts_short = _format_ts_short(ts)
 
             if evt_type == "file_changed" and file_path:
                 color = {"created": "green", "modified": "yellow", "deleted": "red"}.get(change, "")

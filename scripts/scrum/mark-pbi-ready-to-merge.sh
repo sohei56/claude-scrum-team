@@ -9,23 +9,22 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 source "$HERE/lib/errors.sh"
 # shellcheck source=lib/atomic.sh
 source "$HERE/lib/atomic.sh"
+# shellcheck source=lib/queries.sh
+source "$HERE/lib/queries.sh"
 
 [ "$#" -eq 1 ] || fail E_INVALID_ARG "usage: mark-pbi-ready-to-merge.sh <pbi-id>"
 PBI="$1"
 case "$PBI" in pbi-[0-9]*) ;; *) fail E_INVALID_ARG "bad pbi-id: $PBI" ;; esac
 
+read_pbi_worktree_state "$PBI"
+[ -n "$PBI_BASE_SHA" ] || fail E_INVALID_ARG "state.base_sha unset"
 STATE=".scrum/pbi/$PBI/state.json"
-[ -f "$STATE" ] || fail E_FILE_MISSING "$STATE"
-WT="$(jq -r '.worktree // ""' "$STATE")"
-BASE="$(jq -r '.base_sha // ""' "$STATE")"
-[ -d "$WT" ] || fail E_FILE_MISSING "PBI worktree missing: $WT"
-[ -n "$BASE" ] || fail E_INVALID_ARG "state.base_sha unset"
 
-HEAD="$(git -C "$WT" rev-parse HEAD)"
+HEAD="$(git -C "$PBI_WT" rev-parse HEAD)"
 PATHS=()
 while IFS= read -r line; do
   PATHS+=("$line")
-done < <(git -C "$WT" diff --name-only "$BASE..HEAD")
+done < <(git -C "$PBI_WT" diff --name-only "$PBI_BASE_SHA..HEAD")
 if [ "${#PATHS[@]}" -eq 0 ]; then
   fail E_INVALID_ARG "no commits beyond base — refusing to mark ready_to_merge"
 fi
@@ -42,7 +41,7 @@ atomic_write "$STATE" "$EXPR" "$ROOT/docs/contracts/scrum-state/pbi-state.schema
 
 # Update backlog status to in_progress_merge (silently skip if PBI not in backlog).
 BACKLOG=".scrum/backlog.json"
-if [ -f "$BACKLOG" ] && jq -e --arg id "$PBI" '.items | map(select(.id==$id)) | length > 0' "$BACKLOG" >/dev/null; then
+if pbi_in_backlog "$PBI" "$BACKLOG"; then
   "$HERE/update-backlog-status.sh" "$PBI" in_progress_merge
 fi
 

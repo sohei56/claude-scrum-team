@@ -24,25 +24,31 @@ esac
 # We match on word-boundaries to avoid false positives ("git status" should pass).
 block() { hook_block "no-branch-ops" "$1" "Use .scrum/scripts/* wrappers instead."; }
 
-if echo "$CMD" | grep -Eq '(^|[[:space:];|&])git[[:space:]]+checkout[[:space:]]+-b\b'; then
+# Pre-verb global options that retarget which repo/worktree git operates on.
+# Without consuming these, `git -C <path> merge` (and --git-dir / --work-tree
+# variants) silently bypass the verb regex. Each block rule prepends this
+# optional segment so the bypass closes for every verb at once.
+GIT_PRE_OPT='([[:space:]]+(-C[[:space:]]+[^[:space:]]+|--git-dir[= ][^[:space:]]+|--work-tree[= ][^[:space:]]+))*'
+
+if echo "$CMD" | grep -Eq "(^|[[:space:];|&])git${GIT_PRE_OPT}[[:space:]]+checkout[[:space:]]+-b\b"; then
   block "git checkout -b"
 fi
-if echo "$CMD" | grep -Eq '(^|[[:space:];|&])git[[:space:]]+switch[[:space:]]+-c\b'; then
+if echo "$CMD" | grep -Eq "(^|[[:space:];|&])git${GIT_PRE_OPT}[[:space:]]+switch[[:space:]]+-c\b"; then
   block "git switch -c"
 fi
-if echo "$CMD" | grep -Eq '(^|[[:space:];|&])git[[:space:]]+branch[[:space:]]+[A-Za-z0-9_][A-Za-z0-9._/-]*($|[[:space:];|&])'; then
+if echo "$CMD" | grep -Eq "(^|[[:space:];|&])git${GIT_PRE_OPT}[[:space:]]+branch[[:space:]]+[A-Za-z0-9_][A-Za-z0-9._/-]*($|[[:space:];|&])"; then
   # `git branch <name>` (creates). Listing/management flags (`git branch`,
   # `git branch -a`, `git branch -d <name>`, `git branch --list`) start with
   # `-` after the whitespace and pass through.
   block "git branch <new-name>"
 fi
-if echo "$CMD" | grep -Eq '(^|[[:space:];|&])git[[:space:]]+merge\b'; then
+if echo "$CMD" | grep -Eq "(^|[[:space:];|&])git${GIT_PRE_OPT}[[:space:]]+merge\b"; then
   block "git merge"
 fi
-if echo "$CMD" | grep -Eq '(^|[[:space:];|&])git[[:space:]]+push\b'; then
+if echo "$CMD" | grep -Eq "(^|[[:space:];|&])git${GIT_PRE_OPT}[[:space:]]+push\b"; then
   block "git push"
 fi
-if echo "$CMD" | grep -Eq '(^|[[:space:];|&])git[[:space:]]+rebase\b'; then
+if echo "$CMD" | grep -Eq "(^|[[:space:];|&])git${GIT_PRE_OPT}[[:space:]]+rebase\b"; then
   block "git rebase"
 fi
 

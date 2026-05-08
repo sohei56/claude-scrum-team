@@ -37,3 +37,18 @@ fail() {
   printf '[scrum-tool] %s: %s\n' "$code_name" "$msg" >&2
   exit "$code"
 }
+
+# assert_hex_sha <label> <value>
+# Validates a 7..40 char lowercase hex string. Fails E_INVALID_ARG with the
+# label embedded in the message. Used by mark-pbi-merged.sh, mark-pbi-merge-
+# failure.sh, update-pbi-state.sh.
+assert_hex_sha() {
+  local label="$1" value="$2"
+  case "$value" in
+    [0-9a-f]*) ;;
+    *) fail E_INVALID_ARG "$label must be hex sha: $value" ;;
+  esac
+  if [ "${#value}" -lt 7 ] || [ "${#value}" -gt 40 ]; then
+    fail E_INVALID_ARG "$label length must be 7..40: $value"
+  fi
+}

@@ -15,10 +15,7 @@ source "$HERE/lib/queries.sh"
 [ "$#" -eq 2 ] || fail E_INVALID_ARG "usage: mark-pbi-merged.sh <pbi-id> <merged-sha>"
 PBI="$1"; SHA="$2"
 case "$PBI" in pbi-[0-9]*) ;; *) fail E_INVALID_ARG "bad pbi-id: $PBI" ;; esac
-case "$SHA" in
-  [0-9a-f]*) [ "${#SHA}" -ge 7 ] && [ "${#SHA}" -le 40 ] || fail E_INVALID_ARG "merged-sha length 7..40 required" ;;
-  *) fail E_INVALID_ARG "merged-sha must be hex" ;;
-esac
+assert_hex_sha merged-sha "$SHA"
 
 STATE=".scrum/pbi/$PBI/state.json"
 [ -f "$STATE" ] || fail E_FILE_MISSING "$STATE"

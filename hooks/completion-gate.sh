@@ -188,9 +188,11 @@ EOF
   pbi_pipeline_active)
     # Active pipelines are derived from backlog.json (12-value SSOT): any
     # PBI whose status starts with `in_progress_` is mid-pipeline. The
-    # allow-list captures Developer-side handoff (`in_progress_merge`),
-    # SM-side cross-review staging (`awaiting_cross_review` / `cross_review`),
-    # and terminal `done`. `escalated` requires a recorded resolution.
+    # filter excludes `in_progress_merge` (handoff awaiting SM action, not
+    # a stuck pipeline) so it does not count toward the in-flight total.
+    # `awaiting_cross_review` / `cross_review` / `done` are not
+    # `in_progress_` prefixed and pass through. `escalated` requires a
+    # recorded resolution.
     #
     # Block message is compressed to a status-grouped count (e.g. "5
     # in-flight (2 design, 1 impl, ...)") rather than per-PBI listing,
