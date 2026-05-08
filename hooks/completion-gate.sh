@@ -16,6 +16,7 @@ BACKLOG_FILE=".scrum/backlog.json"
 HISTORY_FILE=".scrum/sprint-history.json"
 IMPROVEMENTS_FILE=".scrum/improvements.json"
 TEST_RESULTS_FILE=".scrum/test-results.json"
+DASHBOARD_FILE=".scrum/dashboard.json"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -23,9 +24,43 @@ TEST_RESULTS_FILE=".scrum/test-results.json"
 
 block_stop() {
   local reason="$1"
+  local hint
+  hint="$(in_flight_hint)"
   log_hook "completion-gate" "WARN" "Blocked stop: $reason"
-  jq -n --arg r "${HOOK_NOTIFICATION_PREFIX} Reason: ${reason}" '{"reason": $r}' >&2
+  jq -n --arg r "${HOOK_NOTIFICATION_PREFIX} Reason: ${reason}${hint}" '{"reason": $r}' >&2
   exit 2
+}
+
+# Count in-flight subagents from dashboard.json: agent_ids with a
+# subagent_start event and no later subagent_stop event. Echoes the
+# count (integer). Fail-open: empty/missing dashboard → 0.
+count_in_flight_subagents() {
+  if [ ! -f "$DASHBOARD_FILE" ]; then
+    echo "0"
+    return
+  fi
+  jq -r '
+    [.events[]? | select(.type == "subagent_start" or .type == "subagent_stop")]
+    | group_by(.agent_id)
+    | map(
+        sort_by(.timestamp)
+        | last
+        | select(.type == "subagent_start")
+      )
+    | length
+  ' "$DASHBOARD_FILE" 2>/dev/null || echo "0"
+}
+
+# Append a guidance hint to the block reason when subagents are still
+# running. Keeps SM from misreading the block as agent failure and
+# re-spawning into a duplicate-work loop (see scrum-master.md
+# § Background Subagent + Stop Hook Reading).
+in_flight_hint() {
+  local n
+  n="$(count_in_flight_subagents)"
+  if [ "${n:-0}" -gt 0 ]; then
+    printf ' [%d subagent(s) still running. WAIT for them to finish — do NOT re-spawn. Use TaskGet to verify status. Re-spawn only if TaskGet shows terminated AND expected output artifact is missing.]' "$n"
+  fi
 }
 
 allow_stop() {

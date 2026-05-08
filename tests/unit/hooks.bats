@@ -436,6 +436,46 @@ teardown() {
   assert_success
 }
 
+@test "completion-gate.sh appends in-flight subagent hint to block reason" {
+  mkdir -p .scrum
+  jq '.phase = "review"' "$FIXTURES_DIR/valid-state.json" > .scrum/state.json
+  cp "$FIXTURES_DIR/valid-sprint.json" .scrum/sprint.json
+  jq '.items[0].status = "cross_review"' "$FIXTURES_DIR/valid-backlog.json" > .scrum/backlog.json
+
+  # 2 subagents started, 1 stopped → 1 in-flight
+  jq -n '{
+    "events": [
+      {"timestamp":"2026-01-01T00:00:00Z","type":"subagent_start","agent_id":"a1"},
+      {"timestamp":"2026-01-01T00:00:01Z","type":"subagent_start","agent_id":"a2"},
+      {"timestamp":"2026-01-01T00:00:30Z","type":"subagent_stop","agent_id":"a1"}
+    ]
+  }' > .scrum/dashboard.json
+
+  run bash "$PROJECT_ROOT/hooks/completion-gate.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"1 subagent(s) still running"* ]]
+  [[ "$output" == *"do NOT re-spawn"* ]]
+}
+
+@test "completion-gate.sh omits hint when no in-flight subagents" {
+  mkdir -p .scrum
+  jq '.phase = "review"' "$FIXTURES_DIR/valid-state.json" > .scrum/state.json
+  cp "$FIXTURES_DIR/valid-sprint.json" .scrum/sprint.json
+  jq '.items[0].status = "cross_review"' "$FIXTURES_DIR/valid-backlog.json" > .scrum/backlog.json
+
+  # All subagents stopped → 0 in-flight
+  jq -n '{
+    "events": [
+      {"timestamp":"2026-01-01T00:00:00Z","type":"subagent_start","agent_id":"a1"},
+      {"timestamp":"2026-01-01T00:00:30Z","type":"subagent_stop","agent_id":"a1"}
+    ]
+  }' > .scrum/dashboard.json
+
+  run bash "$PROJECT_ROOT/hooks/completion-gate.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" != *"subagent(s) still running"* ]]
+}
+
 # ---------------------------------------------------------------------------
 # quality-gate.sh
 # ---------------------------------------------------------------------------
