@@ -165,6 +165,20 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
    Do NOT pass: PBI descriptions, dev communications, `.scrum/`
    pipeline state. (Reviewers 1/2/5 may receive PBI `id` + `title` +
    `paths_touched` only — the minimum needed for PBI-mapping.)
+
+   **Reviewer wait barrier.** After spawning, wait for ALL 5
+   `.scrum/reviews/aspect-*.md` files to exist with mtime ≥ the spawn
+   timestamp. Do NOT attempt to stop the session in between. Reviewer
+   completion typically takes 60-120s — do NOT interpret a Stop hook
+   block (`completion-gate.sh` "PBIs not done") as reviewer failure.
+   Use `TaskGet` to verify status before re-spawning. See
+   `agents/scrum-master.md` § Background Subagent + Stop Hook Reading.
+
+   **Reviewers are single-shot.** Their `Status = completed` is the
+   success signal — do NOT apply the Teammate Liveness Protocol re-spawn
+   rule meant for Developer teammates. If the expected `aspect-*.md`
+   file does not appear within ~5 minutes after `TaskGet` shows
+   completed, then and only then re-spawn that single reviewer.
 7. **Collect aspect verdicts + Findings.** Persist each reviewer's
    raw response to its `aspect-*.md` output file.
 8. **Build per-PBI digests.** For each Sprint PBI write

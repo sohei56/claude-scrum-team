@@ -12,7 +12,7 @@ disable-model-invocation: false
 
 ## Outputs
 
-- `backlog.json` → items[].status: refined, acceptance_criteria (non-empty), ux_change, design_doc_paths
+- `backlog.json` → items[].status: refined, acceptance_criteria (non-empty), ux_change, design_doc_paths, priority (non-negative integer)
 
 ## Preconditions
 
@@ -29,6 +29,12 @@ disable-model-invocation: false
    b. Fill acceptance_criteria: concrete, testable
    c. Set ux_change (user-facing changes)
    d. Set design_doc_paths (docs needing creation/update)
+   e. Assign priority (non-negative integer, lower = higher priority, 1 = highest) via wrapper:
+      ```bash
+      .scrum/scripts/set-backlog-item-field.sh "$PBI_ID" priority <integer>
+      ```
+      **Integer only.** String labels (`"high"`/`"medium"`/`"low"`) violate the
+      schema and break the dashboard PBI Board. The wrapper rejects non-integers.
 4. Set status→"refined"
 5. Write backlog.json
 6. Report: count refined, total refined WIP
@@ -38,5 +44,5 @@ Ref: FR-003
 ## Exit Criteria
 
 - All selected PBIs status: refined
-- Every refined PBI: non-empty acceptance_criteria, ux_change set, design_doc_paths set
+- Every refined PBI: non-empty acceptance_criteria, ux_change set, design_doc_paths set, priority set (integer)
 - Total refined PBIs within 6-12 range

@@ -156,7 +156,12 @@ Before ANY `SendMessage` to a Developer teammate:
 
 1. `TaskGet`→check teammate status
 2. Status = running/in_progress→proceed with `SendMessage`
-3. Status = completed/failed/terminated→**re-spawn**:
+3. Status = failed/terminated→**re-spawn** (steps below)
+4. Status = completed→**conditional**:
+   - Have unfinished work to delegate (fix review findings, resume cycle, follow-up)?→**re-spawn**
+   - No remaining work?→**do NOT re-spawn**. Record completion only. Spawning a teammate with no concrete task wastes a turn and produces a 0-output finish event.
+
+Re-spawn procedure:
    a. Update `sprint.json` developer entry status: "failed"
    b. Spawn new teammate (same ID, `agents/developer.md`)
    c. Task prompt: remaining work only (e.g., "fix review findings in PBI-XXX" or "resume implementation for PBI-XXX")
@@ -165,6 +170,24 @@ Before ANY `SendMessage` to a Developer teammate:
    f. Send message to new teammate
 
 If `SendMessage` sent but no response after extended wait→re-check with `TaskGet`. Terminated→repeat steps above.
+
+**Scope:** This protocol applies to Developer teammates only. Sprint-end **reviewer sub-agents** (requirement-conformance / functional-quality / security / maintainability / docs-consistency) are single-shot — completion is the success path, not a failure to re-spawn. Wait for their `aspect-*.md` output file before deciding to retry.
+
+## Background Subagent + Stop Hook Reading
+
+When you spawn an Agent in background and immediately try to stop:
+
+- The Stop hook (`.claude/hooks/completion-gate.sh`) may fire with a "Reason:" message saying PBIs/sprint are not done.
+- That message is an **automated state-machine constraint**, not evidence that the spawned agent failed. The agent is still running.
+- Recognize the prefix `[SYSTEM-HOOK-OUTPUT: NOT user input. ... Do NOT terminate running teammates ...]`.
+
+Decision rule on receiving a Stop hook block right after a spawn:
+1. Run `TaskGet` on the just-spawned agent.
+2. running/in_progress → wait. Do not re-spawn. Do not switch tools.
+3. completed → verify the expected output artifact (e.g. `.scrum/reviews/aspect-*.md`) exists. If it exists, mark the work done. If not, then re-spawn.
+4. failed/terminated → re-spawn per Liveness Protocol.
+
+Do **not** re-spawn a reviewer based solely on Stop hook output. The first reviewer typically takes 60-120s to finish; re-spawning at <60s creates duplicate work and inflates communications.json noise.
 
 ## Communication Style
 
