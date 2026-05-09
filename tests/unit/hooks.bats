@@ -224,6 +224,21 @@ teardown() {
   [ "$decision" = "deny" ]
 }
 
+@test "status-gate.sh denies source MultiEdit during sprint_planning" {
+  mkdir -p .scrum
+  jq -n '{"phase": "sprint_planning", "current_sprint_id": "sprint-001"}' > .scrum/state.json
+
+  local event_json
+  event_json='{"tool_name":"MultiEdit","tool_input":{"file_path":"src/main.py"}}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/status-gate.sh'"
+  assert_success
+
+  local decision
+  decision="$(echo "$output" | jq -r '.decision')"
+  [ "$decision" = "deny" ]
+}
+
 @test "status-gate.sh denies source Edit during retrospective" {
   mkdir -p .scrum
   jq -n '{"phase": "retrospective", "current_sprint_id": "sprint-001"}' > .scrum/state.json
@@ -353,6 +368,16 @@ teardown() {
   [ "$decision" = "allow" ]
 }
 
+@test "setup-user.sh settings.json template includes MultiEdit in status-gate matcher" {
+  run grep -q '"matcher": "Write|Edit|MultiEdit"' "$PROJECT_ROOT/scripts/setup-user.sh"
+  assert_success
+}
+
+@test "setup-user.sh settings.json template excludes Bash from dashboard-event matcher" {
+  run grep -q '"matcher": "Write|Edit|MultiEdit|Agent"' "$PROJECT_ROOT/scripts/setup-user.sh"
+  assert_success
+}
+
 # ---------------------------------------------------------------------------
 # completion-gate.sh
 # ---------------------------------------------------------------------------
@@ -381,6 +406,60 @@ teardown() {
 
   run bash "$PROJECT_ROOT/hooks/completion-gate.sh"
   [ "$status" -eq 2 ]
+}
+
+@test "completion-gate.sh emits compressed status-grouped count for pbi_pipeline_active" {
+  # Verify the block message is a status-grouped count (not per-PBI listing)
+  # to keep context noise low when the hook fires on every SM turn-end.
+  mkdir -p .scrum
+  cp "$FIXTURES_DIR/valid-state.json" .scrum/state.json
+  cp "$FIXTURES_DIR/valid-sprint.json" .scrum/sprint.json
+  jq '.items = [
+    {"id":"pbi-001","status":"in_progress_design","priority":1,"name":"a","description":"x","sized":true},
+    {"id":"pbi-002","status":"in_progress_design","priority":2,"name":"b","description":"x","sized":true},
+    {"id":"pbi-003","status":"in_progress_impl","priority":3,"name":"c","description":"x","sized":true},
+    {"id":"pbi-004","status":"in_progress_merge","priority":4,"name":"d","description":"x","sized":true},
+    {"id":"pbi-005","status":"done","priority":5,"name":"e","description":"x","sized":true}
+  ]' "$FIXTURES_DIR/valid-backlog.json" > .scrum/backlog.json
+
+  run bash "$PROJECT_ROOT/hooks/completion-gate.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"3 in-flight"* ]]
+  [[ "$output" == *"2 design"* ]]
+  [[ "$output" == *"1 impl"* ]]
+  # in_progress_merge (terminal Dev status) and done (terminal) are excluded
+  [[ "$output" != *"merge"* ]]
+  [[ "$output" != *"pbi-001"* ]]
+  # Teammate guidance must be inlined: SubagentStart hook does not fire
+  # for Agent-tool spawns, so in_flight_hint() is a no-op here.
+  [[ "$output" == *"do NOT re-spawn"* ]]
+  [[ "$output" == *"TaskGet"* ]]
+  [[ "$output" == *"SendMessage"* ]]
+}
+
+@test "completion-gate.sh lists escalated PBI ids when resolution missing" {
+  # Escalated PBIs are rare and require operator action; keep ID listing.
+  mkdir -p .scrum
+  cp "$FIXTURES_DIR/valid-state.json" .scrum/state.json
+  cp "$FIXTURES_DIR/valid-sprint.json" .scrum/sprint.json
+  jq '.items[0].status = "escalated" | .items[0].id = "pbi-007"' "$FIXTURES_DIR/valid-backlog.json" > .scrum/backlog.json
+
+  run bash "$PROJECT_ROOT/hooks/completion-gate.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"escalated without resolution"* ]]
+  [[ "$output" == *"pbi-007"* ]]
+}
+
+@test "completion-gate.sh allows stop when escalated PBI has resolution recorded" {
+  mkdir -p .scrum
+  cp "$FIXTURES_DIR/valid-state.json" .scrum/state.json
+  cp "$FIXTURES_DIR/valid-sprint.json" .scrum/sprint.json
+  jq '.items[0].status = "escalated" | .items[0].id = "pbi-007"' "$FIXTURES_DIR/valid-backlog.json" > .scrum/backlog.json
+  mkdir -p .scrum/pbi/pbi-007
+  echo "resolved" > .scrum/pbi/pbi-007/escalation-resolution.md
+
+  run bash "$PROJECT_ROOT/hooks/completion-gate.sh"
+  assert_success
 }
 
 @test "completion-gate.sh allows stop when active PBI pipeline terminal" {
@@ -558,12 +637,12 @@ teardown() {
   assert_output "Write|Edit"
 }
 
-@test "setup-user.sh settings.json template includes Write|Edit matcher for PreToolUse" {
+@test "setup-user.sh settings.json template includes Write|Edit|MultiEdit matcher for PreToolUse" {
   # Validate the heredoc template source directly — no prereqs required
   run grep -A1 '"PreToolUse"' "$PROJECT_ROOT/scripts/setup-user.sh"
   assert_success
   # The matcher line must appear somewhere after PreToolUse in the file
-  run grep '"matcher": "Write|Edit"' "$PROJECT_ROOT/scripts/setup-user.sh"
+  run grep '"matcher": "Write|Edit|MultiEdit"' "$PROJECT_ROOT/scripts/setup-user.sh"
   assert_success
 }
 

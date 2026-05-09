@@ -191,28 +191,55 @@ EOF
     # allow-list captures Developer-side handoff (`in_progress_merge`),
     # SM-side cross-review staging (`awaiting_cross_review` / `cross_review`),
     # and terminal `done`. `escalated` requires a recorded resolution.
+    #
+    # Block message is compressed to a status-grouped count (e.g. "5
+    # in-flight (2 design, 1 impl, ...)") rather than per-PBI listing,
+    # because this hook fires on every SM turn-end and the verbose form
+    # bloated context across many parallel pipelines. Escalated PBIs
+    # without resolution are still listed by ID — they are rare and
+    # require explicit operator action.
     if [ ! -f "$BACKLOG_FILE" ]; then
       allow_stop
     fi
 
-    blocked_pipelines=""
-    while IFS=$'\t' read -r pbi_id pbi_status; do
-      [ -z "$pbi_id" ] && continue
-      case "$pbi_status" in
-        done|awaiting_cross_review|cross_review|in_progress_merge) ;;
-        escalated)
-          if [ ! -f ".scrum/pbi/$pbi_id/escalation-resolution.md" ]; then
-            blocked_pipelines="${blocked_pipelines}${blocked_pipelines:+, }${pbi_id} (escalated, no resolution)"
-          fi
-          ;;
-        in_progress_*)
-          blocked_pipelines="${blocked_pipelines}${blocked_pipelines:+, }${pbi_id} (status: ${pbi_status})"
-          ;;
-      esac
-    done < <(jq -r '.items[]? | [.id, .status] | @tsv' "$BACKLOG_FILE" 2>/dev/null)
+    in_flight_summary="$(jq -r '
+      [.items[]? | .status
+        | select(startswith("in_progress_"))
+        | select(. != "in_progress_merge")
+        | sub("^in_progress_"; "")]
+      | group_by(.)
+      | map("\(length) \(.[0])")
+      | join(", ")
+    ' "$BACKLOG_FILE" 2>/dev/null || echo "")"
 
-    if [ -n "$blocked_pipelines" ]; then
-      block_stop "Project phase 'pbi_pipeline_active': pipelines incomplete or unresolved: ${blocked_pipelines}. All PBI pipelines must be 'done' / 'awaiting_cross_review' / 'cross_review' / 'in_progress_merge' or 'escalated' (with resolution recorded) before stopping."
+    in_flight_total="$(jq -r '
+      [.items[]?
+        | select(.status | startswith("in_progress_"))
+        | select(.status != "in_progress_merge")]
+      | length
+    ' "$BACKLOG_FILE" 2>/dev/null || echo "0")"
+
+    escalated_unresolved=""
+    while IFS= read -r pbi_id; do
+      [ -z "$pbi_id" ] && continue
+      if [ ! -f ".scrum/pbi/$pbi_id/escalation-resolution.md" ]; then
+        escalated_unresolved="${escalated_unresolved}${escalated_unresolved:+, }${pbi_id}"
+      fi
+    done < <(jq -r '.items[]? | select(.status == "escalated") | .id' "$BACKLOG_FILE" 2>/dev/null)
+
+    if [ "$in_flight_total" -gt 0 ] || [ -n "$escalated_unresolved" ]; then
+      msg="PBI pipeline active"
+      if [ "$in_flight_total" -gt 0 ]; then
+        # Teammates run via Agent tool — SubagentStart/Stop hooks do NOT
+        # fire for them, so in_flight_hint() is a no-op here. Inline the
+        # guidance directly so SM does not misread the block as failure
+        # and re-spawn the same Teammate.
+        msg="${msg}: ${in_flight_total} in-flight (${in_flight_summary}). Teammates work in worktrees — do NOT re-spawn. Verify via TaskGet (same session) or SendMessage probe before assuming failure. Re-spawn only after confirming termination AND missing artifact."
+      fi
+      if [ -n "$escalated_unresolved" ]; then
+        msg="${msg}; escalated without resolution: ${escalated_unresolved}"
+      fi
+      block_stop "$msg"
     fi
     allow_stop
     ;;
