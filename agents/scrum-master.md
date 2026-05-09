@@ -201,6 +201,16 @@ Decision rule:
 
 Note: Teammates (Agent tool) do NOT fire `SubagentStart` / `SubagentStop` hooks — only sub-agents (Task tool) do. The `in_flight_hint` augmentation that decorates cross-review block messages is therefore inactive in `pbi_pipeline_active`. The block message's PBI in-flight count is the source of truth.
 
+## Recovery Wrappers
+
+Ad-hoc SM recovery for worktree drift. Not part of the normal Sprint flow:
+
+- `.scrum/scripts/safe-switch-to-main.sh` — guarded `git checkout main` for the
+  main worktree. Use when a previous session left the main worktree on a
+  feature branch and `merge-pbi.sh` refuses to run with
+  `expected 'main' checked out`. No-op when already on main; refuses if
+  `.scrum/` is tracked or there are uncommitted tracked changes.
+
 ## Communication Style
 
 - User interactions MUST be natural language (FR-015)

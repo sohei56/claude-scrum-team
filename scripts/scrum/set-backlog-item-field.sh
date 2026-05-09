@@ -21,6 +21,8 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 source "$HERE/lib/errors.sh"
 # shellcheck source=lib/atomic.sh
 source "$HERE/lib/atomic.sh"
+# shellcheck source=lib/queries.sh
+source "$HERE/lib/queries.sh"
 
 [ "$#" -eq 3 ] || fail E_INVALID_ARG "usage: set-backlog-item-field.sh <pbi-id> <field> <value>"
 PBI="$1"; FIELD="$2"; VALUE="$3"
@@ -78,8 +80,7 @@ SCHEMA="$ROOT/docs/contracts/scrum-state/backlog.schema.json"
 [ -f "$PATHF" ] || fail E_FILE_MISSING "$PATHF"
 
 # Pre-check the pbi exists (atomic_write cannot return "not found" by itself).
-jq -e --arg id "$PBI" '.items | map(select(.id==$id)) | length > 0' "$PATHF" >/dev/null \
-  || fail E_INVALID_ARG "pbi not found: $PBI"
+pbi_in_backlog "$PBI" "$PATHF" || fail E_INVALID_ARG "pbi not found: $PBI"
 
 # PBI and FIELD have passed strict whitelist case patterns above; VALUE_JSON is
 # either a fixed literal (`null`), a JSON-quoted string built via jq -Rs, or a

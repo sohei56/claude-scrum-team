@@ -25,6 +25,8 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 source "$HERE/lib/errors.sh"
 # shellcheck source=lib/atomic.sh
 source "$HERE/lib/atomic.sh"
+# shellcheck source=lib/queries.sh
+source "$HERE/lib/queries.sh"
 
 [ "$#" -eq 2 ] || fail E_INVALID_ARG "usage: update-backlog-status.sh <pbi-id> <status>"
 PBI="$1"; STATUS="$2"
@@ -41,8 +43,7 @@ PATHF=".scrum/backlog.json"
 SCHEMA="$ROOT/docs/contracts/scrum-state/backlog.schema.json"
 
 # Pre-check existence of the pbi-id (atomic_write cannot tell us "not found")
-jq -e --arg id "$PBI" '.items | map(select(.id==$id)) | length > 0' "$PATHF" >/dev/null \
-  || fail E_INVALID_ARG "pbi not found: $PBI"
+pbi_in_backlog "$PBI" "$PATHF" || fail E_INVALID_ARG "pbi not found: $PBI"
 
 atomic_write "$PATHF" \
   "(.items[] | select(.id == \"$PBI\")).status = \"$STATUS\"" \

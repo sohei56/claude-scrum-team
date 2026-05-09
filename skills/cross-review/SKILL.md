@@ -9,7 +9,7 @@ description: >
 disable-model-invocation: false
 ---
 
-## Role (post pbi-pipeline introduction)
+## Role
 
 Sprint-end cross-cutting quality gate. The PBI Pipeline already runs
 per-PBI impl + UT reviews via `codex-impl-reviewer` /
@@ -37,7 +37,9 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
 - `state.json` (overall project phase: `pbi_pipeline_active` or `review`)
 - `backlog.json` → all Sprint PBIs at
   `status ∈ {awaiting_cross_review, escalated}`. Each PBI's
-  `paths_touched`, `acceptance_criteria`, `title`.
+  `acceptance_criteria`, `title`.
+- `.scrum/pbi/<pbi-id>/state.json` → `paths_touched` (set by
+  `mark-pbi-ready-to-merge.sh` at handoff; not mirrored to `backlog.json`).
 - `requirements.md` + relevant `docs/design/specs/**`
 - Sprint base SHA: `sprint.base_sha` (for diff range)
 - Per-PBI pipeline final reviews (read for context, NOT re-evaluated):

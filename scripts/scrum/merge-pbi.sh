@@ -16,6 +16,8 @@ source "$HERE/lib/errors.sh"
 source "$HERE/lib/atomic.sh"
 # shellcheck source=lib/queries.sh
 source "$HERE/lib/queries.sh"
+# shellcheck source=lib/git-guards.sh
+source "$HERE/lib/git-guards.sh"
 
 [ "$#" -eq 1 ] || fail E_INVALID_ARG "usage: merge-pbi.sh <pbi-id>"
 PBI="$1"
@@ -23,9 +25,7 @@ case "$PBI" in pbi-[0-9]*) ;; *) fail E_INVALID_ARG "bad pbi-id: $PBI" ;; esac
 
 # Pre-flight: .scrum/ must remain untracked. When tracked, branch switches
 # silently delete state files that exist only on the current branch.
-if [ -n "$(git ls-files .scrum/ 2>/dev/null)" ]; then
-  fail E_INVALID_ARG ".scrum/ is tracked in git — runtime state must stay untracked. Recover with: git rm -r --cached .scrum/ && echo '.scrum/' >> .gitignore"
-fi
+assert_scrum_untracked
 
 STATE=".scrum/pbi/$PBI/state.json"
 [ -f "$STATE" ] || fail E_FILE_MISSING "$STATE"
@@ -52,9 +52,7 @@ trap "rmdir '$MERGE_LOCK_DIR' 2>/dev/null || true" EXIT
 
 # Working tree must have no staged/modified/deleted tracked-file changes
 # (untracked files are ignored — .scrum/ is not versioned)
-if git status --porcelain | grep -qv '^??'; then
-  fail E_INVALID_ARG "main worktree has uncommitted changes — refuse to merge"
-fi
+assert_clean_worktree "refuse to merge"
 
 PRE_HEAD="$(git rev-parse HEAD)"
 

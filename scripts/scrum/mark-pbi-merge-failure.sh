@@ -12,12 +12,14 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 source "$HERE/lib/errors.sh"
 # shellcheck source=lib/atomic.sh
 source "$HERE/lib/atomic.sh"
+# shellcheck source=lib/queries.sh
+source "$HERE/lib/queries.sh"
 
 [ "$#" -eq 4 ] || fail E_INVALID_ARG "usage: mark-pbi-merge-failure.sh <pbi-id> <kind> <pre-head-sha> <detail>"
 PBI="$1"; KIND="$2"; PRE="$3"; DETAIL="$4"
 case "$PBI" in pbi-[0-9]*) ;; *) fail E_INVALID_ARG "bad pbi-id: $PBI" ;; esac
 case "$KIND" in conflict|artifact_missing) ;; *) fail E_INVALID_ARG "bad kind: $KIND" ;; esac
-case "$PRE" in [0-9a-f]*) [ ${#PRE} -ge 7 ] || fail E_INVALID_ARG "pre-head sha too short" ;; *) fail E_INVALID_ARG "pre-head must be hex" ;; esac
+assert_hex_sha pre-head-sha "$PRE"
 
 STATE=".scrum/pbi/$PBI/state.json"
 [ -f "$STATE" ] || fail E_FILE_MISSING "$STATE"
@@ -48,7 +50,7 @@ atomic_write "$STATE" "$EXPR" "$ROOT/docs/contracts/scrum-state/pbi-state.schema
 # can fix and retry.
 if [ "$NEW_COUNT" -ge 3 ]; then
   BACKLOG=".scrum/backlog.json"
-  if [ -f "$BACKLOG" ] && jq -e --arg id "$PBI" '.items | map(select(.id==$id)) | length > 0' "$BACKLOG" >/dev/null; then
+  if pbi_in_backlog "$PBI" "$BACKLOG"; then
     "$HERE/update-backlog-status.sh" "$PBI" escalated
   fi
 fi

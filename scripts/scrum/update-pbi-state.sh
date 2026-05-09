@@ -105,10 +105,7 @@ while [ "$#" -ge 2 ]; do
       EXPR="$EXPR | .worktree = \"$V\""
       ;;
     base_sha|head_sha|merged_sha)
-      case "$V" in
-        [0-9a-f]*) [ ${#V} -ge 7 ] && [ ${#V} -le 40 ] || fail E_INVALID_ARG "$F length must be 7..40: $V" ;;
-        *) fail E_INVALID_ARG "$F must be hex sha: $V" ;;
-      esac
+      assert_hex_sha "$F" "$V"
       EXPR="$EXPR | .$F = \"$V\""
       ;;
     ready_at|merged_at)

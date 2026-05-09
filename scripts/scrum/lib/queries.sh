@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # scripts/scrum/lib/queries.sh — read-only helpers for .scrum/ state.
 # Sourced by scripts/scrum/*.sh that need to read backlog/sprint state.
-# No dependencies (no errors.sh, no atomic.sh) so it can be sourced standalone.
+# `get_pbi_status` and `pbi_in_backlog` are pure (no error-exit) and can be
+# sourced standalone. The PBI-worktree helpers below call `fail` from
+# lib/errors.sh — ensure errors.sh is sourced before invoking them.
 
 if [ "${_SCRUM_QUERIES_SH_LOADED:-}" = "1" ]; then
   # shellcheck disable=SC2317
@@ -41,4 +43,35 @@ pbi_in_backlog() {
   jq -e --arg id "$pbi_id" \
     '.items | map(select(.id == $id)) | length > 0' \
     "$backlog" >/dev/null 2>&1
+}
+
+# read_pbi_worktree_state <pbi_id>
+# Read .scrum/pbi/<pbi-id>/state.json and populate the globals
+# `PBI_WT`, `PBI_BRANCH`, `PBI_BASE_SHA`. Fails (via lib/errors.sh::fail)
+# if state.json is missing, the worktree directory does not exist, or
+# `.branch` is unset. `.base_sha` may be empty — the caller checks if
+# they need it.
+read_pbi_worktree_state() {
+  local pbi_id="$1"
+  local state=".scrum/pbi/$pbi_id/state.json"
+  [ -f "$state" ] || fail E_FILE_MISSING "$state"
+  # shellcheck disable=SC2034  # consumed by callers after this returns
+  PBI_WT="$(jq -r '.worktree // ""' "$state")"
+  # shellcheck disable=SC2034
+  PBI_BRANCH="$(jq -r '.branch // ""' "$state")"
+  # shellcheck disable=SC2034
+  PBI_BASE_SHA="$(jq -r '.base_sha // ""' "$state")"
+  [ -n "$PBI_WT" ] && [ -d "$PBI_WT" ] || fail E_FILE_MISSING "PBI worktree missing: $PBI_WT"
+  [ -n "$PBI_BRANCH" ] || fail E_INVALID_ARG "state.branch unset for $pbi_id"
+}
+
+# assert_pbi_worktree_branch <worktree_path> <expected_branch>
+# Verify that the worktree's current branch matches the expected branch.
+assert_pbi_worktree_branch() {
+  local wt="$1" expected="$2"
+  local cur
+  cur="$(git -C "$wt" rev-parse --abbrev-ref HEAD)"
+  if [ "$cur" != "$expected" ]; then
+    fail E_INVALID_ARG "worktree on wrong branch: have=$cur expected=$expected"
+  fi
 }

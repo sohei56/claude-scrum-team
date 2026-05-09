@@ -11,7 +11,7 @@ teardown() {
   scrum_state_teardown
 }
 
-@test "update-state-phase: implementation → review" {
+@test "update-state-phase: → review" {
   run env SCRUM_VALIDATOR_OVERRIDE=jsonschema-cli "$PROJECT_ROOT/scripts/scrum/update-state-phase.sh" review
   [ "$status" -eq 0 ]
   run jq -r '.phase' "$TEST_TMP/.scrum/state.json"
