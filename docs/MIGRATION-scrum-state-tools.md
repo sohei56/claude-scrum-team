@@ -21,6 +21,7 @@ Agents must no longer edit `.scrum/*.json` directly. All writes flow through val
 | `update_state ".scrum/pbi/$PBI/" '.design_round = 1'` (PR #22 inline helper) | `.scrum/scripts/update-pbi-state.sh "$PBI" design_round 1` (variadic field/value pairs in one atomic write) |
 | `printf '%s\t%s\t...\n' >> .scrum/pbi/$PBI/pipeline.log` | `.scrum/scripts/append-pbi-log.sh "$PBI" <stage> <round> <event> <detail>` |
 | `jq '(.items[]\|select(.id==$id)).sprint_id = "sprint-NNN"' .scrum/backlog.json > tmp && mv ...` | `.scrum/scripts/set-backlog-item-field.sh "$PBI" sprint_id sprint-NNN` (also: `implementer_id`, `review_doc_path`, `catalog_targets`) |
+| Create `.scrum/sprint.json` at planning AND set `state.current_sprint_id` (was: raw `jq` + `mv` + separate `update-state-phase.sh` pair, which leaked the lag bug surfaced by IMP-003/IMP-009/imp-s28-02) | `.scrum/scripts/init-sprint.sh <sprint-id> [--goal <goal>] [--type development\|integration]` (writes both files; refuses if `sprint.json` already exists) |
 
 `update-pbi-state.sh` accepts variadic field/value pairs (the `phase`
 field was removed in v2; lifecycle moves through
@@ -79,11 +80,9 @@ The wrappers probe for a JSON Schema validator at runtime via `lib/check-validat
 
 The current wrapper set covers the pbi-pipeline migration, the four migrated skill SKILL files, and the sprint-planning per-PBI item-field updates. Remaining gaps:
 
-1. **Sprint creation / init** (sprint-planning step 8) requires a fresh `.scrum/sprint.json`; no `init-sprint.sh` wrapper exists yet — the existing wrappers all assume the file is present (`E_FILE_MISSING` otherwise).
+1. ~~**Sprint creation / init** (sprint-planning step 8) requires a fresh `.scrum/sprint.json`; no `init-sprint.sh` wrapper exists yet — the existing wrappers all assume the file is present (`E_FILE_MISSING` otherwise).~~ **Resolved**: `init-sprint.sh` lands `.scrum/sprint.json` AND updates `state.current_sprint_id` atomically per call. Closes the recurring `current_sprint_id` lag bug surfaced by retrospectives across target projects (IMP-003 / IMP-009 / imp-s28-02).
 2. **Append-only siblings** — `.scrum/sprint-history.json`, `.scrum/improvements.json`, `.scrum/test-results.json`, `.scrum/session-map.json` have no schema and no wrapper. Out of scope for this PR; defer until the MVP soaks.
 3. **Read-side validation** — `dashboard/app.py` and the various hooks that read `.scrum/*.json` do not validate against the schemas. Defensive read-side patches (e.g. UnicodeDecodeError handling) stay; schema-driven validation is a future hardening pass.
-
-Until gap #1 lands, sprint-planning step 8 (sprint.json creation) **will fail at runtime** when the hook fires. Steps 9 and 10.2 are now covered by `set-backlog-item-field.sh`.
 
 ## Worktree / merge governance wrappers (2026-05-04)
 

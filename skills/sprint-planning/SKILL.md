@@ -34,11 +34,18 @@ disable-model-invocation: false
 5. **Evaluate + split oversized PBIs**: Too large→create child PBIs (status: "refined", parent_pbi_id set, split acceptance_criteria, copy design_doc_paths/ux_change)→remove parent from Sprint→replace with children→user confirmation
 6. developer_count = min(selected PBI count, 6). **1 Developer = 1 PBI (hard constraint).** >6 PBIs→select 6, defer rest
 7. Assign implementers: format `dev-001-s{N}`, `dev-002-s{N}` (zero-pad mandatory, -s{N} suffix mandatory, no short forms). No reviewer assignment — Sprint-end cross-review is performed by the Scrum Master via independent reviewer sub-agents (FR-009 Layer 2)
-8. Create sprint.json
-
-    > **TODO(scrum-state-tools):** Needs `init-sprint.sh` wrapper —
-    > existing wrappers require `.scrum/sprint.json` to exist and raw
-    > Write/Edit is blocked. See `docs/MIGRATION-scrum-state-tools.md`.
+8. **Create sprint.json + update state.current_sprint_id (atomic
+   pair).** `init-sprint.sh` creates `.scrum/sprint.json` at
+   `status: "planning"` AND writes `state.current_sprint_id` in the
+   same invocation. Keeping the two in sync at Sprint start prevents
+   the recurring `current_sprint_id` lag that `completion-gate.sh`
+   catches mid-Sprint:
+   ```bash
+   .scrum/scripts/init-sprint.sh "$SPRINT_ID" --goal "$GOAL" --type development
+   ```
+   If you skip this wrapper or only create sprint.json by other means,
+   `state.current_sprint_id` will still point at the previous Sprint
+   and downstream phase transitions will block.
 
 9. Update backlog.json: sprint_id, implementer_id. For each PBI in
    the Sprint:
