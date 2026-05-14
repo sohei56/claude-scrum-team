@@ -155,7 +155,22 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
          .scrum/reviews/aspect-maintainability-review.md \
          .scrum/reviews/aspect-docs-consistency-review.md
    ```
-7. **Spawn 5 reviewers in parallel** via the `Agent` tool. **No
+7. **Announce expected duration to the user (mandatory).** Before
+   spawning, output a single short notice so the user does not
+   interpret silence or `completion-gate.sh` Stop-blocks as failure
+   and try to `/clear` the session mid-review. cars_auction_scraping_proto
+   retrospectives showed this UX failure 5 Sprints in a row
+   (imp-005 / imp-008 / imp-010 / imp-014 / imp-016) before the
+   announcement convention was made explicit. Use this exact wording
+   so the user learns to recognise it:
+
+   > "Cross-review: 5 アスペクト並列起動します。完了まで 60-120 秒（最大
+   > 5 分）。その間 `completion-gate.sh` がセッション終了をブロックします。
+   > もし 5 分以上応答がなければここに声をかけてください。"
+
+   Then, and only then, spawn the reviewers in the next step.
+
+8. **Spawn 5 reviewers in parallel** via the `Agent` tool. **No
    per-PBI fan-out — each reviewer receives the whole Sprint.**
    Single `Agent` call per aspect:
    - `requirement-conformance-reviewer` → `requirements.md`,
@@ -195,9 +210,9 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
    rule meant for Developer teammates. If the expected `aspect-*.md`
    file does not appear within ~5 minutes after `TaskGet` shows
    completed, then and only then re-spawn that single reviewer.
-8. **Collect aspect verdicts + Findings.** Persist each reviewer's
+9. **Collect aspect verdicts + Findings.** Persist each reviewer's
    raw response to its `aspect-*.md` output file.
-9. **Build per-PBI digests.** For each Sprint PBI write
+10. **Build per-PBI digests.** For each Sprint PBI write
    `.scrum/reviews/<pbi-id>-review.md` containing:
    - Header naming the PBI + aspect-verdict matrix (5 cells).
    - Findings filtered to that PBI (a Finding tagged with multiple
@@ -206,7 +221,7 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
    - Aggregate verdict for the PBI: PASS only when no aspect 1/2/3
      Critical/High Finding involves it (aspect 4/5 Findings do NOT
      block the PBI; they trigger follow-up PBI generation instead).
-10. **Handle FAIL — aspect-specific routing.**
+11. **Handle FAIL — aspect-specific routing.**
    - **Aspects 1/2/3 (req-conformance / functional-quality /
      security):** for each PBI named in any Critical/High Finding
      under those aspects:
@@ -238,7 +253,7 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
      ```
      `<aspect>` ∈ `{maintainability, docs-consistency}`. The PBI itself
      is **not** reverted for these aspects.
-11. **Re-loop policy.** If any aspect 1/2/3 reverted ≥ 1 PBI to
+12. **Re-loop policy.** If any aspect 1/2/3 reverted ≥ 1 PBI to
     `in_progress_impl`, the Sprint is incomplete. Wait for the
     Developer cycle to bring those PBIs back to
     `awaiting_cross_review`, then **re-run the entire skill from
@@ -246,7 +261,7 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
     static analysis runs again; ALL 5 aspects re-evaluate). Aspect
     4/5 follow-up PBI generation is fire-and-forget — they do NOT
     cause a re-loop.
-12. **Mark passing PBIs done.** When no aspect 1/2/3 Critical/High
+13. **Mark passing PBIs done.** When no aspect 1/2/3 Critical/High
     Finding remains for a PBI:
     ```bash
     .scrum/scripts/update-backlog-status.sh "$PBI_ID" done
