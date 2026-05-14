@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# scripts/scrum/init-sprint.sh — initialise a fresh Sprint at planning start.
+# Usage: init-sprint.sh <sprint-id> [--goal <goal>] [--type development|integration]
+#
+# Creates `.scrum/sprint.json` (status=planning, started_at=now, pbi_ids=[],
+# developer_count=0, developers=[]) AND updates `.scrum/state.json.current_sprint_id`
+# in the same call. Atomicity within a single Sprint init is the whole point —
+# leaving these in sync prevents the recurring class of bug where
+# `state.current_sprint_id` lags behind `sprint.id` (caught by completion-gate
+# on Stop, see IMP-003/IMP-009/imp-s28-02 in target-project retrospectives).
+#
+# Refuses if .scrum/sprint.json already exists. Use this script exactly once
+# per Sprint, then drive lifecycle via update-sprint-status.sh /
+# freeze-sprint-base.sh / set-sprint-developer.sh.
+set -euo pipefail
+HERE="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$HERE/../.." && pwd)"
+# shellcheck source=lib/errors.sh
+source "$HERE/lib/errors.sh"
+# shellcheck source=lib/atomic.sh
+source "$HERE/lib/atomic.sh"
+
+SPRINT_ID=""
+GOAL=""
+TYPE="development"
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --goal) [ "$#" -ge 2 ] || fail E_INVALID_ARG "--goal needs value"; GOAL="$2"; shift 2 ;;
+    --type) [ "$#" -ge 2 ] || fail E_INVALID_ARG "--type needs value"; TYPE="$2"; shift 2 ;;
+    -*)     fail E_INVALID_ARG "unknown flag: $1" ;;
+    *)
+      if [ -z "$SPRINT_ID" ]; then
+        SPRINT_ID="$1"; shift
+      else
+        fail E_INVALID_ARG "unexpected positional: $1"
+      fi
+      ;;
+  esac
+done
+
+[ -n "$SPRINT_ID" ] || fail E_INVALID_ARG "usage: init-sprint.sh <sprint-id> [--goal <goal>] [--type development|integration]"
+case "$SPRINT_ID" in sprint-[0-9]*) ;; *) fail E_INVALID_ARG "bad sprint-id: $SPRINT_ID" ;; esac
+case "$TYPE" in development|integration) ;; *) fail E_INVALID_ARG "bad type: $TYPE (expected development|integration)" ;; esac
+
+SPRINT=".scrum/sprint.json"
+STATE=".scrum/state.json"
+SPRINT_SCHEMA="$ROOT/docs/contracts/scrum-state/sprint.schema.json"
+STATE_SCHEMA="$ROOT/docs/contracts/scrum-state/state.schema.json"
+
+[ ! -f "$SPRINT" ] || fail E_INVALID_ARG "$SPRINT already exists — refusing to overwrite"
+[ -f "$STATE" ]    || fail E_FILE_MISSING "$STATE"
+
+NOW="$(_iso_utc_now)"
+TMP="$(_make_tmp_path "$SPRINT")"
+
+# Build sprint.json. `goal` is null when --goal not supplied; the schema permits
+# null/string. Developer count starts at 0 (set later by spawn-teammates).
+if [ -n "$GOAL" ]; then
+  jq -n --arg id "$SPRINT_ID" --arg goal "$GOAL" --arg type "$TYPE" --arg now "$NOW" '{
+    id: $id, goal: $goal, type: $type, status: "planning",
+    pbi_ids: [], developer_count: 0, developers: [],
+    started_at: $now, completed_at: null
+  }' > "$TMP"
+else
+  jq -n --arg id "$SPRINT_ID" --arg type "$TYPE" --arg now "$NOW" '{
+    id: $id, goal: null, type: $type, status: "planning",
+    pbi_ids: [], developer_count: 0, developers: [],
+    started_at: $now, completed_at: null
+  }' > "$TMP"
+fi
+
+if ! err="$(_validate_against_schema "$TMP" "$SPRINT_SCHEMA" 2>&1)"; then
+  rm -f "$TMP"
+  fail E_SCHEMA "init produced invalid sprint.json: $err"
+fi
+mv "$TMP" "$SPRINT"
+
+# Update state.json.current_sprint_id via the standard atomic_write helper.
+# If this step fails (e.g. schema violation), sprint.json is left behind for
+# manual cleanup — but that is preferable to the silent drift the wrapper
+# was created to prevent.
+atomic_write "$STATE" \
+  ".current_sprint_id = \"$SPRINT_ID\"" \
+  "$STATE_SCHEMA"
+
+printf '[init-sprint] created %s (type=%s) and set state.current_sprint_id=%s\n' \
+  "$SPRINT_ID" "$TYPE" "$SPRINT_ID"

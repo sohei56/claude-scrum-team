@@ -141,49 +141,98 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
    set `skipped_reason` to a short string (e.g. `"no python/shell
    sources in diff"`); the maintainability reviewer will degrade
    accordingly.
-6. **Spawn 5 reviewers in parallel** via the `Agent` tool. **No
+6. **Clear stale aspect outputs from prior Sprint.** Reviewer agents
+   sometimes read existing `aspect-*.md` files before writing, and
+   produce output anchored to the prior Sprint's findings. Delete
+   them before spawning so each reviewer starts from a clean slate
+   (the per-Sprint round counter `n` only applies to
+   `static-analysis-r*.json`; aspect outputs are overwritten in
+   place):
+   ```bash
+   rm -f .scrum/reviews/aspect-requirement-conformance-review.md \
+         .scrum/reviews/aspect-functional-quality-review.md \
+         .scrum/reviews/aspect-security-review.md \
+         .scrum/reviews/aspect-maintainability-review.md \
+         .scrum/reviews/aspect-docs-consistency-review.md
+   ```
+7. **Announce expected duration to the user (mandatory).** Before
+   spawning, output a single short notice so the user does not
+   interpret silence or `completion-gate.sh` Stop-blocks as failure
+   and try to `/clear` the session mid-review. cars_auction_scraping_proto
+   retrospectives showed this UX failure 5 Sprints in a row
+   (imp-005 / imp-008 / imp-010 / imp-014 / imp-016) before the
+   announcement convention was made explicit. Use this exact wording
+   so the user learns to recognise it:
+
+   > "Cross-review: 5 アスペクト並列起動します。完了まで 60-120 秒（最大
+   > 5 分）。その間 `completion-gate.sh` がセッション終了をブロックします。
+   > もし 5 分以上応答がなければここに声をかけてください。"
+
+   Then, and only then, spawn the reviewers in the next step.
+
+8. **Spawn 5 reviewers in parallel** via the `Agent` tool. **No
    per-PBI fan-out — each reviewer receives the whole Sprint.**
-   Single `Agent` call per aspect:
+   Single `Agent` call per aspect.
+
+   **File ownership reminder (responsibility split).** Aspect
+   reviewers are intentionally Read-only (no `Write` tool — see
+   `agents/*-reviewer.md` `tools:`). They return the review content
+   **as their final assistant message**. The Scrum Master persists
+   that message to `.scrum/reviews/aspect-*.md` in Step 9 of this
+   skill. Do NOT prompt reviewers to write the file themselves — that
+   creates the failure mode logged in kaiten_bot imp-s27 / imp-s29-04
+   where reviewers either refuse (Strict Rule "DO NOT modify files")
+   or silently do nothing. Tell each reviewer explicitly: "Return the
+   review content as your final message; the orchestrator will
+   persist it to <path>."
+
+   Inputs and destination file per aspect:
    - `requirement-conformance-reviewer` → `requirements.md`,
      `docs/design/specs/**` (touched), Sprint PBI summary (id, title,
      `acceptance_criteria`, `paths_touched`), Sprint-wide source path
-     list. Output target:
+     list. SM persists final message to
      `.scrum/reviews/aspect-requirement-conformance-review.md`.
    - `functional-quality-reviewer` → same Sprint summary + source
      list, with explicit reminder that scope is **cross-PBI seams
-     only**. Output target:
+     only**. SM persists to
      `.scrum/reviews/aspect-functional-quality-review.md`.
    - `security-reviewer` → Sprint-wide source path list +
-     `requirements.md`. Output target:
+     `requirements.md`. SM persists to
      `.scrum/reviews/aspect-security-review.md`.
    - `maintainability-reviewer` → Sprint-wide source list +
-     `.scrum/reviews/static-analysis-r${ROUND}.json`. Output target:
+     `.scrum/reviews/static-analysis-r${ROUND}.json`. SM persists to
      `.scrum/reviews/aspect-maintainability-review.md`.
    - `docs-consistency-reviewer` → `docs/**` +
-     `.scrum/reviews/sprint-impl-diff.txt` + Sprint PBI summary.
-     Output target:
-     `.scrum/reviews/aspect-docs-consistency-review.md`.
+     `.scrum/reviews/sprint-impl-diff.txt` + Sprint PBI summary. SM
+     persists to `.scrum/reviews/aspect-docs-consistency-review.md`.
 
    Do NOT pass: PBI descriptions, dev communications, `.scrum/`
    pipeline state. (Reviewers 1/2/5 may receive PBI `id` + `title` +
    `paths_touched` only — the minimum needed for PBI-mapping.)
 
-   **Reviewer wait barrier.** After spawning, wait for ALL 5
-   `.scrum/reviews/aspect-*.md` files to exist with mtime ≥ the spawn
-   timestamp. Do NOT attempt to stop the session in between. Reviewer
-   completion typically takes 60-120s — do NOT interpret a Stop hook
-   block (`completion-gate.sh` "PBIs not done") as reviewer failure.
-   Use `TaskGet` to verify status before re-spawning. See
-   `agents/scrum-master.md` § Background Subagent + Stop Hook Reading.
+   **Reviewer wait barrier.** After spawning, wait for all 5
+   reviewer Tasks to reach `Status = completed`. Do NOT attempt to
+   stop the session in between. Reviewer completion typically takes
+   60-120s — do NOT interpret a Stop hook block
+   (`completion-gate.sh` "PBIs not done") as reviewer failure.
+   Persistence to `aspect-*.md` is Step 9's job, after `Status =
+   completed` — do NOT wait for the file to appear before Step 9.
+   See `agents/scrum-master.md` § Background Subagent + Stop Hook
+   Reading.
 
    **Reviewers are single-shot.** Their `Status = completed` is the
    success signal — do NOT apply the Teammate Liveness Protocol re-spawn
-   rule meant for Developer teammates. If the expected `aspect-*.md`
-   file does not appear within ~5 minutes after `TaskGet` shows
-   completed, then and only then re-spawn that single reviewer.
-7. **Collect aspect verdicts + Findings.** Persist each reviewer's
-   raw response to its `aspect-*.md` output file.
-8. **Build per-PBI digests.** For each Sprint PBI write
+   rule meant for Developer teammates. If a reviewer's final message
+   is missing or empty, re-spawn that single reviewer.
+9. **Persist aspect reviews.** For each completed reviewer Task,
+   read its final assistant message and write it verbatim to the
+   per-aspect file under `.scrum/reviews/aspect-<aspect>-review.md`.
+   This file ownership lives with the SM (Write tool) — reviewers
+   themselves do not have the Write tool by design, so this step is
+   not optional. If the reviewer's message is empty / lacks a
+   "Verdict:" line, re-spawn that reviewer instead of writing a
+   stub.
+10. **Build per-PBI digests.** For each Sprint PBI write
    `.scrum/reviews/<pbi-id>-review.md` containing:
    - Header naming the PBI + aspect-verdict matrix (5 cells).
    - Findings filtered to that PBI (a Finding tagged with multiple
@@ -192,7 +241,7 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
    - Aggregate verdict for the PBI: PASS only when no aspect 1/2/3
      Critical/High Finding involves it (aspect 4/5 Findings do NOT
      block the PBI; they trigger follow-up PBI generation instead).
-9. **Handle FAIL — aspect-specific routing.**
+11. **Handle FAIL — aspect-specific routing.**
    - **Aspects 1/2/3 (req-conformance / functional-quality /
      security):** for each PBI named in any Critical/High Finding
      under those aspects:
@@ -224,7 +273,7 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
      ```
      `<aspect>` ∈ `{maintainability, docs-consistency}`. The PBI itself
      is **not** reverted for these aspects.
-10. **Re-loop policy.** If any aspect 1/2/3 reverted ≥ 1 PBI to
+12. **Re-loop policy.** If any aspect 1/2/3 reverted ≥ 1 PBI to
     `in_progress_impl`, the Sprint is incomplete. Wait for the
     Developer cycle to bring those PBIs back to
     `awaiting_cross_review`, then **re-run the entire skill from
@@ -232,7 +281,7 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
     static analysis runs again; ALL 5 aspects re-evaluate). Aspect
     4/5 follow-up PBI generation is fire-and-forget — they do NOT
     cause a re-loop.
-11. **Mark passing PBIs done.** When no aspect 1/2/3 Critical/High
+13. **Mark passing PBIs done.** When no aspect 1/2/3 Critical/High
     Finding remains for a PBI:
     ```bash
     .scrum/scripts/update-backlog-status.sh "$PBI_ID" done

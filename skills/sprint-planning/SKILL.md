@@ -34,11 +34,18 @@ disable-model-invocation: false
 5. **Evaluate + split oversized PBIs**: Too large→create child PBIs (status: "refined", parent_pbi_id set, split acceptance_criteria, copy design_doc_paths/ux_change)→remove parent from Sprint→replace with children→user confirmation
 6. developer_count = min(selected PBI count, 6). **1 Developer = 1 PBI (hard constraint).** >6 PBIs→select 6, defer rest
 7. Assign implementers: format `dev-001-s{N}`, `dev-002-s{N}` (zero-pad mandatory, -s{N} suffix mandatory, no short forms). No reviewer assignment — Sprint-end cross-review is performed by the Scrum Master via independent reviewer sub-agents (FR-009 Layer 2)
-8. Create sprint.json
-
-    > **TODO(scrum-state-tools):** Needs `init-sprint.sh` wrapper —
-    > existing wrappers require `.scrum/sprint.json` to exist and raw
-    > Write/Edit is blocked. See `docs/MIGRATION-scrum-state-tools.md`.
+8. **Create sprint.json + update state.current_sprint_id (atomic
+   pair).** `init-sprint.sh` creates `.scrum/sprint.json` at
+   `status: "planning"` AND writes `state.current_sprint_id` in the
+   same invocation. Keeping the two in sync at Sprint start prevents
+   the recurring `current_sprint_id` lag that `completion-gate.sh`
+   catches mid-Sprint:
+   ```bash
+   .scrum/scripts/init-sprint.sh "$SPRINT_ID" --goal "$GOAL" --type development
+   ```
+   If you skip this wrapper or only create sprint.json by other means,
+   `state.current_sprint_id` will still point at the previous Sprint
+   and downstream phase transitions will block.
 
 9. Update backlog.json: sprint_id, implementer_id. For each PBI in
    the Sprint:
@@ -70,7 +77,52 @@ disable-model-invocation: false
 > corrupt each other at write time. Conflicts surface during
 > `pbi-merge` and the assigned Developer rebases. Pre-separation is
 > still required for catalog files (see `catalog-contention.md`).
-11. **Present Sprint summary + options**:
+
+11. **Source-file overlap pre-flight** (merge-conflict prevention):
+
+    Worktree isolation prevents *write-time* corruption but does not
+    prevent *merge-time* conflicts. Three retrospective patterns from
+    target projects produced large rebase-conflict blasts and **must**
+    be screened at planning time:
+
+    - **Epic + leaf overlap.** An "Epic" PBI that touches many files
+      across modules, scheduled alongside individual leaf PBIs in the
+      same module. kaiten_bot Sprint 30 (`imp-s30-02`): 11-file
+      conflict across 5 PBIs because the Epic and leaves were
+      parallel. **Rule:** if a PBI's predicted footprint exceeds
+      ~5 source files OR explicitly says "all strategies" / "全
+      strategies" / "cross-module", schedule it as a single-PBI
+      Sprint (or merge it last after all leaves).
+    - **Rename / module-shuffle PBIs in parallel.** kaiten_bot Sprint
+      24 (`imp-023`): two rename PBIs hit 11 overlapping files.
+      **Rule:** rename / file-move / module-restructure PBIs are
+      serial — at most one per Sprint, or chained on a single
+      developer with `depends_on_pbi_ids` set.
+    - **Shared design-spec edits beyond catalog_targets.** kaiten_bot
+      Sprint 19 (`imp-006`): three PBIs all touched the same spec
+      section. The `catalog_targets` check in step 10 covers spec
+      *files*, not section-level overlap. **Rule:** if 3+ PBIs in the
+      Sprint touch the same `docs/design/specs/<file>.md`, carve out
+      a separate "spec consolidation" PBI to be merged first and
+      have the others rebase onto it.
+
+    Procedure for SM:
+    1. For each PBI, sketch the **predicted source paths** from
+       description + acceptance_criteria + (if available) similar
+       prior PBIs' `paths_touched`.
+    2. Build a path-overlap matrix across PBIs in the Sprint.
+    3. For any two PBIs sharing ≥1 predicted path AND assigned to
+       different developers, apply one of the three rules above.
+    4. Record the decision visibly: either re-assign to single
+       developer with `depends_on_pbi_ids`, or split into pre/post
+       PBIs, or remove the lower-priority PBI from the Sprint and
+       defer.
+
+    This is the planning-time defense. Runtime defense (per-PBI
+    worktree + `merge-pbi.sh` 3-strike escalation) still applies, but
+    is far more expensive to recover from once it fires.
+
+12. **Present Sprint summary + options**:
     - 1. Start Sprint
     - 2. Adjust Sprint Goal
     - 3. Change PBI selection
@@ -78,7 +130,7 @@ disable-model-invocation: false
     - 5. View backlog
     - 6. Other
     → Wait for user selection
-12. **On "Start Sprint"**: Enable catalog-config.json entries→run scaffold-design-spec→spawn-teammates
+13. **On "Start Sprint"**: Enable catalog-config.json entries→run scaffold-design-spec→spawn-teammates
 
 Ref: FR-004, FR-005, FR-006, FR-007, FR-008
 

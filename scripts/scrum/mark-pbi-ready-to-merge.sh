@@ -22,9 +22,14 @@ STATE=".scrum/pbi/$PBI/state.json"
 
 HEAD="$(git -C "$PBI_WT" rev-parse HEAD)"
 PATHS=()
+# --diff-filter=AMR: include Added, Modified, Renamed paths only.
+# Excluding Deleted paths prevents `merge-pbi.sh` artifact_missing
+# false-positives when a PBI intentionally deletes files (the deleted
+# paths would otherwise be recorded in `paths_touched` and then trip
+# the `git ls-files --error-unmatch` artifact check post-merge).
 while IFS= read -r line; do
   PATHS+=("$line")
-done < <(git -C "$PBI_WT" diff --name-only "$PBI_BASE_SHA..HEAD")
+done < <(git -C "$PBI_WT" diff --name-only --diff-filter=AMR "$PBI_BASE_SHA..HEAD")
 if [ "${#PATHS[@]}" -eq 0 ]; then
   fail E_INVALID_ARG "no commits beyond base — refusing to mark ready_to_merge"
 fi
