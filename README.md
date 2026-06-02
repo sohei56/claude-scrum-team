@@ -130,7 +130,7 @@ cd /path/to/your/project
 sh /path/to/claude-scrum-team/scrum-start.sh
 ```
 
-The script validates prerequisites (auto-installing `textual` and `watchdog` if missing), copies agent definitions, Skills, hooks, and the design catalog to your project's `.claude/` directory, and launches a tmux session with Claude Code (Scrum Master) and the TUI dashboard.
+The script validates prerequisites (auto-installing `textual` and `watchdog` if missing), copies agent definitions, Skills, hooks, shared rules, and the design catalog to your project's `.claude/` directory, and launches a tmux session with Claude Code (Scrum Master) and the TUI dashboard.
 
 For detailed setup instructions, see [quickstart.md](docs/quickstart.md).
 
@@ -156,6 +156,7 @@ For detailed setup instructions, see [quickstart.md](docs/quickstart.md).
 - **`agents/`** — Scrum Master (Delegate mode) and Developer agent definitions, plus project-managed specialist sub-agents (cross-review + PBI Pipeline). Catalog: [docs/contracts/sub-agents.md](docs/contracts/sub-agents.md)
 - **`skills/`** — 15 ceremony Skills with mandatory Inputs/Outputs
 - **`hooks/`** — Phase gates, completion gates, quality gates, dashboard events, session context
+- **`rules/`** — Cross-cutting Scrum context (team map, SSOT locations, communication protocol) auto-loaded by every agent via `.claude/rules/`
 - **`dashboard/app.py`** — Textual TUI with real-time panels
 - **`scripts/`** — Status line, user setup, contributor setup
 - **`.scrum/`** — Runtime state (JSON, gitignored)

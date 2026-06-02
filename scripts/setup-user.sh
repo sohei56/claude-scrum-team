@@ -124,6 +124,14 @@ echo "Copying hook scripts to $TARGET_DIR/.claude/hooks/..."
 copy_tree "$PROJECT_ROOT/hooks/*.sh" "$TARGET_DIR/.claude/hooks" true
 copy_tree "$PROJECT_ROOT/hooks/lib/*.sh" "$TARGET_DIR/.claude/hooks/lib"
 
+# --- Copy shared rules ---
+# `.claude/rules/*.md` is auto-loaded by Claude Code at session start for the
+# main session, sub-agents, and Agent Teams teammates — every Scrum agent
+# reads them. Contains the cross-cutting Scrum context (team map, SSOT
+# locations, communication protocol, uncertainty handling).
+echo "Copying shared rules to $TARGET_DIR/.claude/rules/..."
+copy_tree "$PROJECT_ROOT/rules/*.md" "$TARGET_DIR/.claude/rules"
+
 # --- Copy non-hook shared agent helpers ---
 # `scripts/lib/codex-invoke.sh` is sourced by codex-* reviewer agents during
 # PBI-pipeline review steps. It is not a hook helper, so it lives outside
@@ -435,5 +443,6 @@ echo "Project configured at: $TARGET_DIR"
 echo "  .claude/agents/     — Agent definitions"
 echo "  .claude/skills/     — Skill definitions"
 echo "  .claude/hooks/      — Hook scripts"
+echo "  .claude/rules/      — Cross-cutting Scrum context loaded by every agent"
 echo "  docs/design/            — Design catalog and configuration"
 echo "  .claude/settings.json — Hook and status line configuration"

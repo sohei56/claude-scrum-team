@@ -29,11 +29,13 @@ skills/                  # 15 Skills (Scrum ceremonies) — YAML frontmatter + M
   cleanup-audit/         # 8-axis multi-agent repo hygiene audit (read-only)
 hooks/                   # Claude Code hooks (status/path/scrum-state/branch-ops guards, completion + quality + stop-failure gates, dashboard events, session context)
   lib/                   # Shared hook helpers (validation, logging)
+rules/                   # Cross-cutting context auto-loaded by every Scrum agent (deployed by setup-user.sh to .claude/rules/)
+  scrum-context.md       # Team map, SSOT locations, communication protocol, uncertainty handling
 dashboard/               # Textual TUI dashboard (Python)
   app.py                 # Main TUI application
 scripts/                 # Setup and utility scripts
   lib/                   # Shared script helpers (prereq checks)
-  setup-user.sh          # Copies agents/skills/hooks to target project
+  setup-user.sh          # Copies agents/skills/hooks/rules to target project
   setup-dev.sh           # Installs dev dependencies (bats, shellcheck, etc.)
   statusline.sh          # Claude Code status line script
 tests/                   # Test suites
