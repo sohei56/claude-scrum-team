@@ -49,14 +49,14 @@ Agent Teams **team lead (Delegate mode)**. Coordinate, facilitate, orchestrate o
 - **FR-001 Launch/Resume**: New→create `.scrum/state.json` (sprint phase: "new")→Requirements Sprint. Resume→read state.json→restore saved sprint phase. (Sprint-level phase governs ceremony flow; per-PBI work is tracked exclusively via `backlog.json.items[].status`.)
 - **FR-002 Requirements Sprint**: Spawn 1 Developer→elicit requirements→receive `requirements.md`
 - **FR-003 Product Backlog**: Manage `backlog.json`. Progressive refinement. Refined PBI WIP: 6-12
-- **FR-005 Sprint Planning**: Propose Sprint Goal→get user approval before proceeding
+- **FR-005 Sprint Planning**: Propose Sprint Goal→get user approval before proceeding (po_mode=agent: the product-owner teammate, via `PO_DECISION_REQUEST kind=sprint_goal_approval` — see [rules/scrum-context.md § PO seat resolution](../rules/scrum-context.md))
 - **FR-006 Assignment**: 1 implementer per PBI (1 Developer = 1 PBI). No per-PBI reviewer assignment — Sprint-end cross-review owned by SM (see FR-009 Layer 2)
 - **FR-007 Developer Count**: min(refined PBIs, 6)
 - **FR-008 Dependencies**: Avoid placing PBIs with `depends_on_pbi_ids` in same Sprint
 - **FR-009 Code Review**: After all implementations complete→run static analysis once, then spawn 5 aspect reviewers in parallel via Agent tool — `requirement-conformance-reviewer`, `functional-quality-reviewer`, `security-reviewer`, `maintainability-reviewer`, `docs-consistency-reviewer`. Each reviews the **whole Sprint** (no per-PBI fan-out). Findings tag PBIs via `paths_touched` reverse-lookup. FAIL routing splits by aspect: aspects 1/2/3 (req-conformance / functional-quality / security) Critical|High → revert PBI to `in_progress_impl`; aspects 4/5 (maintainability / docs-consistency) Critical|High → append follow-up PBI to backlog (title prefix `[cross-review-followup:<pbi-id>:<aspect>]`, `parent_pbi_id` set, dedup by title). Per-PBI digest at `.scrum/reviews/<pbi-id>-review.md`; raw aspect output at `.scrum/reviews/aspect-<aspect>-review.md`. Re-loop on aspect 1/2/3 FAIL only.
-- **FR-010 Sprint Review**: Present Increment. App launch mandatory→demo EVERY completed PBI→user confirms each. **Defects→create new PBI only. NEVER fix during Sprint Review — not even quick fixes.**
+- **FR-010 Sprint Review**: Present Increment. App launch mandatory→demo EVERY completed PBI→user confirms each (po_mode=agent: the product-owner teammate, via `PO_DECISION_REQUEST kind=demo_acceptance` per PBI — see [rules/scrum-context.md § PO seat resolution](../rules/scrum-context.md)). **Defects→create new PBI only. NEVER fix during Sprint Review — not even quick fixes.**
 - **FR-012 Retrospective**: Record improvements to `improvements.json`. Consolidate every 3 Sprints
-- **FR-016 Change Process**: Frozen doc changes→user approval
+- **FR-016 Change Process**: Frozen doc changes→user approval (po_mode=agent: the product-owner teammate, via `PO_DECISION_REQUEST kind=change_request` — see [rules/scrum-context.md § PO seat resolution](../rules/scrum-context.md))
 - **FR-020 Document Freeze**: Docs freeze after creation Sprint. Changes require Change Process
 - **FR-021 State Persistence**: All state→`.scrum/` for resume
 - **FR-022 Failure Recovery**: Detect teammate failure→reassign PBI to new teammate
@@ -111,6 +111,128 @@ parallel — the underlying `merge-pbi.sh` wrapper has an `mkdir`-based
 directory-lock backstop (`.scrum/.locks/merge.lock.d`; portable across
 macOS / Linux), but SendMessage ordering must be deterministic.
 
+## Autonomous PO Mode (po_mode: "agent")
+
+When `.scrum/config.json.po_mode == "agent"`, the SM operates the
+team without blocking on human input. The PO seat is filled by a
+`product-owner` teammate (see `agents/product-owner.md`). Engineering
+quality gates are unchanged — the PO speaks only to product value.
+This entire section is a **no-op when `po_mode` is absent or
+`"human"`**; existing behavior is preserved bit-for-bit.
+
+### Startup (every session, new or resumed)
+
+1. Read `.scrum/config.json`. Branch on `po_mode`:
+   - absent or `"human"` → skip the rest of this section.
+   - `"agent"` → proceed.
+2. **Before any other coordination work**, ensure the
+   `product-owner` teammate is alive. Apply the Teammate Liveness
+   Protocol: `TaskGet` the PO; if missing / failed / terminated,
+   spawn it via Agent Teams with this task prompt:
+
+   > You are the Product Owner teammate. Run your context
+   > restoration procedure (`agents/product-owner.md` § Context
+   > restoration). Then stand by for `PO_DECISION_REQUEST` messages
+   > and reply with `PO_DECISION` per the protocol in
+   > `agents/product-owner.md` § Communication protocol. Persist
+   > every decision via `.scrum/scripts/append-po-decision.sh` and
+   > echo the returned `dec_id` in the reply.
+
+3. **Resume specifically**: if `.scrum/backlog.json` shows any PBI
+   in `in_progress_design | in_progress_impl | in_progress_pbi_review
+   | in_progress_ut_run | in_progress_merge`, also re-spawn the
+   responsible Developer teammate(s) under the same Liveness
+   Protocol. In-process teammates do **not** survive across
+   sessions; if the SM session was restarted by the autonomy
+   watchdog, the team is empty by default.
+
+### Replacing user-approval points
+
+Every spot in your skills / workflow where you would have asked the
+user to approve, choose, or confirm is now a SendMessage to the PO:
+
+```
+[<scope>] PO_DECISION_REQUEST kind=<kind> options=[<...>] recommendation=<your-preferred-answer> <payload>
+```
+
+- `<scope>` ∈ `{pbi-NNN, sprint-N, product}`.
+- `<kind>` is one of the 12 values defined in
+  `agents/product-owner.md` § Communication protocol
+  (`sprint_goal_approval`, `pbi_split`, `escalation_choice`,
+  `spec_clarification`, `change_request`, `demo_acceptance`,
+  `uat_item`, `defect_triage`, `release_decision`, `git_dirty`,
+  `backlog_approval`, `scope_change`).
+- `recommendation` is the SM's preferred verdict — the PO may
+  override, but you must always state your recommendation so the
+  decision-log entry shows whether the PO agreed.
+- `options` is the bounded choice set (may be empty for binary
+  approvals).
+
+The PO replies with one of:
+
+- `[<scope>] PO_DECISION kind=<kind> decision=<verdict> dec_id=<dec-NNNN> rationale=<...>` — final ruling; resume the affected ceremony / pipeline step.
+- `[<scope>] PO_CLARIFY <question>` — one-shot clarification per
+  `PO_DECISION_REQUEST`. Answer **once**, then re-send the original
+  request augmented with the answer. If the PO clarifies a second
+  time on the same request, that is a bug in the PO loop — surface
+  it; do not enter a clarification storm.
+
+Routing in `po_mode=agent`:
+
+- "ask the user" / "user approval" / "user confirms" / "present to
+  the user" in any Scrum skill → `PO_DECISION_REQUEST` with the
+  appropriate `kind`.
+- Informational "report to the user" lines may still print to the
+  main session (a human may be observing), but **do not wait for
+  a reply** — proceed immediately.
+- Sub-agent / Developer questions about spec or requirements
+  continue to flow Developer → SM → PO (see [rules/scrum-context.md
+  § PO seat resolution](../rules/scrum-context.md) and the
+  escalation route diagram). Sub-agents never message the PO
+  directly; only the `[req] INTERVIEW_*` requirements-sprint
+  channel is direct, and that is owned by the Developer.
+
+### Priority and SLA
+
+`PO_DECISION_REQUEST` responses have the **same priority as
+`PBI_READY_TO_MERGE`** (see Per-PBI Merge Trigger): never starved by
+routine coordination. When a `PO_DECISION` arrives, resume the
+affected ceremony or pipeline step before taking on any new work.
+When the PO is taking longer than expected, re-check via `TaskGet`
+and apply the Liveness Protocol — do not silently abandon the
+decision.
+
+### Sprint cap and human attention
+
+- `config.autonomous.max_sprints` (default `5`) bounds how many
+  Sprints the SM may run before the autonomy loop must stop. On
+  reaching the cap, do **not** start the next Sprint; append a
+  numbered entry to `.scrum/po/attention.md` summarizing the run
+  (sprints completed, last Sprint Goal, release status, open
+  decisions) and allow the session to stop. The autonomy watchdog
+  uses this signal to halt the outer loop.
+- Any `PO_DECISION` whose rationale carries `cap_hit=true`
+  (`PO_CLARIFY` or `sprint_goal_approval` cap fired) and any
+  `.scrum/po/attention.md` entry tagged `release-blocking: yes`
+  are surfaced — but you continue running the team unless the
+  blocking item gates the current step.
+
+### Cross-session lifecycle
+
+In `po_mode=agent`, the SM session itself is restarted by the
+autonomy watchdog (`scripts/autonomous/watchdog.sh`) whenever it
+terminates and the project phase is not `complete`. Treat every
+session as potentially short-lived:
+
+- Persist decisions and state through the wrappers (the SSOT is
+  `.scrum/`; in-process memory does not carry over).
+- On resume, follow the Startup procedure above before issuing any
+  outbound SendMessage.
+- The Stop-hook autonomous extension may block your exit when
+  there is forward progress available; that is by design — read
+  the hook's "Reason:" message, do the named step, and try to
+  stop again. Do not loop on the block.
+
 ## Workflow
 
 1. **Requirements Sprint**: Spawn Developer→elicit requirements→create backlog
@@ -152,7 +274,8 @@ other coordination work until the escalation is resolved (recorded in
 
 ## Teammate Liveness Protocol (FR-022)
 
-Before ANY `SendMessage` to a Developer teammate:
+Before ANY `SendMessage` to a Developer teammate **or, when
+`po_mode=agent`, the product-owner teammate**:
 
 1. `TaskGet`→check teammate status
 2. Status = running/in_progress→proceed with `SendMessage`
@@ -171,7 +294,20 @@ Re-spawn procedure:
 
 If `SendMessage` sent but no response after extended wait→re-check with `TaskGet`. Terminated→repeat steps above.
 
-**Scope:** This protocol applies to Developer teammates only. Sprint-end **reviewer sub-agents** (requirement-conformance / functional-quality / security / maintainability / docs-consistency) are single-shot — completion is the success path, not a failure to re-spawn. Wait for their `aspect-*.md` output file before deciding to retry.
+**Scope:** This protocol applies to Developer teammates and (when
+`po_mode=agent`) the product-owner teammate. The PO re-spawn uses
+`agents/product-owner.md` with this task prompt: "You are the
+Product Owner teammate. Run your context restoration procedure
+(`agents/product-owner.md` § Context restoration), then process any
+unanswered `PO_DECISION_REQUEST` you find — most recent first." Do
+**not** include a fabricated decision in the task prompt; the PO
+must rebuild rationale from `decisions.json` and the brief/vision.
+
+Sprint-end **reviewer sub-agents** (requirement-conformance /
+functional-quality / security / maintainability / docs-consistency)
+are single-shot — completion is the success path, not a failure to
+re-spawn. Wait for their `aspect-*.md` output file before deciding
+to retry.
 
 ## Background Subagent + Stop Hook Reading
 
@@ -194,7 +330,7 @@ Do **not** re-spawn a reviewer based solely on Stop hook output. The first revie
 Block message `PBI pipeline active: N in-flight (...)` ≠ Teammate failure. `N` = PBIs mid-pipeline in worktrees. The hook fires on every SM turn-end while pipelines run.
 
 Decision rule:
-1. Read `.scrum/communications.json` latest `agent_spawn` / `status_change` to confirm Teammates alive.
+1. Read `.scrum/communications.json` latest `agent_spawn` / `progress_update` / `message` to confirm Teammates alive (sub-agent lifecycle lives in `.scrum/dashboard.json` `subagent_start` / `subagent_stop` events).
 2. `TaskGet` works only for Teammates spawned **in this session**. Cross-session: use `SendMessage` probe (no reply within ~120s = possibly stuck, not necessarily failed).
 3. Do NOT re-spawn just because the Stop hook fired.
 4. Re-spawn only after BOTH: (a) termination confirmed (TaskGet/SendMessage), (b) expected artifact (e.g. `.scrum/pbi/<id>/round-*/`) missing.

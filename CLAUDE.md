@@ -3,13 +3,14 @@
 ## Project Structure
 
 ```text
-scrum-start.sh           # Entry point — validates prereqs, launches tmux
-agents/                  # Agent + 11 sub-agent definitions (top-level: scrum-master, developer; sub-agents listed in docs/contracts/sub-agents.md)
+scrum-start.sh           # Entry point — validates prereqs, launches tmux (supports --autonomous)
+agents/                  # Agent + 11 sub-agent definitions (top-level: scrum-master, developer, product-owner; sub-agents listed in docs/contracts/sub-agents.md)
   scrum-master.md        # Team lead (Delegate mode)
   developer.md           # Developer teammate (PBI pipeline conductor)
+  product-owner.md       # PO teammate (autonomous mode; po_mode=agent)
   # Sprint-end cross-review (5-aspect parallel): requirement-conformance-reviewer, functional-quality-reviewer, security-reviewer, maintainability-reviewer, docs-consistency-reviewer
   # PBI pipeline (per Round): pbi-{designer,implementer,ut-author}, codex-{design,impl,ut}-reviewer
-skills/                  # 15 Skills (Scrum ceremonies) — YAML frontmatter + Markdown, deployed to target projects via setup-user.sh
+skills/                  # 16 Skills (15 Scrum ceremonies + 1 PO acceptance) — YAML frontmatter + Markdown, deployed to target projects via setup-user.sh
   backlog-refinement/    # Refine PBIs from coarse to sprint-ready
   change-process/        # Manage changes to frozen design docs
   cross-review/          # Sprint-end cross-cutting quality gate
@@ -18,6 +19,7 @@ skills/                  # 15 Skills (Scrum ceremonies) — YAML frontmatter + M
   pbi-merge/             # SM-side per-PBI merge orchestration
   install-subagents/     # Install specialist sub-agents for PBI work
   integration-sprint/    # Product-wide QA and integration testing
+  po-acceptance/         # PO-owned demo/UAT verification (autonomous mode)
   requirements-sprint/   # Elicit requirements from user
   retrospective/         # Sprint retrospective ceremony
   scaffold-design-spec/  # Create design doc stubs from catalog
@@ -27,10 +29,10 @@ skills/                  # 15 Skills (Scrum ceremonies) — YAML frontmatter + M
   sprint-review/         # Sprint review ceremony
 .claude/skills/          # Dev-only skills for THIS repo (not deployed to target projects)
   cleanup-audit/         # 8-axis multi-agent repo hygiene audit (read-only)
-hooks/                   # Claude Code hooks (status/path/scrum-state/branch-ops guards, completion + quality + stop-failure gates, dashboard events, session context)
-  lib/                   # Shared hook helpers (validation, logging)
+hooks/                   # Claude Code hooks (status/path/scrum-state/branch-ops guards, completion + quality + stop-failure gates, dashboard events, session context, autonomy lib)
+  lib/                   # Shared hook helpers (validate, dashboard, autonomy)
 rules/                   # Cross-cutting context auto-loaded by every Scrum agent (deployed by setup-user.sh to .claude/rules/)
-  scrum-context.md       # Team map, SSOT locations, communication protocol, uncertainty handling
+  scrum-context.md       # Team map, SSOT locations, communication protocol, PO seat resolution, uncertainty handling
 dashboard/               # Textual TUI dashboard (Python)
   app.py                 # Main TUI application
 scripts/                 # Setup and utility scripts
@@ -38,16 +40,18 @@ scripts/                 # Setup and utility scripts
   setup-user.sh          # Copies agents/skills/hooks/rules to target project
   setup-dev.sh           # Installs dev dependencies (bats, shellcheck, etc.)
   statusline.sh          # Claude Code status line script
+  scrum/                 # SSOT state wrappers (deployed to .scrum/scripts/ by setup-user.sh)
+  autonomous/            # Autonomous-PO watchdog (Ralph Loop): watchdog.sh + lib/report.sh
 tests/                   # Test suites
   unit/                  # Bats unit tests
   lint/                  # Bats lint tests
   integration/           # Script composition tests
   fixtures/              # Test data (JSON fixtures for validation)
-docs/                    # Project documentation (requirements, architecture, data model, contracts)
-docs/design/                 # Design document governance
+docs/                    # Project documentation (requirements, architecture, data model, contracts, autonomous-mode)
+docs/design/             # Design document governance
   catalog.md             # Immutable document type reference (read-only)
   catalog-config.json    # Editable list of enabled spec IDs
-.scrum/                  # Runtime state (JSON, gitignored)
+.scrum/                  # Runtime state (JSON, gitignored). Autonomous-mode adds autonomy.json + po/{decisions.json,acceptance/,attention.md} + reports/.
 ```
 
 ## Technologies
@@ -65,7 +69,7 @@ docs/design/                 # Design document governance
 bats tests/unit/ tests/lint/
 
 # Lint shell scripts
-shellcheck scrum-start.sh scripts/*.sh scripts/lib/*.sh hooks/*.sh hooks/lib/*.sh
+shellcheck scrum-start.sh scripts/*.sh scripts/lib/*.sh scripts/scrum/*.sh scripts/scrum/lib/*.sh scripts/autonomous/*.sh scripts/autonomous/lib/*.sh hooks/*.sh hooks/lib/*.sh
 
 # Lint/format Python
 ruff check dashboard/
@@ -76,6 +80,9 @@ sh scripts/setup-dev.sh
 
 # Launch the Scrum team (in target project directory)
 sh /path/to/claude-scrum-team/scrum-start.sh
+
+# Launch in autonomous-PO mode (Ralph Loop; see docs/autonomous-mode.md)
+sh /path/to/claude-scrum-team/scrum-start.sh --autonomous --brief docs/product/brief.md --max-sprints 3
 ```
 
 ## Code Style
@@ -106,6 +113,22 @@ sh /path/to/claude-scrum-team/scrum-start.sh
   (success/stagnation/divergence/hard cap). Coverage measured by real
   tooling (C0/C1 100% by default; partial-C1 languages declare relaxed
   threshold in `.scrum/config.json`).
+- `po_mode` selects the PO seat. Absent or `"human"` → the user
+  (default; current behaviour unchanged). `"agent"` → the
+  `product-owner` teammate (FR-023). Skills do not branch on mode;
+  every "ask the user" prompt resolves to a `PO_DECISION_REQUEST`
+  to the PO teammate in agent mode. See `rules/scrum-context.md`
+  § PO seat resolution and `agents/product-owner.md`.
+- Autonomous mode (`scrum-start.sh --autonomous`) drives the team
+  end-to-end without human input. The outer loop
+  (`scripts/autonomous/watchdog.sh`) re-launches `claude -p`
+  iterations, enforces safety valves (iterations / wall clock /
+  Sprints / consecutive failures / per-iteration + total budget /
+  per-phase Stop-block budget), backs off on rate-limit signals,
+  and writes a morning report to
+  `.scrum/reports/autonomous-run-<run_id>.md`. PO decisions are
+  audit-logged to `.scrum/po/decisions.json` (append-only) via
+  `append-po-decision.sh`. Full operator guide: `docs/autonomous-mode.md`.
 
 ## State management
 

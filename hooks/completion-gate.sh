@@ -9,6 +9,8 @@ set -euo pipefail
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=lib/validate.sh
 . "$HOOK_DIR/lib/validate.sh"
+# shellcheck source=lib/autonomy.sh
+. "$HOOK_DIR/lib/autonomy.sh"
 
 STATE_FILE=".scrum/state.json"
 SPRINT_FILE=".scrum/sprint.json"
@@ -17,6 +19,25 @@ HISTORY_FILE=".scrum/sprint-history.json"
 IMPROVEMENTS_FILE=".scrum/improvements.json"
 TEST_RESULTS_FILE=".scrum/test-results.json"
 DASHBOARD_FILE=".scrum/dashboard.json"
+
+# ---------------------------------------------------------------------------
+# stdin payload — read once, never block.
+#
+# Claude Code passes Stop-hook JSON on stdin (e.g. {"session_id": "...", ...}).
+# Existing tests do NOT pipe a payload, so we must accept an empty stdin
+# without blocking. `cat` with a closed-pipe stdin returns immediately; if
+# stdin is the terminal we would block, which never happens under the harness
+# but could happen if a developer runs the hook by hand — short-circuit with
+# `-t 0` to detect "no piped input" and fall through.
+# ---------------------------------------------------------------------------
+STOP_PAYLOAD=""
+if [ ! -t 0 ]; then
+  STOP_PAYLOAD="$(cat 2>/dev/null || true)"
+fi
+SESSION_ID=""
+if [ -n "$STOP_PAYLOAD" ]; then
+  SESSION_ID="$(printf '%s' "$STOP_PAYLOAD" | jq -r '.session_id // ""' 2>/dev/null || echo "")"
+fi
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -64,7 +85,122 @@ in_flight_hint() {
 }
 
 allow_stop() {
+  # Default exit-criteria path has decided this session is free to stop.
+  # In autonomous-PO mode the lead Stop is an internal-loop iteration, not
+  # a true completion: we keep the session alive across phases by replacing
+  # the allow with a phase-specific "do not stop, do X next" block.
+  # Non-autonomous (human) mode falls through immediately — no behaviour
+  # change.
+  autonomous_intercept_or_allow
   exit 0
+}
+
+# ---------------------------------------------------------------------------
+# Autonomous-PO interception
+# ---------------------------------------------------------------------------
+#
+# Contract (mirrored in scripts/autonomous/watchdog.sh):
+#   * The watchdog drives the outer loop by re-launching `claude -p` whenever
+#     the Stop hook *allows* exit. So letting the hook return 0 hands control
+#     back to the watchdog (which advances iteration counters, checks the
+#     circuit breaker, etc.).
+#   * Returning 2 (block) keeps the same in-process session alive and
+#     instructs the lead to take the next phase action. This is the "inner
+#     loop" — we use it whenever we want the SM to continue work in-process
+#     rather than recycle the session.
+#   * `bump_stop_block_counter` is incremented per block per phase; once we
+#     exceed `autonomous.stop_block_budget_per_phase` (default 8) we trip the
+#     circuit breaker and allow exit so the watchdog can flag this run as
+#     failed.
+#
+# Phase decisions:
+#   complete                          → allow (watchdog observes terminal)
+#   retrospective (criteria passed)   → allow (recycle session for next sprint)
+#   integration_sprint (passed)       → allow (recycle session for next loop)
+#   anything else reached via allow_stop → block + "do X next" instruction
+#
+# Teammate sessions (session_id != lead_session_id) always allow — blocking
+# them would just spin idle Agent-tool callers and burn tokens.
+autonomous_intercept_or_allow() {
+  # Fail-open: any error path here simply allows the original allow_stop.
+  if ! autonomy_enabled; then
+    return 0
+  fi
+  if [ -z "$SESSION_ID" ]; then
+    return 0
+  fi
+  if ! is_lead_session "$SESSION_ID"; then
+    return 0
+  fi
+  # No phase known (state.json missing/invalid) — nothing meaningful to do.
+  if [ -z "$phase" ] || [ "$phase" = "unknown" ]; then
+    return 0
+  fi
+
+  case "$phase" in
+    complete|retrospective|integration_sprint)
+      # Checkpoint phases — exit criteria has been met; let the watchdog
+      # take over the next phase (or terminate on `complete`).
+      return 0
+      ;;
+  esac
+
+  local budget
+  budget="$(autonomy_config_int '.autonomous.stop_block_budget_per_phase' 8)"
+
+  local new_count
+  new_count="$(bump_stop_block_counter "$phase" 2>/dev/null || echo "0")"
+  # If counter bookkeeping failed (no autonomy.json / bad JSON), fail-open:
+  # we are in autonomy mode according to the config flag but cannot track
+  # progress — letting the watchdog observe the allow is safer than an
+  # infinite block.
+  if [ "${new_count:-0}" = "0" ]; then
+    return 0
+  fi
+
+  if [ "$new_count" -gt "$budget" ]; then
+    record_circuit_breaker "$phase" || true
+    log_hook "completion-gate" "WARN" "Circuit breaker tripped for phase '$phase' (count=$new_count > budget=$budget)"
+    return 0
+  fi
+
+  local instruction
+  instruction="$(autonomous_next_action "$phase")"
+  log_hook "completion-gate" "INFO" "Autonomous block in '$phase' (count=$new_count/$budget): $instruction"
+  jq -n --arg r "${HOOK_NOTIFICATION_PREFIX} Autonomous mode (lead session): do NOT stop. ${instruction} (stop-block ${new_count}/${budget} for phase '${phase}')" \
+    '{"reason": $r}' >&2
+  exit 2
+}
+
+# Phase → next-action instruction for the lead SM. Kept terse so it fits in
+# Stop-hook stderr (Claude trims long messages).
+autonomous_next_action() {
+  case "$1" in
+    new)
+      printf '%s' "Phase 'new': run the requirements-sprint skill to elicit requirements and advance phase to requirements_sprint."
+      ;;
+    requirements_sprint)
+      printf '%s' "Phase 'requirements_sprint': finalize requirements with the product-owner teammate, create the initial backlog, and advance phase to backlog_created."
+      ;;
+    backlog_created)
+      printf '%s' "Phase 'backlog_created': run the sprint-planning skill to plan the next Sprint and advance phase to sprint_planning."
+      ;;
+    sprint_planning)
+      printf '%s' "Phase 'sprint_planning': run spawn-teammates to start Developers on the Sprint, then advance phase to pbi_pipeline_active."
+      ;;
+    pbi_pipeline_active)
+      printf '%s' "Phase 'pbi_pipeline_active': all in-flight PBIs are settled. Advance phase to review."
+      ;;
+    review)
+      printf '%s' "Phase 'review': all PBIs are done. Advance phase to sprint_review and run the sprint-review skill."
+      ;;
+    sprint_review)
+      printf '%s' "Phase 'sprint_review': summary recorded. Advance phase to retrospective and run the retrospective skill."
+      ;;
+    *)
+      printf '%s' "Phase '$1': continue the autonomous workflow per scrum-master.md (Autonomous PO Mode section)."
+      ;;
+  esac
 }
 
 # Get PBI IDs for the current Sprint
@@ -85,6 +221,11 @@ get_pbi_status() {
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
+# Initialise phase early so allow_stop → autonomous_intercept_or_allow can
+# read it safely under `set -u`, even if state.json is missing/invalid.
+phase=""
+current_sprint_id="none"
 
 # If state file does not exist or is invalid, allow stop (nothing to gate)
 if ! validate_json_file "$STATE_FILE" "phase"; then

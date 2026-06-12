@@ -3,6 +3,9 @@
 # Enforces path-level constraints on PBI pipeline sub-agents:
 #   - pbi-ut-author: cannot Read/Write/Edit/MultiEdit impl paths; no Bash
 #   - pbi-implementer: cannot Write/Edit/MultiEdit test paths; no Bash
+#   - product-owner: Write/Edit/MultiEdit allowed only under
+#     docs/product/** and .scrum/po/** (Bash is NOT blocked — the PO
+#     needs to launch the app for acceptance verification)
 # Reads payload (JSON) from stdin: {agent_name, tool_name, tool_input.file_path}
 # Reads .scrum/config.json for path_guard.impl_globs and test_globs.
 # Exit 2 + stderr message → blocks tool. Exit 0 → allow.
@@ -27,23 +30,25 @@ if [ -z "$agent" ]; then
   exit 0
 fi
 case "$agent" in
-  pbi-ut-author|pbi-implementer) ;;
+  pbi-ut-author|pbi-implementer|product-owner) ;;
   *) exit 0 ;;
 esac
 
 # Bash is too broad to preserve the intended path sandbox for restricted
-# agents. Block it outright rather than trying to parse arbitrary commands.
+# code-writing agents. Block it outright for pbi-ut-author /
+# pbi-implementer rather than trying to parse arbitrary commands.
+# product-owner is exempt: the PO must launch the app and run
+# verification commands during acceptance.
 if [ "$tool" = "Bash" ]; then
-  hook_block "path-guard" "$agent cannot use Bash" "Use Read/Write/Edit/MultiEdit only on your permitted paths."
+  case "$agent" in
+    pbi-ut-author|pbi-implementer)
+      hook_block "path-guard" "$agent cannot use Bash" "Use Read/Write/Edit/MultiEdit only on your permitted paths."
+      ;;
+  esac
 fi
 
 # Path-based checks below require file_path.
 [ -n "$path" ] || exit 0
-
-# Fail-open if config missing
-if [ ! -f "$CONFIG" ]; then
-  exit 0
-fi
 
 # Normalize path: strip leading $PWD/ if absolute
 rel="${path#"$PWD"/}"
@@ -61,6 +66,28 @@ matches_any_glob() {
   done
   return 1
 }
+
+# product-owner path restriction is a hard rule independent of
+# .scrum/config.json. Evaluate it before the config-driven impl/test
+# glob checks so a missing config does not fail-open the PO sandbox.
+case "$agent" in
+  product-owner)
+    case "$tool" in
+      Write|Edit|MultiEdit)
+        if ! matches_any_glob "$rel" 'docs/product/**' '.scrum/po/**'; then
+          hook_block "path-guard" "product-owner cannot $tool $rel (outside PO sandbox)" "PO writes are limited to docs/product/** and .scrum/po/**."
+        fi
+        ;;
+    esac
+    exit 0
+    ;;
+esac
+
+# Remaining agents (pbi-ut-author, pbi-implementer) are gated by the
+# config-driven impl/test globs. Fail-open if config missing.
+if [ ! -f "$CONFIG" ]; then
+  exit 0
+fi
 
 mapfile -t impl_globs < <(jq -r '.path_guard.impl_globs[]?' "$CONFIG")
 mapfile -t test_globs < <(jq -r '.path_guard.test_globs[]?' "$CONFIG")

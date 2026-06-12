@@ -212,7 +212,8 @@ cat > "$settings_file" << 'SETTINGS_EOF'
       "Agent",
       "WebFetch",
       "WebSearch",
-      "Bash(codex *)"
+      "Bash(codex *)",
+      "mcp__playwright"
     ]
   },
   "hooks": {
@@ -266,7 +267,7 @@ cat > "$settings_file" << 'SETTINGS_EOF'
     ],
     "PostToolUse": [
       {
-        "matcher": "Write|Edit|MultiEdit|Agent",
+        "matcher": "Write|Edit|MultiEdit|Agent|SendMessage",
         "hooks": [
           {
             "type": "command",

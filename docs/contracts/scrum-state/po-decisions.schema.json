@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PO decisions audit log",
+  "description": "Append-only audit log at .scrum/po/decisions.json. Records every Product Owner decision (whether human or autonomous agent). Writes go exclusively through scripts/scrum/append-po-decision.sh (deployed as .scrum/scripts/append-po-decision.sh). Direct edits are blocked by pre-tool-use-scrum-state-guard.sh.",
+  "type": "object",
+  "required": ["decisions"],
+  "additionalProperties": false,
+  "properties": {
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "timestamp", "kind", "decision", "rationale"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "Auto-assigned sequential id. dec-NNNN with 4-digit zero-padded counter.",
+            "type": "string",
+            "pattern": "^dec-[0-9]{4}$"
+          },
+          "timestamp": {"type": "string", "format": "date-time"},
+          "sprint_id": {
+            "type": ["string", "null"],
+            "pattern": "^sprint-[0-9]+$"
+          },
+          "pbi_id": {
+            "type": ["string", "null"],
+            "pattern": "^pbi-[0-9]+$"
+          },
+          "kind": {
+            "description": "What category of decision this is. Used by SM/dashboard to filter audit trails.",
+            "enum": [
+              "sprint_goal_approval",
+              "pbi_split",
+              "escalation_choice",
+              "spec_clarification",
+              "change_request",
+              "demo_acceptance",
+              "uat_item",
+              "defect_triage",
+              "release_decision",
+              "git_dirty",
+              "backlog_approval",
+              "scope_change"
+            ]
+          },
+          "request": {
+            "description": "Summary of what SM (or other requester) asked the PO to decide.",
+            "type": "string"
+          },
+          "decision": {
+            "description": "The decision itself, in free-form text (e.g. 'go', 'no-go', 'split into pbi-007 / pbi-008').",
+            "type": "string"
+          },
+          "rationale": {
+            "description": "Why this decision was made. Required even for autonomous PO so post-hoc review is possible.",
+            "type": "string"
+          },
+          "evidence": {
+            "description": "Paths to files / artifacts that ground the decision (test reports, demo logs, design docs). Required (non-empty) for demo_acceptance / uat_item / release_decision kinds — enforced by the wrapper.",
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "assumption": {
+            "description": "True iff the decision was made under best-effort with unverified assumptions (clarification budget exhausted etc.). Used to flag risky decisions for human review.",
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

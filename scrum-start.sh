@@ -92,6 +92,7 @@ check_python_prereqs
 sh "$SCRIPT_DIR/scripts/setup-user.sh"
 
 # --- Detect new vs resume and set initial prompt ---
+IS_NEW_PROJECT=0
 if [ -f ".scrum/state.json" ]; then
   echo ""
   echo "Existing project detected — resuming from saved state."
@@ -107,9 +108,14 @@ if [ -f ".scrum/state.json" ]; then
   echo "  Current phase: $phase"
   initial_prompt="Read .scrum/state.json, .scrum/sprint.json, and .scrum/backlog.json. Reconcile PBI statuses in backlog.json against actual project state — check if implementation files exist for each in-progress PBI and update statuses accordingly (e.g., mark PBIs as done if their code is complete, or keep as in_progress if work remains). Report where we left off, then continue the workflow from the current phase."
 else
+  IS_NEW_PROJECT=1
   echo ""
   echo "New project — starting fresh."
   mkdir -p .scrum/reviews
+  # Bootstrap .scrum/state.json via the deployed wrapper so the SM's first
+  # update-state-phase call has a file to mutate. setup-user.sh above has
+  # already copied scripts/scrum/*.sh to .scrum/scripts/.
+  sh .scrum/scripts/init-state.sh
   initial_prompt="Introduce yourself and begin the Requirements Sprint. Greet the user, explain the Scrum workflow briefly, then start eliciting requirements."
 fi
 
@@ -118,8 +124,11 @@ fi
 # and .scrum/autonomy.json in place. Non-autonomous runs hit none of this.
 
 if [ "$AUTONOMOUS" = "1" ]; then
-  # New-project bootstrap requires a brief.
-  if [ ! -f ".scrum/state.json" ] && [ -z "$BRIEF_FILE" ]; then
+  # New-project bootstrap requires a brief. Use the detection variable
+  # captured above — init-state.sh has already created .scrum/state.json
+  # in the new-project branch, so re-testing file existence here would
+  # silently let an unbriefed autonomous run through.
+  if [ "$IS_NEW_PROJECT" = "1" ] && [ -z "$BRIEF_FILE" ]; then
     echo "Error: --autonomous on a new project requires --brief <file>." >&2
     echo "  Provide a product brief that the autonomous PO can use to drive" >&2
     echo "  the Requirements Sprint without a human in the loop." >&2

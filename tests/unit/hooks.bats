@@ -55,6 +55,69 @@ teardown() {
   [[ "$ctx" == *"pbi_pipeline_active"* ]]
 }
 
+@test "session-context.sh: human mode emits no AUTONOMOUS PO MODE prologue" {
+  mkdir -p .scrum
+  jq -n '{"phase": "backlog_created", "current_sprint_id": "sprint-001", "product_goal": "g", "created_at": "2026-06-12T00:00:00Z", "updated_at": "2026-06-12T00:00:00Z"}' > .scrum/state.json
+  echo '{"po_mode": "human"}' > .scrum/config.json
+  run bash "$PROJECT_ROOT/hooks/session-context.sh"
+  assert_success
+  local ctx
+  ctx="$(echo "$output" | jq -r '.additionalContext')"
+  [[ "$ctx" != *"AUTONOMOUS PO MODE"* ]]
+}
+
+@test "session-context.sh: agent mode emits AUTONOMOUS PO MODE prologue + iteration line" {
+  mkdir -p .scrum
+  jq -n '{"phase": "backlog_created", "current_sprint_id": "sprint-001", "product_goal": "g", "created_at": "2026-06-12T00:00:00Z", "updated_at": "2026-06-12T00:00:00Z"}' > .scrum/state.json
+  cat > .scrum/config.json <<'EOF'
+{"po_mode": "agent", "autonomous": {"max_iterations": 50}}
+EOF
+  cat > .scrum/autonomy.json <<'EOF'
+{
+  "run_id": "run-1",
+  "started_at": "2026-06-12T00:00:00Z",
+  "lead_session_id": "sess-lead",
+  "iteration": 3,
+  "total_cost_usd": 0,
+  "stop_blocks": {"phase": "idle", "count": 0},
+  "circuit_breaker_tripped": null,
+  "last_failure": null
+}
+EOF
+  run bash "$PROJECT_ROOT/hooks/session-context.sh"
+  assert_success
+  local ctx
+  ctx="$(echo "$output" | jq -r '.additionalContext')"
+  [[ "$ctx" == *"AUTONOMOUS PO MODE"* ]]
+  [[ "$ctx" == *"product-owner teammate"* ]]
+  [[ "$ctx" == *"Teammate Liveness Protocol"* ]]
+  [[ "$ctx" == *"iteration 3 of 50"* ]]
+}
+
+@test "session-context.sh: agent mode on brand-new project also gets prologue" {
+  mkdir -p .scrum
+  echo '{"po_mode": "agent"}' > .scrum/config.json
+  cat > .scrum/autonomy.json <<'EOF'
+{
+  "run_id": "run-1",
+  "started_at": "2026-06-12T00:00:00Z",
+  "lead_session_id": "sess-lead",
+  "iteration": 0,
+  "total_cost_usd": 0,
+  "stop_blocks": {"phase": "idle", "count": 0},
+  "circuit_breaker_tripped": null,
+  "last_failure": null
+}
+EOF
+  # No state.json — exercises the "new project" branch.
+  run bash "$PROJECT_ROOT/hooks/session-context.sh"
+  assert_success
+  local ctx
+  ctx="$(echo "$output" | jq -r '.additionalContext')"
+  [[ "$ctx" == *"AUTONOMOUS PO MODE"* ]]
+  [[ "$ctx" == *"New project"* ]]
+}
+
 # ---------------------------------------------------------------------------
 # dashboard-event.sh
 # ---------------------------------------------------------------------------
@@ -74,6 +137,9 @@ teardown() {
 
   # It must be valid JSON with an events array
   jq -e '.events | type == "array"' .scrum/dashboard.json
+
+  # File changes are work events only — no communications mirror
+  [ ! -f ".scrum/communications.json" ]
 }
 
 @test "dashboard-event.sh creates communications.json if missing" {
@@ -91,6 +157,41 @@ teardown() {
 
   # It must be valid JSON with a messages array
   jq -e '.messages | type == "array"' .scrum/communications.json
+
+  # TeammateIdle is a message only — no dashboard.json work event mirror
+  [ ! -f ".scrum/dashboard.json" ]
+}
+
+@test "dashboard-event.sh captures SendMessage as a comms message" {
+  mkdir -p .scrum
+
+  local event_json
+  event_json='{"hook_event_name":"PostToolUse","agent_id":"dev-001","tool_name":"SendMessage","tool_input":{"to":"scrum-master","summary":"PBI ready to merge","message":"[pbi-003] PBI_READY_TO_MERGE"}}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/dashboard-event.sh'"
+  assert_success
+
+  [ -f ".scrum/communications.json" ]
+  jq -e '.messages[-1].type == "message"' .scrum/communications.json
+  jq -e '.messages[-1].sender_id == "dev-001"' .scrum/communications.json
+  jq -e '.messages[-1].recipient_id == "scrum-master"' .scrum/communications.json
+  jq -e '.messages[-1].content == "PBI ready to merge"' .scrum/communications.json
+
+  # Messages do not generate dashboard.json work events
+  [ ! -f ".scrum/dashboard.json" ]
+}
+
+@test "dashboard-event.sh SendMessage falls back to message body without summary" {
+  mkdir -p .scrum
+
+  local event_json
+  event_json='{"hook_event_name":"PostToolUse","agent_id":"dev-001","tool_name":"SendMessage","tool_input":{"to":"product-owner","message":"[pbi-003] PO_DECISION_REQUEST: accept scope cut?"}}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/dashboard-event.sh'"
+  assert_success
+
+  jq -e '.messages[-1].content == "[pbi-003] PO_DECISION_REQUEST: accept scope cut?"' .scrum/communications.json
+  jq -e '.messages[-1].recipient_id == "product-owner"' .scrum/communications.json
 }
 
 @test "dashboard-event.sh handles SubagentStart event" {
@@ -119,9 +220,8 @@ teardown() {
   [ -f ".scrum/dashboard.json" ]
   jq -e '.events[-1].type == "subagent_stop"' .scrum/dashboard.json
 
-  # Should also create a communications message
-  [ -f ".scrum/communications.json" ]
-  jq -e '.messages[-1].type == "status_change"' .scrum/communications.json
+  # Lifecycle is a work event only — no communications mirror
+  [ ! -f ".scrum/communications.json" ]
 }
 
 @test "dashboard-event.sh handles TaskCompleted event" {
@@ -374,7 +474,7 @@ teardown() {
 }
 
 @test "setup-user.sh settings.json template excludes Bash from dashboard-event matcher" {
-  run grep -q '"matcher": "Write|Edit|MultiEdit|Agent"' "$PROJECT_ROOT/scripts/setup-user.sh"
+  run grep -q '"matcher": "Write|Edit|MultiEdit|Agent|SendMessage"' "$PROJECT_ROOT/scripts/setup-user.sh"
   assert_success
 }
 
@@ -616,6 +716,50 @@ teardown() {
 
   [ -f ".scrum/dashboard.json" ]
   jq -e '.events[-1].type == "stop_failure"' .scrum/dashboard.json
+}
+
+@test "stop-failure.sh: agent mode records last_failure on autonomy.json" {
+  mkdir -p .scrum
+  echo '{"po_mode": "agent"}' > .scrum/config.json
+  cat > .scrum/autonomy.json <<'EOF'
+{
+  "run_id": "run-1",
+  "started_at": "2026-06-12T00:00:00Z",
+  "lead_session_id": "sess-lead",
+  "iteration": 0,
+  "total_cost_usd": 0,
+  "stop_blocks": {"phase": "idle", "count": 0},
+  "circuit_breaker_tripped": null,
+  "last_failure": null
+}
+EOF
+  local event_json='{"hook_event_name":"StopFailure","reason":"rate_limit","agent_id":"scrum-master"}'
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/stop-failure.sh'"
+  assert_success
+  run jq -r '.last_failure.reason' .scrum/autonomy.json
+  [ "$output" = "rate_limit" ]
+  run jq -r '.last_failure.at' .scrum/autonomy.json
+  [[ "$output" =~ ^20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]
+}
+
+@test "stop-failure.sh: human mode does NOT touch autonomy.json (fail-open / no-op)" {
+  mkdir -p .scrum
+  echo '{"po_mode": "human"}' > .scrum/config.json
+  # autonomy.json deliberately absent — autonomy_enabled returns false.
+  local event_json='{"hook_event_name":"StopFailure","reason":"rate_limit","agent_id":"scrum-master"}'
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/stop-failure.sh'"
+  assert_success
+  [ ! -f ".scrum/autonomy.json" ]
+}
+
+@test "stop-failure.sh: agent mode without autonomy.json is a silent no-op (fail-open)" {
+  mkdir -p .scrum
+  echo '{"po_mode": "agent"}' > .scrum/config.json
+  # autonomy.json missing → autonomy_enabled returns false → no write attempt.
+  local event_json='{"hook_event_name":"StopFailure","reason":"timeout","agent_id":"sm"}'
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/stop-failure.sh'"
+  assert_success
+  [ ! -f ".scrum/autonomy.json" ]
 }
 
 # ---------------------------------------------------------------------------

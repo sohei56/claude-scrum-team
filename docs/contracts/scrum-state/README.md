@@ -10,6 +10,9 @@ Each schema corresponds to one file under `.scrum/` and is the single source of 
 | `.scrum/communications.json`        | `communications.schema.json`          | `append-communication.sh`                             |
 | `.scrum/dashboard.json`             | `dashboard.schema.json`               | `append-dashboard-event.sh`                           |
 | `.scrum/pbi/<id>/state.json`        | `pbi-state.schema.json`               | `init-pbi-state.sh` (initial), `update-pbi-state.sh` (low-level); higher-level callers: `create-pbi-worktree.sh`, `commit-pbi.sh`, `mark-pbi-ready-to-merge.sh`, `mark-pbi-merged.sh`, `mark-pbi-merge-failure.sh` |
+| `.scrum/config.json`                | `config.schema.json`                  | User (manual edit, interactive mode) **or** `scrum-start.sh --autonomous` (merges `po_mode`, `po`, `autonomous` defaults). Agent direct edits are blocked by `pre-tool-use-scrum-state-guard.sh`. No wrapper script. |
+| `.scrum/autonomy.json`              | `autonomy.schema.json`                | `scripts/autonomous/watchdog.sh` (atomic tmp+mv) and the hook library `hooks/lib/autonomy.sh` (`bump_stop_block_counter`, `record_circuit_breaker`). **No `.scrum/scripts/*.sh` wrapper** — the runtime hot-path is latency-sensitive. Agent direct edits are blocked by `pre-tool-use-scrum-state-guard.sh`; schema is enforced by the watchdog on rotation, not per call. |
+| `.scrum/po/decisions.json`          | `po-decisions.schema.json`            | `append-po-decision.sh` only. Append-only; ids auto-assigned (`dec-NNNN`). Wrapper enforces evidence requirement for `kind ∈ {demo_acceptance, uat_item, release_decision}` and the green-tests gate for `release_decision=go`. |
 
 Orchestrators (`merge-pbi.sh`, `merge-main-into-pbi.sh`, `safe-switch-to-main.sh`, `cleanup-pbi-worktree.sh`, `migrate-legacy.sh`) drive git operations and the writers above; they do not bypass the schema-validated writes.
 

@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+# autonomy.sh — Shared helpers for hooks operating under autonomous-PO mode.
+#
+# This library is sourced by hooks (Stop loop, dashboard, watchdog driver)
+# to read/update .scrum/autonomy.json and probe .scrum/config.json.
+#
+# Design principles:
+#   - Fail-open: a missing file, malformed JSON, or unreadable counter must
+#     never crash the hook. Returning the safe default (autonomy disabled,
+#     not lead, counter 0) is always preferred over `exit 1`.
+#   - No agent-side writes: hooks/lib/autonomy.sh writes through tmp + mv on
+#     .scrum/autonomy.json. This file is exempted from the scrum-state-guard
+#     for the hook context (separate writer ID); user/agent direct edits via
+#     Write/Edit are still blocked. The wrapper used by hooks is intentionally
+#     thin (no schema validation per call) because the runtime hot-path is
+#     latency-sensitive; the schema is enforced by the watchdog on rotation.
+#   - Bash 3.2 compatible: no associative arrays, no namerefs.
+
+# Guard against double-sourcing
+# shellcheck disable=SC2317
+if [ "${_AUTONOMY_SH_LOADED:-}" = "1" ]; then
+  return 0 2>/dev/null || true
+fi
+_AUTONOMY_SH_LOADED=1
+
+AUTONOMY_FILE=".scrum/autonomy.json"
+SCRUM_CONFIG_FILE=".scrum/config.json"
+
+# ISO-8601 UTC timestamp. Mirrors hooks/lib/validate.sh::get_timestamp; we
+# duplicate here so this lib stays sourceable without validate.sh.
+_autonomy_now() {
+  date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo "1970-01-01T00:00:00Z"
+}
+
+# autonomy_enabled
+# Returns 0 if po_mode == "agent" AND .scrum/autonomy.json exists.
+# Returns 1 otherwise (incl. missing config, missing autonomy file, bad JSON).
+autonomy_enabled() {
+  [ -f "$SCRUM_CONFIG_FILE" ] || return 1
+  [ -f "$AUTONOMY_FILE" ]      || return 1
+  local mode
+  mode="$(jq -r '.po_mode // "human"' "$SCRUM_CONFIG_FILE" 2>/dev/null || echo "human")"
+  [ "$mode" = "agent" ] || return 1
+  return 0
+}
+
+# is_lead_session <session_id>
+# Returns 0 iff autonomy.json's lead_session_id equals the given session id.
+# Fail-open: missing file or null lead → return 1.
+is_lead_session() {
+  local sid="${1:-}"
+  [ -n "$sid" ] || return 1
+  [ -f "$AUTONOMY_FILE" ] || return 1
+  local lead
+  lead="$(jq -r '.lead_session_id // ""' "$AUTONOMY_FILE" 2>/dev/null || echo "")"
+  [ -n "$lead" ] || return 1
+  [ "$lead" = "$sid" ] || return 1
+  return 0
+}
+
+# bump_stop_block_counter <phase>
+# Increments stop_blocks.count when stop_blocks.phase matches <phase>; resets
+# to 1 with the new phase otherwise. Atomic update via tmp+mv. Echoes the new
+# count on stdout. Fail-open: a missing or unparseable autonomy file echoes 0
+# and returns 1 (caller can treat 0 as "not in autonomy mode").
+bump_stop_block_counter() {
+  local new_phase="${1:-}"
+  if [ -z "$new_phase" ] || [ ! -f "$AUTONOMY_FILE" ]; then
+    printf '0\n'
+    return 1
+  fi
+  if ! jq empty "$AUTONOMY_FILE" >/dev/null 2>&1; then
+    printf '0\n'
+    return 1
+  fi
+
+  local now tmp
+  now="$(_autonomy_now)"
+  tmp="${AUTONOMY_FILE}.tmp.$$.${RANDOM}"
+
+  # If the recorded phase matches new_phase: count += 1. Otherwise reset count
+  # to 1 and switch phase. updated_at is bumped either way.
+  if ! jq --arg phase "$new_phase" --arg now "$now" '
+    .stop_blocks = (
+      if (.stop_blocks.phase // "") == $phase then
+        {phase: $phase, count: (((.stop_blocks.count // 0) + 1))}
+      else
+        {phase: $phase, count: 1}
+      end
+    )
+    | .updated_at = $now
+  ' "$AUTONOMY_FILE" > "$tmp" 2>/dev/null; then
+    rm -f "$tmp"
+    printf '0\n'
+    return 1
+  fi
+
+  mv "$tmp" "$AUTONOMY_FILE"
+  jq -r '.stop_blocks.count' "$AUTONOMY_FILE" 2>/dev/null || printf '0\n'
+}
+
+# record_circuit_breaker <phase>
+# Marks .circuit_breaker_tripped = {phase, at: now}. Fail-open: returns 1 on
+# unparseable autonomy file but does not crash.
+record_circuit_breaker() {
+  local phase="${1:-}"
+  if [ -z "$phase" ] || [ ! -f "$AUTONOMY_FILE" ]; then
+    return 1
+  fi
+  if ! jq empty "$AUTONOMY_FILE" >/dev/null 2>&1; then
+    return 1
+  fi
+
+  local now tmp
+  now="$(_autonomy_now)"
+  tmp="${AUTONOMY_FILE}.tmp.$$.${RANDOM}"
+
+  if ! jq --arg phase "$phase" --arg now "$now" '
+    .circuit_breaker_tripped = {phase: $phase, at: $now}
+    | .updated_at = $now
+  ' "$AUTONOMY_FILE" > "$tmp" 2>/dev/null; then
+    rm -f "$tmp"
+    return 1
+  fi
+  mv "$tmp" "$AUTONOMY_FILE"
+  return 0
+}
+
+# autonomy_config_int <jq_path> <default>
+# Reads an integer setting from .scrum/config.json at <jq_path> (a jq filter
+# such as '.autonomous.max_iterations'). Returns <default> if config is
+# absent, JSON unparseable, the path missing, or value not an integer.
+autonomy_config_int() {
+  local path="${1:-}"
+  local default="${2:-0}"
+  if [ -z "$path" ] || [ ! -f "$SCRUM_CONFIG_FILE" ]; then
+    printf '%s\n' "$default"
+    return 0
+  fi
+  if ! jq empty "$SCRUM_CONFIG_FILE" >/dev/null 2>&1; then
+    printf '%s\n' "$default"
+    return 0
+  fi
+  local val
+  # Use `// empty` so a JSON null collapses to empty string and we fall back.
+  val="$(jq -r "($path) // empty" "$SCRUM_CONFIG_FILE" 2>/dev/null || echo "")"
+  case "$val" in
+    ''|*[!0-9-]*) printf '%s\n' "$default"; return 0 ;;
+  esac
+  # Accept optional leading minus, but stripped value must be all digits.
+  case "${val#-}" in
+    ''|*[!0-9]*) printf '%s\n' "$default"; return 0 ;;
+  esac
+  printf '%s\n' "$val"
+}

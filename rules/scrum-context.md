@@ -23,7 +23,12 @@ For specs, follow the pointers in [Where to look](#where-to-look-for-what).
 ## Your team and your seat
 
 ```
-                    USER (Product Owner)
+        PO seat (one of two — see § PO seat resolution):
+        ┌─────────────────────────────────────────────────────────┐
+        │ po_mode=human   →  USER (the human, via main session)   │
+        │ po_mode=agent   →  product-owner teammate (Agent Teams, │
+        │                    spawned and re-spawned by SM)        │
+        └─────────────────────────────────────────────────────────┘
                           │
                           ▼
                    Scrum Master  (team lead, Delegate mode — never writes code)
@@ -107,6 +112,31 @@ returning to your caller):
   `docs/contracts/agent-interfaces.md` § 4.1. Missing or malformed
   envelopes break the pipeline orchestrator's parser.
 
+**PO-channel prefixes (used by SM ↔ product-owner teammate when
+`po_mode=agent`; canonical definitions live in
+`agents/product-owner.md` § Communication protocol):**
+
+- `[<scope>] PO_DECISION_REQUEST kind=<kind> options=[...] recommendation=<...>`
+  — SM → PO request for a bounded decision. `<scope>` is one of
+  `pbi-NNN`, `sprint-N`, or `product`. The `kind` enum has 12
+  values (e.g., `sprint_goal_approval`, `spec_clarification`,
+  `demo_acceptance`, `release_decision`); see
+  `agents/product-owner.md` for the full list.
+- `[<scope>] PO_DECISION kind=<kind> decision=<verdict> dec_id=<dec-NNNN> rationale=<...>`
+  — PO → SM ruling. `dec_id` is returned by
+  `.scrum/scripts/append-po-decision.sh` and is mandatory.
+- `[<scope>] PO_CLARIFY <question>` — PO → SM, optional; **at
+  most one per `PO_DECISION_REQUEST`** before the PO must commit
+  (clarification cap; see `agents/product-owner.md` § Anti-loop
+  rules).
+- `[req] INTERVIEW_QUESTION <question>` (Developer → PO) and
+  `[req] INTERVIEW_ANSWER <answer>` (PO → Developer) — the **only**
+  sanctioned PO ↔ Developer direct channel, active solely during a
+  Requirements Sprint. Outside that ceremony, every PO ↔ Developer
+  exchange must traverse SM.
+- `[<scope>] PO_ACCEPTANCE_REPORT mode=<demo|uat> results=[<id>:<verdict>:<dec_id>,...]`
+  — PO → SM, aggregated report emitted once by the `po-acceptance` skill after every AC / release criterion has a decision logged.
+
 Escalation routes are fixed — do not invent new ones:
 
 - Developer-side termination gate trip → `update-backlog-status.sh
@@ -116,8 +146,58 @@ Escalation routes are fixed — do not invent new ones:
   records `merge_failure.kind` ∈ `{conflict, artifact_missing}`;
   3 consecutive failures flip status to `escalated`.
 - Requirements unclear (designer/implementer) → raise to Developer →
-  Developer raises to SM → SM consults PO (the user). Never guess
-  requirements from code.
+  Developer raises to SM → SM consults PO (route depends on
+  `.scrum/config.json.po_mode`: `human` = SM asks the user in the
+  main session; `agent` = SM sends `[<pbi-id>] PO_DECISION_REQUEST
+  kind=spec_clarification` to the product-owner teammate). Never
+  guess requirements from code. See § PO seat resolution.
+
+## PO seat resolution (po_mode)
+
+Every Scrum ceremony has decision points that previously read "ask
+the user", "user approval", "user confirms", "present to the user",
+etc. Who actually sits in the PO seat for those prompts is governed
+by `.scrum/config.json.po_mode`:
+
+| `po_mode` | PO seat | Behavior at user-approval points |
+|---|---|---|
+| absent / `"human"` | The human user (main session) | Pause the ceremony, prompt the user, wait for natural-language reply. **Current/default behavior — unchanged.** |
+| `"agent"` | `product-owner` teammate (Agent Teams) | SM resolves every PO-approval point by sending `[<scope>] PO_DECISION_REQUEST kind=<kind> options=[...] recommendation=<...>` and proceeds when `PO_DECISION` is received. **Never block on human input.** |
+
+Rules that apply uniformly to both modes:
+
+- **The route is invariant; only the PO's seat changes.** Skills do
+  not branch their flow; they only re-target the destination of
+  user-approval prompts. SM remains the sole broker between
+  Developers (and their sub-agents) and the PO.
+- **Skills written in "ask the user" language are mode-agnostic.**
+  In `po_mode=agent`, every such prompt in a Scrum skill resolves to
+  a `PO_DECISION_REQUEST` to the product-owner teammate and its
+  `PO_DECISION` reply. The semantic action ("get PO approval") is
+  identical; only the transport changes.
+- **In `po_mode=agent`, do not wait on human input.** Any code path
+  that would `read` from stdin or otherwise block awaiting a human
+  reply is invalid. If a decision is genuinely human-only (auth
+  secrets, billing, legal — see `agents/product-owner.md` §
+  Decision principles), the PO appends to `.scrum/po/attention.md`
+  and continues without blocking the team.
+- **Informational reports to the user are still allowed.** Lines
+  like "report progress to the user" or "summarize for the user"
+  are observation-only — the human may be watching the main
+  session. Emit the summary, but do **not** wait for a reply; that
+  reply is `PO_DECISION_REQUEST` territory in agent mode.
+- **PO answers are logged.** In `po_mode=agent`, every `PO_DECISION`
+  must already be persisted via
+  `.scrum/scripts/append-po-decision.sh` (which returns the
+  `dec_id`); the SM uses `dec_id` to back-link the decision.
+  Decision-log writes are part of the protocol, not optional.
+
+Canonical sources: the `po_mode` schema is in
+`docs/contracts/scrum-state/config.schema.json`; the PO message
+shapes and `kind` enum are normative in
+`agents/product-owner.md` § Communication protocol; the wrapper
+contract is in `scripts/scrum/append-po-decision.sh` (deployed as
+`.scrum/scripts/append-po-decision.sh`).
 
 ## When you don't know
 
@@ -168,11 +248,20 @@ pbi-designer / pbi-implementer / pbi-ut-author
         │  forwards via SendMessage with prefix [<pbi-id>] SPEC_QUESTION
         ▼
    Scrum Master
-        │  consults PO (the user) via main session
+        │  po_mode=human → consults the user via main session (current)
+        │  po_mode=agent → SendMessage to product-owner teammate:
+        │    [<pbi-id>] PO_DECISION_REQUEST kind=spec_clarification q=<...>
         ▼
-   PO answers → SM relays back → Developer relays to sub-agent →
-   sub-agent resumes the current Round
+   PO answers (logged to .scrum/po/decisions.json via
+   append-po-decision.sh in agent mode) → SM relays back → Developer
+   relays to sub-agent → sub-agent resumes the current Round
 ```
+
+Only the PO seat changes between modes; the route shape itself is
+invariant. "Escalation routes are fixed" still holds — SM remains the
+single broker, and sub-agents never address the PO directly (the one
+exception is the requirements-sprint `[req] INTERVIEW_*` channel; see
+§ Communication protocol).
 
 This is a synchronous path: the spawning sub-agent should end its
 turn with the question in `findings[]` and a `next_actions` entry

@@ -197,6 +197,69 @@ extract_frontmatter() {
 # 2026-05-07 cross-review multi-aspect refactor. Tests removed.
 
 # ---------------------------------------------------------------------------
+# product-owner.md
+# ---------------------------------------------------------------------------
+
+@test "product-owner.md has valid YAML frontmatter" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/product-owner.md' | yq '.' > /dev/null 2>&1"
+  assert_success
+}
+
+@test "product-owner.md has required name field" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/product-owner.md' | yq -r '.name'"
+  assert_success
+  assert_output "product-owner"
+}
+
+@test "product-owner.md has description field" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/product-owner.md' | yq -r '.description'"
+  assert_success
+  refute_output ""
+}
+
+@test "product-owner.md has model field set to opus" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/product-owner.md' | yq -r '.model'"
+  assert_success
+  assert_output "opus"
+}
+
+@test "product-owner.md has effort field set to high" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/product-owner.md' | yq -r '.effort'"
+  assert_success
+  assert_output "high"
+}
+
+@test "product-owner.md has maxTurns field" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/product-owner.md' | yq -r '.maxTurns'"
+  assert_success
+  assert_output "300"
+}
+
+@test "product-owner.md has disallowedTools including WebFetch and WebSearch" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/product-owner.md' | yq '.disallowedTools | length'"
+  assert_success
+  assert_output "2"
+}
+
+@test "product-owner.md has keep-coding-instructions set to true" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/product-owner.md' | yq -r '.\"keep-coding-instructions\"'"
+  assert_success
+  assert_output "true"
+}
+
+@test "product-owner.md has memory field set to project" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/product-owner.md' | yq -r '.memory'"
+  assert_success
+  assert_output "project"
+}
+
+@test "product-owner.md has po-acceptance in skills" {
+  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/product-owner.md' | yq '.skills[] | select(. == \"po-acceptance\")'"
+  assert_success
+  assert_output "po-acceptance"
+}
+
+# ---------------------------------------------------------------------------
 # security-reviewer.md
 # ---------------------------------------------------------------------------
 

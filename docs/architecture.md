@@ -82,8 +82,9 @@ Reference: [sinjorjob/claude-code-agent-teams-dashboard](https://github.com/sinj
 ### Key Technical Details
 - `scrum-start.sh` launches tmux with two panes: Claude Code (main) +
   `python dashboard/app.py` (side). Falls back to status line only.
-- Four panels (FR-014): Sprint Overview, PBI Progress Board,
-  Communication Log, File Change Log. See [contracts/agent-interfaces.md](contracts/agent-interfaces.md) for
+- Three panels (FR-014): Sprint Overview, PBI Progress Board,
+  Team Log (merged chronological stream of agent messages and work
+  events). See [contracts/agent-interfaces.md](contracts/agent-interfaces.md) for
   widget details and source files.
 - Status line (`scripts/statusline.sh`): compact 3-line supplementary
   view, always active.
