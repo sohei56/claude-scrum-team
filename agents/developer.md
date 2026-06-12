@@ -91,7 +91,7 @@ It does NOT update the high-level status (no `phase` field exists).
 
 **Escalation:** termination-gate trip (stagnation / divergence /
 max_rounds / budget_exhausted / coverage_tool_* / requirements_unclear /
-catalog_lock_timeout) →
+catalog_lock_timeout / reviewer_unavailable / stale_review_snapshot) →
 `update-backlog-status.sh "$PBI" escalated` +
 `update-pbi-state.sh "$PBI" escalation_reason <kind>` →
 notify SM `[<pbi-id>] ESCALATED reason=<kind>`. SM runs

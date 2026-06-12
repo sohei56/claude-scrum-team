@@ -422,8 +422,8 @@ while :; do
 
   if rate_limited_since "$ITER_START_EPOCH"; then
     RATE_STREAK=$((RATE_STREAK + 1))
-    if [ "$RATE_STREAK" -gt 6 ]; then
-      printf 'watchdog: rate-limit streak >6 — giving up.\n' >&2
+    if [ "$RATE_STREAK" -ge 6 ]; then
+      printf 'watchdog: rate-limit streak >=6 — giving up.\n' >&2
       finalize 1 "rate_limit_persistent"
     fi
     printf 'watchdog: rate-limit detected; sleeping %ss (streak=%s)\n' \

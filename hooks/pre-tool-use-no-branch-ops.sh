@@ -71,14 +71,21 @@ if echo "$CANON_CMD" | grep -Eq '^git[[:space:]]+branch[[:space:]]+[A-Za-z0-9_][
   # `-` after the whitespace and pass through.
   block "git branch <new-name>"
 fi
-if echo "$CANON_CMD" | grep -Eq '^git[[:space:]]+merge\b'; then
+if echo "$CANON_CMD" | grep -Eq '^git[[:space:]]+merge([[:space:]]|$)'; then
+  # Bare `git merge` / `git merge <branch>` blocked.
+  # `git merge-base` and `git mergetool` are read-only / interactive helpers
+  # that share the prefix but require `-` after `merge` — those pass through.
   block "git merge"
 fi
 if echo "$CANON_CMD" | grep -Eq '^git[[:space:]]+push\b'; then
   block "git push"
 fi
-if echo "$CANON_CMD" | grep -Eq '^git[[:space:]]+rebase\b'; then
-  block "git rebase"
+if echo "$CANON_CMD" | grep -Eq '^git[[:space:]]+rebase([[:space:]]|$)'; then
+  # Allow recovery operations on an interrupted rebase; only branch-rewriting
+  # invocations (e.g. `git rebase main`, `git rebase -i HEAD~3`) get blocked.
+  if ! echo "$CANON_CMD" | grep -Eq '^git[[:space:]]+rebase[[:space:]]+(--abort|--continue|--skip|--quit|--edit-todo|--show-current-patch)([[:space:]]|$)'; then
+    block "git rebase"
+  fi
 fi
 
 exit 0

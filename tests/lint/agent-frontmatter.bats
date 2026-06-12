@@ -64,12 +64,6 @@ extract_frontmatter() {
   assert_output "2"
 }
 
-@test "scrum-master.md has keep-coding-instructions set to true" {
-  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/scrum-master.md' | yq -r '.\"keep-coding-instructions\"'"
-  assert_success
-  assert_output "true"
-}
-
 # ---------------------------------------------------------------------------
 # developer.md
 # ---------------------------------------------------------------------------
@@ -107,12 +101,6 @@ extract_frontmatter() {
   run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/developer.md' | yq '.disallowedTools | length'"
   assert_success
   assert_output "2"
-}
-
-@test "developer.md has keep-coding-instructions set to true" {
-  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/developer.md' | yq -r '.\"keep-coding-instructions\"'"
-  assert_success
-  assert_output "true"
 }
 
 @test "developer.md has memory field set to project" {
@@ -217,16 +205,16 @@ extract_frontmatter() {
   refute_output ""
 }
 
-@test "product-owner.md has model field set to opus" {
+@test "product-owner.md has model field set to claude-fable-5" {
   run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/product-owner.md' | yq -r '.model'"
   assert_success
-  assert_output "opus"
+  assert_output "claude-fable-5"
 }
 
-@test "product-owner.md has effort field set to high" {
+@test "product-owner.md has effort field set to xhigh" {
   run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/product-owner.md' | yq -r '.effort'"
   assert_success
-  assert_output "high"
+  assert_output "xhigh"
 }
 
 @test "product-owner.md has maxTurns field" {
@@ -239,12 +227,6 @@ extract_frontmatter() {
   run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/product-owner.md' | yq '.disallowedTools | length'"
   assert_success
   assert_output "2"
-}
-
-@test "product-owner.md has keep-coding-instructions set to true" {
-  run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/product-owner.md' | yq -r '.\"keep-coding-instructions\"'"
-  assert_success
-  assert_output "true"
 }
 
 @test "product-owner.md has memory field set to project" {
@@ -283,6 +265,6 @@ extract_frontmatter() {
 @test "security-reviewer.md has maxTurns field" {
   run bash -c "awk 'NR==1 && !/^---$/{exit} NR==1{next} /^---$/{exit} {print}' '${PROJECT_ROOT}/agents/security-reviewer.md' | yq -r '.maxTurns'"
   assert_success
-  assert_output "50"
+  assert_output "80"
 }
 

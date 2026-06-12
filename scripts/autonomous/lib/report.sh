@@ -38,7 +38,7 @@ _AUTON_REPORT_SH_LOADED=1
 : "${AUTON_REPORT_SPRINT_HISTORY:=.scrum/sprint-history.json}"
 : "${AUTON_REPORT_BACKLOG_FILE:=.scrum/backlog.json}"
 : "${AUTON_REPORT_CONFIG_FILE:=.scrum/config.json}"
-: "${AUTON_REPORT_ATTENTION_FILE:=.scrum/attention.md}"
+: "${AUTON_REPORT_ATTENTION_FILE:=.scrum/po/attention.md}"
 : "${AUTON_REPORT_DIR:=.scrum/reports}"
 : "${AUTON_REPORT_ITER_DIR:=.scrum/autonomous}"
 
