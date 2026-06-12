@@ -251,12 +251,21 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
      security):** for each PBI named in any Critical/High Finding
      under those aspects:
      ```bash
+     # Place the per-PBI digest where the Developer's next impl Round
+     # will read it as feedback. `begin-impl-round.sh` (called by the
+     # Developer at re-entry) doesn't know `n` yet, so use a
+     # Round-independent path.
+     cp ".scrum/reviews/${PBI_ID}-review.md" \
+        ".scrum/pbi/${PBI_ID}/feedback/from-cross-review.md"
      .scrum/scripts/update-backlog-status.sh "$PBI_ID" in_progress_impl
      ```
      Then `TaskGet` the PBI's Developer; terminated → re-spawn
      (Teammate Liveness Protocol). Relay the Findings as the fix
-     directive. Developer fixes on top of merged code, re-runs PBI
-     Review → UT Run → ready-to-merge handoff. SM re-merges; PBI
+     directive. Developer re-enters `pbi-pipeline` →
+     `begin-impl-round.sh` advances `impl_round` atomically (the
+     Round counter is owned by that wrapper; the Developer never
+     computes `n+1`). Developer fixes on top of merged code, re-runs
+     PBI Review → UT Run → ready-to-merge handoff. SM re-merges; PBI
      returns to `awaiting_cross_review`.
    - **Aspects 4/5 (maintainability / docs-consistency):** for each
      PBI named in any Critical/High Finding under those aspects,

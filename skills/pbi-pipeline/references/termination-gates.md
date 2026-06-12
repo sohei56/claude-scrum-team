@@ -88,6 +88,35 @@ if [ "$ROUND" -ge 5 ]; then
 fi
 ```
 
+The hard cap is **cumulative** across the impl/PBI-review/UT-run cycle
+INCLUDING Rounds added after a Cross Review revert. `impl_round` is
+the sole counter and is owned by `begin-impl-round.sh`; the wrapper
+makes monotonic advance the only legal operation. A PBI that exceeds
+5 impl Rounds — whether by internal review FAILs or by Sprint-end
+Cross Review reverts — escalates and returns judgement to SM / PO.
+This is intentional: more rounds usually means the requirement /
+design is wrong, not that the implementer needs more tries.
+
+## Cross Review re-entry boundary
+
+When a Sprint-end Cross Review aspect 1/2/3 FAIL reverts a PBI to
+`in_progress_impl`, the new Round that follows it is the FIRST
+Round whose "prior review" is an aspect reviewer output, not a
+codex-impl / codex-ut reviewer output. Concretely:
+
+- Stagnation detection compares Critical/High signatures from
+  Round n and Round n-1. Signatures from Cross Review aspect
+  reviewers (`.scrum/reviews/aspect-*-review.md`) and PBI Review
+  reviewers (`.scrum/pbi/<id>/impl/review-r{n-1}.md`,
+  `.scrum/pbi/<id>/ut/review-r{n-1}.md`) are produced by different
+  agents with different output conventions and are NOT comparable.
+  → Skip Stagnation detection in that one Round.
+- Divergence and Hard cap continue to apply (they count, not
+  compare signatures).
+
+After that first post-revert Round completes a normal PBI Review
+cycle, Stagnation detection resumes normally for subsequent Rounds.
+
 ## Gate evaluation order
 
 1. If success criteria met → STOP success (no further checks)

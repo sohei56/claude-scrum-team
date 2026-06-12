@@ -16,6 +16,8 @@ Agents must no longer edit `.scrum/*.json` directly. All writes flow through val
 | `jq '.status = "active"' .scrum/sprint.json > tmp && mv tmp .scrum/sprint.json` | `.scrum/scripts/update-sprint-status.sh active` (also: `planning`, `cross_review`, `sprint_review`, `complete`, `failed`) |
 | `jq '.developers["dev-001-s1"].current_pbi = "pbi-007"' .scrum/sprint.json > tmp && mv ...` | `.scrum/scripts/set-sprint-developer.sh dev-001-s1 current_pbi pbi-007` (fields: `status`, `current_pbi`; `current_pbi_phase` was removed in v2 — read `backlog.json.items[<current_pbi>].status` instead) |
 | `jq '.phase = "pbi_pipeline_active"' .scrum/state.json > tmp && mv ...` | `.scrum/scripts/update-state-phase.sh pbi_pipeline_active` |
+| `mkdir -p .scrum && jq -n '{phase:"new",...}' > .scrum/state.json` (initial bootstrap of a fresh project) | `.scrum/scripts/init-state.sh` (idempotent; no-op if `.scrum/state.json` already exists) |
+| `jq -n '{items:[],next_pbi_id:1,product_goal:"..."}' > .scrum/backlog.json` (Requirements Sprint step 6 seed) | `.scrum/scripts/init-backlog.sh [--product-goal <text>]` (idempotent; no-op if `.scrum/backlog.json` already exists) |
 | `jq '.messages += [{...}]' .scrum/communications.json > tmp && mv ...` | `.scrum/scripts/append-communication.sh --from <id> --to <id\|null> --kind <type> --content <text> [--role <role>] [--pbi <pbi-id>]` |
 | `jq '.events += [{...}]' .scrum/dashboard.json > tmp && mv ...` | `.scrum/scripts/append-dashboard-event.sh --type <type> [--agent <id>] [--pbi <pbi-id>] [--file <path>] [--change-type <ct>] [--detail <text>] [--status-from <s>] [--status-to <s>]` |
 | `update_state ".scrum/pbi/$PBI/" '.design_round = 1'` (PR #22 inline helper) | `.scrum/scripts/update-pbi-state.sh "$PBI" design_round 1` (variadic field/value pairs in one atomic write) |
@@ -32,6 +34,35 @@ field was removed in v2; lifecycle moves through
 ```
 
 All pairs apply in a single atomic transaction (one schema validation, one `mv`).
+
+### `impl_round` advancement (`begin-impl-round.sh`)
+
+Even though `update-pbi-state.sh` accepts `impl_round` as a settable
+field, the impl/PBI-review/UT-run pipeline MUST advance the counter
+via the dedicated wrapper:
+
+```
+n=$(.scrum/scripts/begin-impl-round.sh pbi-001)
+```
+
+This one wrapper owns: increment `impl_round`, reset `impl_status`
+and `ut_status` to `pending`, and (idempotently) set backlog status
+to `in_progress_impl`. It is idempotent on respawn (returns current
+`impl_round` without mutation when `impl_status == "pending"` AND
+`impl_round > 0`). It refuses to start from illegal pre-states
+(anything other than `in_progress_design`, `in_progress_pbi_review`,
+`in_progress_ut_run`, `cross_review`, `in_progress_impl`).
+
+Rationale: a Cross Review aspect-1/2/3 FAIL reverts the PBI to
+`in_progress_impl` without touching `state.json.impl_round`. When the
+counter was computed by the agent (LLM reads `impl_round`, adds 1,
+writes back), this re-entry path was undocumented and the conductor
+restarted at Round 1 — observable as the dashboard's Round column
+regressing from N to 1. Centralising the counter in a wrapper makes
+that regression structurally impossible. Direct
+`update-pbi-state.sh ... impl_round <N>` is still accepted (for
+migration tooling and tests) but is forbidden during the live
+pipeline.
 
 ## What enforces this
 

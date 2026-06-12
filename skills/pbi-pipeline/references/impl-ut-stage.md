@@ -15,6 +15,35 @@ A round starts in `in_progress_impl`, advances to
 review or at coverage measurement falls back to `in_progress_impl` for
 the next round (or escalates via the termination gate).
 
+## Pipeline entry — obtaining `n`
+
+The Round counter is owned by `.scrum/scripts/begin-impl-round.sh`.
+The conductor MUST NOT compute `n` itself or write `impl_round` via
+`update-pbi-state.sh`. At every impl-Round entry — first entry from
+Design success AND re-entry after PBI Review FAIL, UT Run FAIL, or a
+Sprint-end Cross Review revert — call:
+
+```bash
+n=$(.scrum/scripts/begin-impl-round.sh "$PBI_ID")
+```
+
+The wrapper is atomic and idempotent:
+
+- Increments `impl_round`, resets `impl_status` and `ut_status` to
+  `pending`, and (idempotently) sets backlog status to
+  `in_progress_impl`.
+- If a previous `begin-impl-round.sh` call already started this Round
+  (`impl_status == "pending" AND impl_round > 0`) — e.g. after a
+  Developer crash + respawn — returns the current `impl_round`
+  without mutating state. The conductor resumes the same Round.
+- Refuses when backlog status is not one of
+  `{in_progress_design, in_progress_pbi_review, in_progress_ut_run,
+  cross_review, in_progress_impl}`.
+
+This is the only sanctioned writer of `impl_round`. Hand-rolled
+`update-pbi-state.sh "$PBI_ID" impl_round <N>` is forbidden in the
+impl/PBI-review/UT-run cycle.
+
 ## Round n procedure
 
 ### Step 1: Parallel spawn (pbi-implementer + pbi-ut-author)
@@ -28,10 +57,9 @@ Agent(subagent_type="pbi-implementer", prompt=<from sub-agent-prompts.md § pbi-
 Agent(subagent_type="pbi-ut-author", prompt=<from sub-agent-prompts.md § pbi-ut-author>)
 ```
 
-```bash
-.scrum/scripts/update-pbi-state.sh "$PBI_ID" impl_round "$n" impl_status pending ut_status pending
-# Status remains in_progress_impl while sources/tests are being written.
-```
+Status remains `in_progress_impl` while sources/tests are being
+written; both per-stage statuses (`impl_status`, `ut_status`) were
+already reset to `pending` by `begin-impl-round.sh` above.
 
 ### Step 2: Move to PBI Review
 
@@ -108,8 +136,9 @@ fire), build feedback for the next impl round and revert status:
 ```bash
 .scrum/scripts/update-pbi-state.sh "$PBI_ID" impl_status fail
 .scrum/scripts/update-backlog-status.sh "$PBI_ID" in_progress_impl
-.scrum/scripts/append-pbi-log.sh "$PBI_ID" pbi_review "$n" gate "fail → in_progress_impl round $((n+1))"
-# Recurse with n+1; see "Build feedback for next round" below.
+.scrum/scripts/append-pbi-log.sh "$PBI_ID" pbi_review "$n" gate "fail → next round"
+# Loop back to "Pipeline entry" — begin-impl-round.sh returns the new n.
+# See "Build feedback for next round" below.
 ```
 
 ### Step 3: UT Run (test execution + coverage measurement)
@@ -224,8 +253,9 @@ fire), revert to impl for the next round:
 ```bash
 .scrum/scripts/update-pbi-state.sh "$PBI_ID" coverage_status fail ut_status fail
 .scrum/scripts/update-backlog-status.sh "$PBI_ID" in_progress_impl
-.scrum/scripts/append-pbi-log.sh "$PBI_ID" ut_run "$n" gate "fail → in_progress_impl round $((n+1))"
-# Recurse with n+1; see "Build feedback for next round".
+.scrum/scripts/append-pbi-log.sh "$PBI_ID" ut_run "$n" gate "fail → next round"
+# Loop back to "Pipeline entry" — begin-impl-round.sh returns the new n.
+# See "Build feedback for next round".
 ```
 
 #### Termination gate (Stagnation / Divergence / Hard cap)
