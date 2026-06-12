@@ -87,9 +87,27 @@ Then advance the status and spawn the two reviewers in parallel:
 .scrum/scripts/append-pbi-log.sh "$PBI_ID" pbi_review "$n" start —
 ```
 
+**Codex preflight** (see `sub-agent-prompts.md` § Conductor codex
+preflight). The same result applies to both reviewer spawns in this
+parallel pair — preflight once, then spawn both:
+
+```bash
+source scripts/lib/codex-invoke.sh
+codex_is_available && SPAWN_MODEL="" || SPAWN_MODEL="opus"
+```
+
+Codex present → spawn both with no `model` override:
+
 ```text
 Agent(subagent_type="codex-impl-reviewer", prompt=<from sub-agent-prompts.md>)
 Agent(subagent_type="codex-ut-reviewer", prompt=<from sub-agent-prompts.md>)
+```
+
+Codex absent → spawn both with `model="opus"`:
+
+```text
+Agent(subagent_type="codex-impl-reviewer", model="opus", prompt=<from sub-agent-prompts.md>)
+Agent(subagent_type="codex-ut-reviewer", model="opus", prompt=<from sub-agent-prompts.md>)
 ```
 
 Apply `reviewer-stall-fallback.md` per reviewer (2-min stall detect

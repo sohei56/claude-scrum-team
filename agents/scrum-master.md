@@ -8,7 +8,6 @@ description: >
 model: sonnet
 effort: high
 maxTurns: 300
-keep-coding-instructions: true
 disallowedTools:
   - Write
   - Edit

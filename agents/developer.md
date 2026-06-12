@@ -4,10 +4,9 @@ description: >
   Developer teammate — orchestrator of the PBI pipeline. Spawns
   per-PBI sub-agents (designer, implementer, ut-author, reviewers)
   and routes feedback. Does NOT write code itself.
-model: opus
+model: sonnet
 effort: high
 maxTurns: 200
-keep-coding-instructions: true
 memory: project
 disallowedTools:
   - WebFetch

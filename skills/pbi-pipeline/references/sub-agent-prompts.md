@@ -8,6 +8,45 @@ NOT receive" boundaries) live in the corresponding agent definition
 under `agents/` and are not restated here. All sub-agents must end
 output with the JSON envelope from spec 4.1.
 
+## Conductor codex preflight (codex-*-reviewer spawns only)
+
+The three reviewer agents `codex-design-reviewer`,
+`codex-impl-reviewer`, and `codex-ut-reviewer` are sized in their
+frontmatter for the **Codex-success path** (`model: sonnet`). When
+Codex is unavailable they each fall back to a full Claude review
+under their own model, which is heavier work and benefits from
+opus.
+
+**Immediately before every codex-\*-reviewer spawn**, the conductor
+runs a one-shot preflight and chooses the spawn model accordingly:
+
+```bash
+source scripts/lib/codex-invoke.sh
+if codex_is_available; then
+  CODEX_REVIEWER_MODEL=""     # default → frontmatter (sonnet)
+else
+  CODEX_REVIEWER_MODEL="opus"
+fi
+```
+
+Then spawn:
+
+- Codex present:
+  `Agent(subagent_type="codex-<stage>-reviewer", prompt=<...>)`
+- Codex absent:
+  `Agent(subagent_type="codex-<stage>-reviewer", model="opus", prompt=<...>)`
+
+`effort` and `maxTurns` cannot be overridden at spawn time, so the
+frontmatter (`effort: high`, `maxTurns: 80`) is sized as the
+safe envelope for both modes. Codex-success runs are short and
+under-consume the envelope; fallback runs use the full budget.
+
+The preflight is **per spawn**, not per Sprint — `codex` may become
+available or unavailable between PBIs. Caching the result is
+incorrect. The stall-fallback protocol in
+`reviewer-stall-fallback.md` is independent: it handles `codex` that
+**hangs** after a successful preflight, not `codex` that is absent.
+
 ## Common envelope reminder (append to every prompt)
 
 ```text

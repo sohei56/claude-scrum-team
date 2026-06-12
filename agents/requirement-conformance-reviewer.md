@@ -11,7 +11,7 @@ tools:
   - Bash
 model: opus
 effort: xhigh
-maxTurns: 50
+maxTurns: 80
 ---
 
 # Requirement Conformance Reviewer

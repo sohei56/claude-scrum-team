@@ -9,7 +9,6 @@ description: >
 model: claude-fable-5
 effort: xhigh
 maxTurns: 300
-keep-coding-instructions: true
 memory: project
 disallowedTools:
   - WebFetch

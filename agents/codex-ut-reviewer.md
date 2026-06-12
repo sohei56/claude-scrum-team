@@ -10,8 +10,8 @@ tools:
   - Glob
   - Bash
 model: sonnet
-effort: medium
-maxTurns: 30
+effort: high
+maxTurns: 80
 ---
 
 # Codex UT Reviewer
@@ -102,6 +102,16 @@ Reviewed-Design-Hash: <design_hash>
 
 Same as codex-design-reviewer (Verdict + Findings + Summary + JSON
 envelope).
+
+## Model selection (conductor responsibility)
+
+Same contract as `codex-design-reviewer` § Model selection: the
+conductor preflights Codex via `codex_is_available` from
+`scripts/lib/codex-invoke.sh`; on absent Codex the spawn is `Agent(
+subagent_type="codex-ut-reviewer", model="opus", ...)`.
+`effort: high` + `maxTurns: 80` in the frontmatter cover both modes.
+See `skills/pbi-pipeline/references/sub-agent-prompts.md` §
+Conductor codex preflight.
 
 ## Strict Rules
 

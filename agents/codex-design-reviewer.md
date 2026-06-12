@@ -11,8 +11,8 @@ tools:
   - Glob
   - Bash
 model: sonnet
-effort: medium
-maxTurns: 30
+effort: high
+maxTurns: 80
 ---
 
 # Codex Design Reviewer
@@ -114,6 +114,27 @@ missing_error_handling, missing_ac_mapping.
 ```
 
 End with the JSON envelope from spec 4.1.
+
+## Model selection (conductor responsibility)
+
+The frontmatter `model: sonnet` is sized for the **Codex-success
+path** — the work this agent does is "build instructions, invoke
+Codex, persist output," not deep reasoning. The fallback path (Codex
+unavailable) runs a full Claude review under this agent's own model,
+which is heavier work.
+
+The conductor (Developer running the `pbi-pipeline` skill) MUST
+preflight Codex availability via `codex_is_available` from
+`scripts/lib/codex-invoke.sh` immediately before each spawn:
+
+- Codex available → spawn with default model (sonnet).
+- Codex unavailable → spawn with `Agent(model: "opus", ...)` override.
+  `effort` and `maxTurns` cannot be overridden at spawn time, so the
+  frontmatter (`effort: high`, `maxTurns: 80`) is the
+  safe-for-fallback envelope used in both modes.
+
+See `skills/pbi-pipeline/references/sub-agent-prompts.md` § Conductor
+codex preflight for the canonical spawn shape.
 
 ## Strict Rules
 
