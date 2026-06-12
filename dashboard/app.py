@@ -539,12 +539,16 @@ def _format_comm_line(msg: dict) -> str:
 
 
 def _format_event_line(evt: dict) -> str:
-    """Render one dashboard.json work event as a Rich markup line."""
+    """Render one dashboard.json work event as a Rich markup line.
+
+    Leads with the agent name (same as comms lines) so the merged Team Log
+    consistently reads "who did what".
+    """
     ts_short = _format_ts_short(evt.get("timestamp", "?"))
     evt_type = evt.get("type", "?")
     agent = str(evt.get("agent_id") or "?")
     color = _agent_color(agent)
-    agent_str = f"([{color}]{escape(agent)}[/{color}])"
+    agent_str = f"[bold {color}]{escape(agent)}[/bold {color}]"
     file_path = evt.get("file_path") or ""
     change = evt.get("change_type") or ""
     detail = escape(str(evt.get("detail") or ""))
@@ -552,17 +556,17 @@ def _format_event_line(evt: dict) -> str:
     if evt_type == "file_changed" and file_path:
         ccolor = {"created": "green", "modified": "yellow", "deleted": "red"}.get(change, "")
         change_str = f"[{ccolor}]{change}[/{ccolor}]" if ccolor else change
-        return f"[dim]{ts_short}[/dim] {change_str} {escape(str(file_path))} {agent_str}"
+        return f"[dim]{ts_short}[/dim] {agent_str} {change_str} {escape(str(file_path))}"
     if evt_type == "teammate_idle":
-        return f"[dim]{ts_short}[/dim] [cyan]idle[/cyan] {detail} {agent_str}"
+        return f"[dim]{ts_short}[/dim] {agent_str} [cyan]idle[/cyan] {detail}"
     if evt_type == "status_transition":
         status_from = evt.get("status_from") or ""
         status_to = evt.get("status_to") or ""
         arrow = f"{status_from} → {status_to}" if status_from or status_to else detail
-        return f"[dim]{ts_short}[/dim] [magenta]status[/magenta] {arrow} {agent_str}"
+        return f"[dim]{ts_short}[/dim] {agent_str} [magenta]status[/magenta] {arrow}"
     if detail:
-        return f"[dim]{ts_short}[/dim] {detail} {agent_str}"
-    return f"[dim]{ts_short}[/dim] {evt_type} {agent_str}"
+        return f"[dim]{ts_short}[/dim] {agent_str} {detail}"
+    return f"[dim]{ts_short}[/dim] {agent_str} {evt_type}"
 
 
 class UnifiedLog(RichLog):

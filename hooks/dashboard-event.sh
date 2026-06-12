@@ -36,11 +36,13 @@ append_comms_message() {
   append_to_json_array "$COMMS_FILE" messages "$message_json" max_messages "$MAX_MESSAGES"
 }
 
-# Shorten UUID-style agent IDs to first 8 chars for readability.
+# Shorten UUID-style or long-hex agent IDs to first 8 chars for readability.
 shorten_id() {
   local id="$1"
   if echo "$id" | grep -qE '^[0-9a-f]{8}-[0-9a-f]{4}-'; then
     echo "${id%%-*}"
+  elif echo "$id" | grep -qE '^[0-9a-f]{16,}$'; then
+    echo "${id:0:8}"
   else
     echo "$id"
   fi
@@ -131,11 +133,20 @@ hook_event="$(cat)"
 # Claude Code uses "hook_event_name" as the event type field
 hook_type="$(echo "$hook_event" | jq -r '.hook_event_name // .hook_type // .type // "unknown"')"
 raw_agent_id="$(echo "$hook_event" | jq -r '.agent_id // .session_id // "unknown"')"
+# Friendly name carried in the payload itself: teammate_name (TeammateIdle),
+# agent_type (SubagentStart/Stop and subagent-context PostToolUse).
+payload_name="$(echo "$hook_event" | jq -r '.teammate_name // .teammate_id // .agent_type // .subagent_type // .agent_name // empty')"
 timestamp="$(get_timestamp)"
 
 short_id="$(shorten_id "$raw_agent_id")"
-# Resolve to friendly developer name if a mapping exists
-agent_id="$(resolve_agent_name "$short_id")"
+if [ -n "$payload_name" ]; then
+  # Persist the id → name mapping so later events that only carry the id
+  # (Stop, PostToolUse) still resolve to the friendly name.
+  agent_id="$payload_name"
+  save_session_name "$short_id" "$payload_name"
+else
+  agent_id="$(resolve_agent_name "$short_id")"
+fi
 
 case "$hook_type" in
   PostToolUse|post_tool_use)
@@ -244,21 +255,9 @@ case "$hook_type" in
     ;;
 
   TeammateIdle|teammate_idle)
-    # Claude Code provides teammate_name in TeammateIdle payloads
-    teammate_name="$(echo "$hook_event" | jq -r '.teammate_name // empty')"
-    session_id="$(echo "$hook_event" | jq -r '.session_id // empty')"
-
-    # Build sender_id: prefer teammate_name, fallback to session_id
-    if [ -n "$teammate_name" ]; then
-      sender_id="$teammate_name"
-      # Save session → name mapping for future PostToolUse lookups
-      if [ -n "$session_id" ]; then
-        save_session_name "$(shorten_id "$session_id")" "$teammate_name"
-      fi
-    else
-      sender_id="$(shorten_id "${session_id:-teammate}")"
-    fi
-
+    # Common extraction above already resolved teammate_name (and saved the
+    # session → name mapping for future PostToolUse/Stop lookups).
+    sender_id="$agent_id"
     sender_role="teammate"
     # Try multiple fields for content
     content="$(echo "$hook_event" | jq -r '
@@ -288,9 +287,10 @@ case "$hook_type" in
     ;;
 
   Stop|stop)
-    # Session or teammate stopping
+    # Session or teammate stopping. agent_id resolves to a friendly name
+    # only if an earlier event saved a session-map entry for this session.
     reason="$(echo "$hook_event" | jq -r '.reason // "completed"')"
-    detail="Session stopped: ${reason}"
+    detail="session stopped (${reason})"
 
     event_json="$(jq -n \
       --arg ts "$timestamp" \
@@ -309,10 +309,10 @@ case "$hook_type" in
     ;;
 
   SubagentStart|subagent_start)
-    # Teammate/subagent starting work
-    subagent_name="$(echo "$hook_event" | jq -r '.subagent_type // .agent_name // empty')"
+    # Teammate/subagent starting work. The agent name (payload agent_type)
+    # is already in agent_id — detail carries only the action.
     pbi_id="${SCRUM_PBI_ID:-$(echo "$hook_event" | jq -r '.scrum_pbi_id // empty')}"
-    detail="Subagent started${subagent_name:+: ${subagent_name}}${pbi_id:+ for ${pbi_id}}"
+    detail="started work${pbi_id:+ on ${pbi_id}}"
 
     event_json="$(jq -n \
       --arg ts "$timestamp" \
@@ -333,10 +333,9 @@ case "$hook_type" in
     ;;
 
   SubagentStop|subagent_stop)
-    # Teammate finished its work
-    subagent_name="$(echo "$hook_event" | jq -r '.subagent_type // .agent_name // empty')"
+    # Teammate/subagent finished its work. Name lives in agent_id.
     pbi_id="${SCRUM_PBI_ID:-$(echo "$hook_event" | jq -r '.scrum_pbi_id // empty')}"
-    detail="Teammate finished${subagent_name:+: ${subagent_name}}${pbi_id:+ for ${pbi_id}}"
+    detail="finished work${pbi_id:+ on ${pbi_id}}"
 
     event_json="$(jq -n \
       --arg ts "$timestamp" \
@@ -362,7 +361,7 @@ case "$hook_type" in
   TaskCompleted|task_completed)
     # A task has been completed
     tool_name="$(echo "$hook_event" | jq -r '.tool_name // empty')"
-    detail="Task completed${tool_name:+: ${tool_name}}"
+    detail="completed task${tool_name:+: ${tool_name}}"
 
     event_json="$(jq -n \
       --arg ts "$timestamp" \

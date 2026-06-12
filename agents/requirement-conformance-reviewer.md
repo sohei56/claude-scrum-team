@@ -10,7 +10,7 @@ tools:
   - Glob
   - Bash
 model: opus
-effort: high
+effort: xhigh
 maxTurns: 50
 ---
 

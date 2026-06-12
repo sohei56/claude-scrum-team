@@ -224,6 +224,50 @@ EOF
   [ ! -f ".scrum/communications.json" ]
 }
 
+@test "dashboard-event.sh uses agent_type as the friendly name for subagent events" {
+  mkdir -p .scrum
+
+  local event_json
+  event_json='{"hook_event_name":"SubagentStart","agent_id":"a8733575f4dde12fa","agent_type":"code-reviewer"}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/dashboard-event.sh'"
+  assert_success
+
+  # The work event names the agent, not the opaque id
+  jq -e '.events[-1].agent_id == "code-reviewer"' .scrum/dashboard.json
+  jq -e '.events[-1].detail == "started work"' .scrum/dashboard.json
+
+  # The id → name mapping is persisted (shortened to 8 hex chars)
+  jq -e '.["a8733575"] == "code-reviewer"' .scrum/session-map.json
+}
+
+@test "dashboard-event.sh resolves Stop event to a previously mapped name" {
+  mkdir -p .scrum
+
+  # SubagentStart saves the mapping ...
+  run bash -c "echo '{\"hook_event_name\":\"SubagentStart\",\"agent_id\":\"a8733575f4dde12fa\",\"agent_type\":\"dev-001-s1\"}' | bash '$PROJECT_ROOT/hooks/dashboard-event.sh'"
+  assert_success
+
+  # ... and a later Stop event carrying only the id resolves to the name
+  run bash -c "echo '{\"hook_event_name\":\"Stop\",\"session_id\":\"a8733575f4dde12fa\",\"reason\":\"completed\"}' | bash '$PROJECT_ROOT/hooks/dashboard-event.sh'"
+  assert_success
+
+  jq -e '.events[-1].agent_id == "dev-001-s1"' .scrum/dashboard.json
+  jq -e '.events[-1].detail == "session stopped (completed)"' .scrum/dashboard.json
+}
+
+@test "dashboard-event.sh shortens long hex agent ids without a name mapping" {
+  mkdir -p .scrum
+
+  local event_json
+  event_json='{"hook_event_name":"SubagentStop","agent_id":"a8733575f4dde12fa"}'
+
+  run bash -c "echo '$event_json' | bash '$PROJECT_ROOT/hooks/dashboard-event.sh'"
+  assert_success
+
+  jq -e '.events[-1].agent_id == "a8733575"' .scrum/dashboard.json
+}
+
 @test "dashboard-event.sh handles TaskCompleted event" {
   mkdir -p .scrum
 
