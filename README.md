@@ -17,6 +17,10 @@
 </p>
 
 <p align="center">
+  <strong>English</strong> | <a href="README_ja.md">日本語</a>
+</p>
+
+<p align="center">
   <a href="#why">Why?</a> &bull;
   <a href="#demo">Demo</a> &bull;
   <a href="#features">Features</a> &bull;
@@ -31,7 +35,7 @@ Run `scrum-start.sh` in any project directory and a full AI Scrum team takes ove
 
 ## Why?
 
-Vibe coding is fast but chaotic. Spec-Driven Development (SDD) is disciplined but demands everything upfront. Most real projects live in between — requirements are fuzzy and need to be shaped as you go.
+Vibe coding's speed is attractive, but order erodes as a project runs longer. Spec-Driven Development (SDD) keeps order well, but demands defining a lot upfront. Most real projects live in between — not everything is decided on day one, yet you still need to maintain order as you go.
 
 **claude-scrum-team** brings Scrum's inspect-and-adapt loop to Claude Code, giving you structured iteration without requiring a complete specification on day one. You stay in the Product Owner seat — describing what you want, approving Sprint Goals, and reviewing working software each Sprint — while a team of AI agents handles the rest.
 
@@ -52,7 +56,7 @@ One command sets up agents, skills, and hooks — then launches Claude Code with
 5. **Cross-Review** — once all PBIs are merged, the SM spawns 5 aspect-specialized reviewer sub-agents (requirement-conformance, functional-quality, security, maintainability, docs-consistency) in parallel over the whole Sprint Increment
 6. **Sprint Review** — the SM launches the app and demos every completed PBI; you confirm each works
 7. **Retrospective** — the team reflects and records improvements for the next Sprint
-8. **Repeat** until the Product Goal is achieved, then an **Integration Sprint** runs smoke tests, design-completeness verification, and a final story-driven UAT
+8. **Repeat** until the Product Goal is achieved, then an **Integration Sprint** runs smoke tests, design-completeness verification, and a final user-story-driven UAT
 
 ## Features
 
@@ -60,10 +64,10 @@ One command sets up agents, skills, and hooks — then launches Claude Code with
 - **Multi-agent coordination** — Scrum Master (Delegate mode) orchestrates up to 6 parallel Developer agents per Sprint (1 Developer per PBI, capped at 6)
 - **Autonomous PO mode** (`--autonomous`) — runs the team end-to-end with an AI Product Owner (`po_mode=agent`). An outer Ralph-Loop watchdog (`scripts/autonomous/watchdog.sh`) re-launches headless Claude sessions, enforces safety valves (iterations / wall clock / Sprints / budget) and writes a morning report to `.scrum/reports/`. See [docs/autonomous-mode.md](docs/autonomous-mode.md).
 - **Real-time TUI dashboard** — Textual-based three-panel display (Sprint Overview, PBI Progress Board, unified Work Log of agent messages + work events) with watchdog filesystem monitoring
-- **Design document governance** — immutable catalog (`catalog.md`) with editable enablement config (`catalog-config.json`), enforced by status-gate hooks
-- **Quality enforcement hooks** — status gates, path guards, branch-ops guard, a single Stop entry (`stop-dispatch.sh` → `dashboard-event.sh` + `completion-gate.sh`), quality gates (Definition of Done), session context restoration, plus an external stall watchdog (`scripts/stall-watchdog.sh`) in human mode
+- **Design document governance** — immutable catalog (`catalog.md`) with editable enablement config (`catalog-config.json`) enforced by status-gate hooks, controlling the documents AI agents are allowed to create
+- **Quality enforcement hooks** — status gates, path guards, branch-ops guard, completion-flow enforcement (`stop-dispatch.sh` → `dashboard-event.sh` + `completion-gate.sh`), quality gates (Definition of Done), session context restoration, plus an external stall watchdog (`scripts/stall-watchdog.sh`) in human mode — turning the behaviors you want agents to follow into mechanisms
 - **State persistence** — all state in `.scrum/` JSON files for full session resume capability
-- **Automated testing** — Integration Sprints run smoke tests (unit + e2e from `package.json` / language conventions), design-completeness verification, optional browser E2E via Playwright MCP, and a story-driven UAT
+- **Automated testing** — Integration Sprints run smoke tests (unit + e2e), design-completeness verification, optional browser E2E via Playwright MCP, and a story-driven UAT
 - **Retrospective-driven improvement** — improvements from past Sprints are applied automatically
 
 ### AI-Specific Adaptations
@@ -73,7 +77,7 @@ This is not a carbon copy of human Scrum — it adapts the framework to how AI a
 **Extensions leveraging AI strengths:**
 
 - **Dynamic team sizing** — the number of Developer agents is optimized per Sprint based on PBI count and complexity
-- **Independent cross-review** — the Scrum Master runs static analysis once and spawns 5 aspect-specialized reviewer sub-agents in parallel over the whole Sprint Increment (`requirement-conformance-reviewer`, `functional-quality-reviewer`, `security-reviewer`, `maintainability-reviewer`, `docs-consistency-reviewer`). Per-PBI Codex-CLI cross-model review remains in the PBI Pipeline via `codex-impl-reviewer` and `codex-ut-reviewer`
+- **Independent cross-review** — 5 aspect-specialized reviewer sub-agents (`requirement-conformance-reviewer`, `functional-quality-reviewer`, `security-reviewer`, `maintainability-reviewer`, `docs-consistency-reviewer`) run in parallel over the whole Sprint Increment, plus per-PBI Codex-CLI cross-model review
 
 **Constraints addressing AI weaknesses:**
 
