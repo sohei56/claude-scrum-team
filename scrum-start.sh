@@ -237,8 +237,8 @@ if [ "$AUTONOMOUS" = "1" ]; then
   if [ ! -f "$CONFIG_FILE" ]; then
     printf '{}\n' > "$CONFIG_FILE"
   fi
-  _cur_max_sprints="$(jq -r '.autonomous.max_sprints // 5' \
-    "$CONFIG_FILE" 2>/dev/null || echo 5)"
+  _cur_max_sprints="$(jq -r '.autonomous.max_sprints // 8' \
+    "$CONFIG_FILE" 2>/dev/null || echo 8)"
   _cur_max_hours="$(jq -r '.autonomous.max_wall_clock_hours // 8' \
     "$CONFIG_FILE" 2>/dev/null || echo 8)"
   _cur_perm_mode="$(jq -r '.autonomous.permission_mode // "dontAsk"' \
@@ -340,7 +340,7 @@ if [ "$AUTONOMOUS" = "1" ]; then
         + {
             max_iterations:            (.autonomous.max_iterations            // 50),
             max_wall_clock_hours:      (.autonomous.max_wall_clock_hours      // 8),
-            max_sprints:               (.autonomous.max_sprints               // 5),
+            max_sprints:               (.autonomous.max_sprints               // 8),
             max_consecutive_failures:  (.autonomous.max_consecutive_failures  // 3),
             stop_block_budget_per_phase: (.autonomous.stop_block_budget_per_phase // 8),
             permission_mode:           $perm,

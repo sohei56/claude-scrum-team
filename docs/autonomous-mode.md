@@ -157,7 +157,7 @@ in that case. It is also skipped under `SCRUM_START_DRY_RUN=1`.
   "autonomous": {
     "max_iterations":               50,
     "max_wall_clock_hours":          8,
-    "max_sprints":                   5,
+    "max_sprints":                   8,
     "max_consecutive_failures":      3,
     "stop_block_budget_per_phase":   8,
     "permission_mode":      "dontAsk",
@@ -174,7 +174,7 @@ in that case. It is also skipped under `SCRUM_START_DRY_RUN=1`.
 | `po.max_integration_cycles` | (no default; advisory) | Max defect-fix loops the autonomous PO will tolerate before issuing `release_decision=no_go` and parking the run. |
 | `autonomous.max_iterations` | `50` | Hard cap on watchdog iterations. Exceeded → exit 2 (`max_iterations_exceeded`). |
 | `autonomous.max_wall_clock_hours` | `8` | Hard wall-clock budget for the whole run. Exceeded → exit 2. |
-| `autonomous.max_sprints` | `5` | Watchdog stops once `sprint-history.json.sprints` reaches this length. Exit 2. |
+| `autonomous.max_sprints` | `8` | Watchdog stops once `sprint-history.json.sprints` reaches this length. Exit 2. |
 | `autonomous.max_consecutive_failures` | `3` | Number of consecutive zero-progress iterations (or non-zero Claude exit codes, or tripped circuit breakers) before the watchdog gives up. Exit 1. |
 | `autonomous.stop_block_budget_per_phase` | `8` | **Autonomous mode only.** Per workflow phase, how many times the Stop hook may block exit before tripping the circuit breaker. Resets when the phase changes. Used by `completion-gate.sh`. In **human mode** the gate ignores this key and instead fingerprint-dedups blocks via `.scrum/stop-gate.json` (first identical block exits 2, repeats allow exit); teammate liveness is monitored by the external `scripts/stall-watchdog.sh` daemon. |
 | `autonomous.permission_mode` | `"dontAsk"` | One of `dontAsk` \| `bypassPermissions`. `bypassPermissions` skips every confirmation prompt, including destructive writes outside the allowlist — only use it when running in a throwaway worktree. |

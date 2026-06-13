@@ -25,7 +25,7 @@
   "autonomous": {
     "max_iterations": 50,
     "max_wall_clock_hours": 8,
-    "max_sprints": 5,
+    "max_sprints": 8,
     "max_consecutive_failures": 3,
     "stop_block_budget_per_phase": 8,
     "permission_mode": "dontAsk",

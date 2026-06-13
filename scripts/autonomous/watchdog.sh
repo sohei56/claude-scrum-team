@@ -65,7 +65,7 @@ ITER_OUT_DIR=".scrum/autonomous"
 # --- Defaults (mirrored from .scrum-config.example.json) ---------------------
 DEFAULT_MAX_ITERATIONS=50
 DEFAULT_MAX_WALL_HOURS=8
-DEFAULT_MAX_SPRINTS=5
+DEFAULT_MAX_SPRINTS=8
 DEFAULT_MAX_CONSECUTIVE_FAILURES=3
 DEFAULT_PERMISSION_MODE="dontAsk"
 
