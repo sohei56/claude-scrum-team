@@ -26,6 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock, Timer
 
+from rich.cells import cell_len
 from rich.markup import escape
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -324,6 +325,28 @@ class SprintOverview(Static):
         self.update("\n".join(lines))
 
 
+def _truncate_to_cells(s: str, budget: int) -> str:
+    """Truncate ``s`` so its terminal display width fits within ``budget`` cells.
+
+    Uses Rich's ``cell_len`` so CJK / full-width characters are counted as 2
+    cells — ``len()`` would undercount them and let the title overflow the
+    DataTable column, which triggers horizontal scroll on the PBI board.
+    Appends a one-cell ellipsis when truncation actually happens.
+    """
+    if cell_len(s) <= budget:
+        return s
+    target = max(0, budget - 1)
+    out: list[str] = []
+    width = 0
+    for ch in s:
+        w = cell_len(ch)
+        if width + w > target:
+            break
+        out.append(ch)
+        width += w
+    return "".join(out) + "…"
+
+
 class UnifiedPbiBoard(DataTable):
     """Single PBI board driven by the 12-value status SSOT.
 
@@ -342,10 +365,27 @@ class UnifiedPbiBoard(DataTable):
     }
     """
 
+    # Cell-width budget used the last time titles were rendered. Tracked so
+    # ``on_resize`` only re-renders when the budget actually changes (avoids
+    # row-rebuild jitter on every minor resize event).
+    _last_title_budget: int = -1
+
     def on_mount(self) -> None:
         self.add_columns("ID", "Title", "Status", "Round", "Dev", "Updated")
         self.cursor_type = "row"
         self.update_content()
+
+    def on_resize(self) -> None:
+        new_budget = self._compute_title_budget()
+        if new_budget != self._last_title_budget:
+            self.update_content()
+
+    def _compute_title_budget(self) -> int:
+        # Non-title chrome (ID/Status/Round/Dev/Updated widths + per-cell
+        # padding + border) caps out around 55 cells in the worst case.
+        non_title_chrome = 55
+        container_w = self.size.width or 80
+        return max(10, container_w - non_title_chrome)
 
     def update_content(self) -> None:
         backlog, backlog_error = read_json_with_validation_status(SCRUM_DIR / "backlog.json")
@@ -379,21 +419,16 @@ class UnifiedPbiBoard(DataTable):
         now = datetime.now(timezone.utc)
 
         # Truncate titles dynamically so the board fits the container width
-        # (no horizontal scroll). Non-title chrome (ID/Status/Round/Dev/Updated
-        # widths + per-cell padding + border) is ~55 chars in the worst case.
-        non_title_chrome = 55
-        container_w = self.size.width or 80
-        title_budget = max(10, container_w - non_title_chrome)
+        # (no horizontal scroll). Measured in terminal cells, not str length,
+        # so CJK / full-width characters don't overflow the column.
+        title_budget = self._compute_title_budget()
+        self._last_title_budget = title_budget
 
         for item in items:
             pbi_id = item.get("id") or "?"
             pbi_key = pbi_id.lower()
             raw_title = item.get("title") or "Untitled"
-            title = (
-                raw_title
-                if len(raw_title) <= title_budget
-                else raw_title[: max(1, title_budget - 1)] + "…"
-            )
+            title = _truncate_to_cells(raw_title, title_budget)
 
             status = item.get("status", "?")
             status_display = format_status(status)
@@ -425,12 +460,19 @@ class UnifiedPbiBoard(DataTable):
 
             dev = pbi_impl_map.get(pbi_key) or item.get("implementer_id") or "-"
 
+            # Escape user-authored strings: titles often contain "[tag]"
+            # decorations from agent generation, and any unbalanced "[" would
+            # otherwise be parsed as an unknown Rich markup tag and wipe the
+            # cell. ``dev`` comes from sprint/backlog data too, so escape it
+            # for the same reason. ``status_display`` / ``round_cell`` /
+            # ``updated_cell`` are intentionally Rich-formatted by us, so
+            # they pass through untouched.
             self.add_row(
                 pbi_id,
-                title,
+                escape(title),
                 status_display,
                 round_cell,
-                dev,
+                escape(str(dev)),
                 updated_cell,
                 key=pbi_id,
             )
