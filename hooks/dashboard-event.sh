@@ -2,8 +2,11 @@
 # dashboard-event.sh — PostToolUse/TeammateIdle/Stop/TaskCompleted/SubagentStart/SubagentStop hook
 # Feeds the dashboard events log and communications log.
 # Reads hook event JSON from stdin (Claude Code hook payload).
-# Appends file change events to .scrum/dashboard.json and agent
-# communication messages to .scrum/communications.json.
+# Each happening is appended to exactly one file: work events
+# (file changes, lifecycle, task completion) to .scrum/dashboard.json,
+# agent messages (SendMessage, spawns, idle progress) to
+# .scrum/communications.json. The dashboard's Work Log panel merges
+# both chronologically.
 set -euo pipefail
 
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -33,11 +36,13 @@ append_comms_message() {
   append_to_json_array "$COMMS_FILE" messages "$message_json" max_messages "$MAX_MESSAGES"
 }
 
-# Shorten UUID-style agent IDs to first 8 chars for readability.
+# Shorten UUID-style or long-hex agent IDs to first 8 chars for readability.
 shorten_id() {
   local id="$1"
   if echo "$id" | grep -qE '^[0-9a-f]{8}-[0-9a-f]{4}-'; then
     echo "${id%%-*}"
+  elif echo "$id" | grep -qE '^[0-9a-f]{16,}$'; then
+    echo "${id:0:8}"
   else
     echo "$id"
   fi
@@ -93,28 +98,15 @@ is_duplicate_comms() {
 
 # Determine the change type for a file operation
 determine_change_type() {
-  local tool_name="$1"
-  local file_path="$2"
-
-  case "$tool_name" in
-    Write)
-      if [ -f "$file_path" ]; then
-        echo "modified"
-      else
-        echo "created"
-      fi
-      ;;
-    Edit)
-      echo "modified"
-      ;;
-    Bash)
-      # Cannot reliably determine — default to modified
-      echo "modified"
-      ;;
-    *)
-      echo "modified"
-      ;;
-  esac
+  # Always returns "modified".
+  #
+  # Cleanup-audit T1-9 (2026-06): the prior implementation distinguished
+  # Write→"created" from Write→"modified" by `[ -f $file_path ]`. But this
+  # is a PostToolUse hook — by the time it runs, the tool has already
+  # completed, so the file always exists and the "created" branch is
+  # unreachable. Edit / Bash / * already returned "modified" verbatim.
+  # Collapsed to one literal to make the contract explicit.
+  echo "modified"
 }
 
 # ---------------------------------------------------------------------------
@@ -128,11 +120,20 @@ hook_event="$(cat)"
 # Claude Code uses "hook_event_name" as the event type field
 hook_type="$(echo "$hook_event" | jq -r '.hook_event_name // .hook_type // .type // "unknown"')"
 raw_agent_id="$(echo "$hook_event" | jq -r '.agent_id // .session_id // "unknown"')"
+# Friendly name carried in the payload itself: teammate_name (TeammateIdle),
+# agent_type (SubagentStart/Stop and subagent-context PostToolUse).
+payload_name="$(echo "$hook_event" | jq -r '.teammate_name // .teammate_id // .agent_type // .subagent_type // .agent_name // empty')"
 timestamp="$(get_timestamp)"
 
 short_id="$(shorten_id "$raw_agent_id")"
-# Resolve to friendly developer name if a mapping exists
-agent_id="$(resolve_agent_name "$short_id")"
+if [ -n "$payload_name" ]; then
+  # Persist the id → name mapping so later events that only carry the id
+  # (Stop, PostToolUse) still resolve to the friendly name.
+  agent_id="$payload_name"
+  save_session_name "$short_id" "$payload_name"
+else
+  agent_id="$(resolve_agent_name "$short_id")"
+fi
 
 case "$hook_type" in
   PostToolUse|post_tool_use)
@@ -145,8 +146,6 @@ case "$hook_type" in
         file_path="$(echo "$tool_input" | jq -r '.file_path // empty')"
         if [ -n "$file_path" ]; then
           change_type="$(determine_change_type "$tool_name" "$file_path")"
-          # Use basename for concise display
-          short_path="$(basename "$file_path")"
           detail="${tool_name} on ${file_path}"
 
           event_json="$(jq -n \
@@ -166,26 +165,6 @@ case "$hook_type" in
             }')"
 
           append_dashboard_event "$event_json"
-
-          # Also emit a communication message for file changes
-          comms_content="${change_type} ${short_path}"
-          if ! is_duplicate_comms "$agent_id" "$comms_content"; then
-            message_json="$(jq -n \
-              --arg ts "$timestamp" \
-              --arg sid "$agent_id" \
-              --arg role "developer" \
-              --arg type "file_change" \
-              --arg content "$comms_content" \
-              '{
-                "timestamp": $ts,
-                "sender_id": $sid,
-                "sender_role": $role,
-                "recipient_id": null,
-                "type": $type,
-                "content": $content
-              }')"
-            append_comms_message "$message_json"
-          fi
         fi
         ;;
       Bash)
@@ -232,25 +211,40 @@ case "$hook_type" in
           append_comms_message "$message_json"
         fi
         ;;
+      SendMessage)
+        # Inter-agent message (e.g. developer → scrum-master / PO).
+        recipient="$(echo "$tool_input" | jq -r '.to // empty')"
+        content="$(echo "$tool_input" | jq -r '
+          (.summary // "") as $s
+          | (.message // "") as $m
+          | if $s != "" then $s
+            elif ($m | type) == "string" then $m
+            elif ($m | type) == "object" then ($m.type // "")
+            else "" end
+        ' | head -c 300)"
+        if [ -n "$recipient" ] && [ -n "$content" ]; then
+          message_json="$(jq -n \
+            --arg ts "$timestamp" \
+            --arg sid "$agent_id" \
+            --arg rid "$recipient" \
+            --arg content "$content" \
+            '{
+              "timestamp": $ts,
+              "sender_id": $sid,
+              "recipient_id": $rid,
+              "type": "message",
+              "content": $content
+            }')"
+          append_comms_message "$message_json"
+        fi
+        ;;
     esac
     ;;
 
   TeammateIdle|teammate_idle)
-    # Claude Code provides teammate_name in TeammateIdle payloads
-    teammate_name="$(echo "$hook_event" | jq -r '.teammate_name // empty')"
-    session_id="$(echo "$hook_event" | jq -r '.session_id // empty')"
-
-    # Build sender_id: prefer teammate_name, fallback to session_id
-    if [ -n "$teammate_name" ]; then
-      sender_id="$teammate_name"
-      # Save session → name mapping for future PostToolUse lookups
-      if [ -n "$session_id" ]; then
-        save_session_name "$(shorten_id "$session_id")" "$teammate_name"
-      fi
-    else
-      sender_id="$(shorten_id "${session_id:-teammate}")"
-    fi
-
+    # Common extraction above already resolved teammate_name (and saved the
+    # session → name mapping for future PostToolUse/Stop lookups).
+    sender_id="$agent_id"
     sender_role="teammate"
     # Try multiple fields for content
     content="$(echo "$hook_event" | jq -r '
@@ -277,28 +271,13 @@ case "$hook_type" in
 
       append_comms_message "$message_json"
     fi
-
-    # Also add a dashboard event for teammate idle
-    event_json="$(jq -n \
-      --arg ts "$timestamp" \
-      --arg agent "$sender_id" \
-      --arg detail "Teammate idle: ${content}" \
-      '{
-        "timestamp": $ts,
-        "type": "teammate_idle",
-        "agent_id": $agent,
-        "file_path": null,
-        "change_type": null,
-        "detail": $detail
-      }')"
-
-    append_dashboard_event "$event_json"
     ;;
 
   Stop|stop)
-    # Session or teammate stopping
+    # Session or teammate stopping. agent_id resolves to a friendly name
+    # only if an earlier event saved a session-map entry for this session.
     reason="$(echo "$hook_event" | jq -r '.reason // "completed"')"
-    detail="Session stopped: ${reason}"
+    detail="session stopped (${reason})"
 
     event_json="$(jq -n \
       --arg ts "$timestamp" \
@@ -317,10 +296,10 @@ case "$hook_type" in
     ;;
 
   SubagentStart|subagent_start)
-    # Teammate/subagent starting work
-    subagent_name="$(echo "$hook_event" | jq -r '.subagent_type // .agent_name // empty')"
+    # Teammate/subagent starting work. The agent name (payload agent_type)
+    # is already in agent_id — detail carries only the action.
     pbi_id="${SCRUM_PBI_ID:-$(echo "$hook_event" | jq -r '.scrum_pbi_id // empty')}"
-    detail="Subagent started${subagent_name:+: ${subagent_name}}${pbi_id:+ for ${pbi_id}}"
+    detail="started work${pbi_id:+ on ${pbi_id}}"
 
     event_json="$(jq -n \
       --arg ts "$timestamp" \
@@ -341,10 +320,9 @@ case "$hook_type" in
     ;;
 
   SubagentStop|subagent_stop)
-    # Teammate finished its work
-    subagent_name="$(echo "$hook_event" | jq -r '.subagent_type // .agent_name // empty')"
+    # Teammate/subagent finished its work. Name lives in agent_id.
     pbi_id="${SCRUM_PBI_ID:-$(echo "$hook_event" | jq -r '.scrum_pbi_id // empty')}"
-    detail="Teammate finished${subagent_name:+: ${subagent_name}}${pbi_id:+ for ${pbi_id}}"
+    detail="finished work${pbi_id:+ on ${pbi_id}}"
 
     event_json="$(jq -n \
       --arg ts "$timestamp" \
@@ -361,30 +339,16 @@ case "$hook_type" in
         "pbi_id": (if $pbi == "" then null else $pbi end)
       }')"
 
+    # The comms "finished work" mirror was removed when the dashboard
+    # merged its log panes; completion-gate.sh counts in-flight subagents
+    # from these dashboard subagent_start/stop events, so they must stay.
     append_dashboard_event "$event_json"
-
-    # Also emit a communication message
-    message_json="$(jq -n \
-      --arg ts "$timestamp" \
-      --arg sid "$agent_id" \
-      --arg role "teammate" \
-      --arg type "status_change" \
-      --arg content "finished work" \
-      '{
-        "timestamp": $ts,
-        "sender_id": $sid,
-        "sender_role": $role,
-        "recipient_id": null,
-        "type": $type,
-        "content": $content
-      }')"
-    append_comms_message "$message_json"
     ;;
 
   TaskCompleted|task_completed)
     # A task has been completed
     tool_name="$(echo "$hook_event" | jq -r '.tool_name // empty')"
-    detail="Task completed${tool_name:+: ${tool_name}}"
+    detail="completed task${tool_name:+: ${tool_name}}"
 
     event_json="$(jq -n \
       --arg ts "$timestamp" \
@@ -410,7 +374,6 @@ case "$hook_type" in
     change_type="$(echo "$hook_event" | jq -r '.change_type // "modified"')"
     [ -n "$file_path" ] || exit 0
 
-    short_path="$(basename "$file_path")"
     detail="External ${change_type} on ${file_path}"
 
     event_json="$(jq -n \
@@ -429,25 +392,6 @@ case "$hook_type" in
       }')"
 
     append_dashboard_event "$event_json"
-
-    comms_content="external ${change_type} ${short_path}"
-    if ! is_duplicate_comms "$agent_id" "$comms_content"; then
-      message_json="$(jq -n \
-        --arg ts "$timestamp" \
-        --arg sid "$agent_id" \
-        --arg role "external" \
-        --arg type "file_change" \
-        --arg content "$comms_content" \
-        '{
-          "timestamp": $ts,
-          "sender_id": $sid,
-          "sender_role": $role,
-          "recipient_id": null,
-          "type": $type,
-          "content": $content
-        }')"
-      append_comms_message "$message_json"
-    fi
     ;;
 esac
 

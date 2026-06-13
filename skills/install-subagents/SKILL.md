@@ -55,7 +55,14 @@ Missing required → BLOCK (escalate to SM, do not proceed to PBI work).
 3. Verify YAML frontmatter on each (yq eval '.name' or equivalent).
 4. During pbi-pipeline / cross-review execution→invoke via
    `Agent(subagent_type="<name>")`. Record only actually-used agents in
-   sprint.json.
+   sprint.json via the wrapper:
+   ```bash
+   .scrum/scripts/set-sprint-developer.sh "$DEV_ID" sub_agents \
+     '["pbi-designer","pbi-implementer","pbi-ut-author","codex-design-reviewer","codex-impl-reviewer","codex-ut-reviewer"]'
+   ```
+   The wrapper validates the value parses as a JSON array of strings.
+   Raw `jq -i` / direct edits on `.scrum/sprint.json` are blocked by
+   the PreToolUse guard.
 
 ## Graceful Degradation
 

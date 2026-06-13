@@ -3,7 +3,20 @@
 # Usage: set-sprint-developer.sh <dev-id> <field> <value>
 #
 # Mutates one field on the developer with matching id, creating the entry if absent.
-# Supported fields: status, current_pbi.
+# Supported fields:
+#   status          active|failed
+#   current_pbi     pbi-NNN | null
+#   assigned_work   JSON object: {"implement":["pbi-001","pbi-002",...]}
+#                   (writes the whole assigned_work object; the schema
+#                   forbids unknown sub-keys so callers must include the
+#                   full intended shape every call). Used by
+#                   spawn-teammates when seeding the per-Developer PBI
+#                   allocation at Sprint start.
+#   sub_agents      JSON array of strings
+#                   (the deployed-sub-agent list maintained by
+#                   install-subagents). Schema requires only "array";
+#                   the wrapper additionally checks each element is a
+#                   string.
 # `null` value is accepted for current_pbi (becomes JSON null).
 # (Per-Developer phase tracking removed — PBI lifecycle status lives in backlog.json.)
 set -euo pipefail
@@ -38,7 +51,27 @@ case "$FIELD" in
       *) fail E_INVALID_ARG "bad pbi-id: $VALUE (expected pbi-NNN or null)" ;;
     esac
     ;;
-  *) fail E_INVALID_ARG "unknown field: $FIELD (expected status|current_pbi)" ;;
+  assigned_work)
+    if ! VALUE_JSON="$(printf '%s' "$VALUE" | jq -ce '.')"; then
+      fail E_INVALID_ARG "assigned_work: not valid JSON: $VALUE"
+    fi
+    if ! printf '%s' "$VALUE_JSON" | jq -e '
+      type == "object"
+      and ((.implement // []) | type == "array")
+      and ((.implement // []) | all(.; type == "string" and test("^pbi-[0-9]+$")))
+    ' >/dev/null; then
+      fail E_INVALID_ARG "assigned_work: must be object with implement: array of pbi-NNN"
+    fi
+    ;;
+  sub_agents)
+    if ! VALUE_JSON="$(printf '%s' "$VALUE" | jq -ce '.')"; then
+      fail E_INVALID_ARG "sub_agents: not valid JSON: $VALUE"
+    fi
+    if ! printf '%s' "$VALUE_JSON" | jq -e 'type == "array" and all(.[]; type == "string")' >/dev/null; then
+      fail E_INVALID_ARG "sub_agents: must be a JSON array of strings"
+    fi
+    ;;
+  *) fail E_INVALID_ARG "unknown field: $FIELD (expected status|current_pbi|assigned_work|sub_agents)" ;;
 esac
 
 # Determine the seed status for a fresh entry: if the field being set IS status,

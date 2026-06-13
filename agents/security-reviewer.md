@@ -9,8 +9,8 @@ tools:
   - Glob
   - Bash
 model: opus
-effort: high
-maxTurns: 50
+effort: xhigh
+maxTurns: 80
 ---
 
 # Security Reviewer

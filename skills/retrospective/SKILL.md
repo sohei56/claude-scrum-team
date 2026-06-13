@@ -21,6 +21,45 @@ disable-model-invocation: false
 - state.json phase: "sprint_review"
 - sprint.json exists
 
+## PO Mode (po_mode: "agent")
+
+When `.scrum/config.json.po_mode == "agent"`, the human is not at
+the keyboard, so the Step 7 "recommend `/clear` or session restart
+to the user" line cannot be acted on by anyone in-session. Session
+recycling is the responsibility of the autonomy watchdog
+(`scripts/autonomous/watchdog.sh`), which restarts the SM session
+once the current one terminates and the project phase is not
+`complete`. This section is a no-op when `po_mode` is absent or
+`"human"`; the existing Step 7 recommendation is preserved
+bit-for-bit for human mode.
+
+Overrides in agent mode:
+
+- **Session reset recommendation (Step 7).** Skip the user-facing
+  recommendation. Once the retrospective Exit Criteria are met
+  (≥1 improvement recorded, consolidation done if due, phase
+  `retrospective`, sprint `complete`), **end the turn** without
+  emitting the `/clear` recommendation. The Stop / completion gate
+  treats the satisfied Exit Criteria as forward progress consumed,
+  and the watchdog spawns the next session for the next Sprint (or
+  Integration Sprint, per `state.json`).
+- **Improvement-action extraction (Step 2 / Step 3 reflection).**
+  Where the reflection would normally surface "ask the user
+  whether <process change> is acceptable" items, route the same
+  question as `[sprint-<N>] PO_DECISION_REQUEST kind=change_request
+  options=[adopt,defer,reject] recommendation=<sm-preferred>` to
+  the `product-owner` teammate before recording the improvement,
+  so the improvements.json entry carries the matching `dec_id`. If
+  no such "ask the user" prompt exists in your current reflection,
+  this rule is a no-op.
+- **Assumption-flagged Sprint Review decisions feed improvements.**
+  Any `PO_DECISION` from the current Sprint whose rationale begins
+  with `ASSUMPTION:` (or which sets the wrapper's `assumption=true`
+  flag — see `agents/product-owner.md` § Anti-loop rules) is a
+  candidate improvement: record an entry pointing to the `dec_id`
+  so the next refinement / planning cycle revisits the unverified
+  premise.
+
 ## Steps
 
 1. state.json → phase: "retrospective":

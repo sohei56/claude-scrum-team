@@ -115,3 +115,34 @@ setup() {
   run bash -c "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git --work-tree=. push origin main\"}}' | $HOOK"
   [ "$status" -ne 0 ]
 }
+
+# Read-only / recovery helpers that share a prefix with blocked verbs.
+@test "allows: git merge-base" {
+  run bash -c "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git merge-base main HEAD\"}}' | $HOOK"
+  [ "$status" -eq 0 ]
+}
+
+@test "allows: git mergetool" {
+  run bash -c "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git mergetool\"}}' | $HOOK"
+  [ "$status" -eq 0 ]
+}
+
+@test "allows: git rebase --abort" {
+  run bash -c "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git rebase --abort\"}}' | $HOOK"
+  [ "$status" -eq 0 ]
+}
+
+@test "allows: git rebase --continue" {
+  run bash -c "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git rebase --continue\"}}' | $HOOK"
+  [ "$status" -eq 0 ]
+}
+
+@test "allows: git rebase --skip" {
+  run bash -c "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git rebase --skip\"}}' | $HOOK"
+  [ "$status" -eq 0 ]
+}
+
+@test "blocks: git rebase -i HEAD~3" {
+  run bash -c "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git rebase -i HEAD~3\"}}' | $HOOK"
+  [ "$status" -ne 0 ]
+}

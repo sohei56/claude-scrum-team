@@ -3,21 +3,24 @@
 ## Project Structure
 
 ```text
-scrum-start.sh           # Entry point — validates prereqs, launches tmux
-agents/                  # Agent + 11 sub-agent definitions (top-level: scrum-master, developer; sub-agents listed in docs/contracts/sub-agents.md)
+scrum-start.sh           # Entry point — validates prereqs, launches tmux (supports --autonomous)
+agents/                  # Agent + 11 sub-agent definitions (top-level: scrum-master, developer, product-owner; sub-agents listed in docs/contracts/sub-agents.md)
   scrum-master.md        # Team lead (Delegate mode)
   developer.md           # Developer teammate (PBI pipeline conductor)
+  product-owner.md       # PO teammate (autonomous mode; po_mode=agent)
   # Sprint-end cross-review (5-aspect parallel): requirement-conformance-reviewer, functional-quality-reviewer, security-reviewer, maintainability-reviewer, docs-consistency-reviewer
   # PBI pipeline (per Round): pbi-{designer,implementer,ut-author}, codex-{design,impl,ut}-reviewer
-skills/                  # 15 Skills (Scrum ceremonies) — YAML frontmatter + Markdown, deployed to target projects via setup-user.sh
+skills/                  # 17 Skills (16 Scrum ceremonies + 1 PO acceptance) — YAML frontmatter + Markdown, deployed to target projects via setup-user.sh
   backlog-refinement/    # Refine PBIs from coarse to sprint-ready
   change-process/        # Manage changes to frozen design docs
   cross-review/          # Sprint-end cross-cutting quality gate
+  design-completeness-check/ # Design-doc functional completeness at integration granularity
   pbi-pipeline/          # PBI conductor pipeline (orchestrator + references/)
   pbi-escalation-handler/ # SM-side escalation handler
   pbi-merge/             # SM-side per-PBI merge orchestration
   install-subagents/     # Install specialist sub-agents for PBI work
   integration-sprint/    # Product-wide QA and integration testing
+  po-acceptance/         # PO-owned demo/UAT verification (autonomous mode)
   requirements-sprint/   # Elicit requirements from user
   retrospective/         # Sprint retrospective ceremony
   scaffold-design-spec/  # Create design doc stubs from catalog
@@ -27,25 +30,32 @@ skills/                  # 15 Skills (Scrum ceremonies) — YAML frontmatter + M
   sprint-review/         # Sprint review ceremony
 .claude/skills/          # Dev-only skills for THIS repo (not deployed to target projects)
   cleanup-audit/         # 8-axis multi-agent repo hygiene audit (read-only)
-hooks/                   # Claude Code hooks (status/path/scrum-state/branch-ops guards, completion + quality + stop-failure gates, dashboard events, session context)
-  lib/                   # Shared hook helpers (validation, logging)
+hooks/                   # Claude Code hooks (status/path/scrum-state/branch-ops guards, stop-dispatch single-entry → dashboard + completion-gate, quality + stop-failure gates, session context, autonomy lib)
+  stop-dispatch.sh       # Single Stop entry: forwards payload to dashboard-event then completion-gate (replaces the 2-hook Stop registration)
+  completion-gate.sh     # Stop gate; human mode dedups repeated blocks via .scrum/stop-gate.json + only blocks unresolved `escalated` in pbi_pipeline_active
+  lib/                   # Shared hook helpers (validate, dashboard, autonomy, stop-gate-state)
+rules/                   # Cross-cutting context auto-loaded by every Scrum agent (deployed by setup-user.sh to .claude/rules/)
+  scrum-context.md       # Team map, SSOT locations, communication protocol, PO seat resolution, uncertainty handling
 dashboard/               # Textual TUI dashboard (Python)
   app.py                 # Main TUI application
 scripts/                 # Setup and utility scripts
   lib/                   # Shared script helpers (prereq checks)
-  setup-user.sh          # Copies agents/skills/hooks to target project
+  setup-user.sh          # Copies agents/skills/hooks/rules to target project
   setup-dev.sh           # Installs dev dependencies (bats, shellcheck, etc.)
   statusline.sh          # Claude Code status line script
+  stall-watchdog.sh      # External teammate-stall monitor (non-autonomous mode); launched by scrum-start.sh, nudges SM via tmux when no activity for `stall_watchdog.idle_threshold_minutes`
+  scrum/                 # SSOT state wrappers (deployed to .scrum/scripts/ by setup-user.sh)
+  autonomous/            # Autonomous-PO watchdog (Ralph Loop): watchdog.sh + lib/report.sh
 tests/                   # Test suites
   unit/                  # Bats unit tests
   lint/                  # Bats lint tests
   integration/           # Script composition tests
   fixtures/              # Test data (JSON fixtures for validation)
-docs/                    # Project documentation (requirements, architecture, data model, contracts)
-docs/design/                 # Design document governance
+docs/                    # Project documentation (requirements, architecture, data model, contracts, autonomous-mode)
+docs/design/             # Design document governance
   catalog.md             # Immutable document type reference (read-only)
   catalog-config.json    # Editable list of enabled spec IDs
-.scrum/                  # Runtime state (JSON, gitignored)
+.scrum/                  # Runtime state (JSON, gitignored). Core: state.json, sprint.json, backlog.json, dashboard.json, communications.json, pbi/, plus runtime.json (tmux session + sm_pane_id + stall_watchdog_pid) and stop-gate.json (Stop-block dedup ledger, human mode). Autonomous mode also adds autonomy.json + po/{decisions.json,acceptance/,attention.md} + reports/.
 ```
 
 ## Technologies
@@ -63,7 +73,7 @@ docs/design/                 # Design document governance
 bats tests/unit/ tests/lint/
 
 # Lint shell scripts
-shellcheck scrum-start.sh scripts/*.sh scripts/lib/*.sh hooks/*.sh hooks/lib/*.sh
+shellcheck scrum-start.sh scripts/*.sh scripts/lib/*.sh scripts/scrum/*.sh scripts/scrum/lib/*.sh scripts/autonomous/*.sh scripts/autonomous/lib/*.sh hooks/*.sh hooks/lib/*.sh
 
 # Lint/format Python
 ruff check dashboard/
@@ -74,6 +84,9 @@ sh scripts/setup-dev.sh
 
 # Launch the Scrum team (in target project directory)
 sh /path/to/claude-scrum-team/scrum-start.sh
+
+# Launch in autonomous-PO mode (Ralph Loop; see docs/autonomous-mode.md)
+sh /path/to/claude-scrum-team/scrum-start.sh --autonomous --brief docs/product/brief.md --max-sprints 3
 ```
 
 ## Code Style
@@ -104,6 +117,39 @@ sh /path/to/claude-scrum-team/scrum-start.sh
   (success/stagnation/divergence/hard cap). Coverage measured by real
   tooling (C0/C1 100% by default; partial-C1 languages declare relaxed
   threshold in `.scrum/config.json`).
+- `po_mode` selects the PO seat. Absent or `"human"` → the user
+  (default; current behaviour unchanged). `"agent"` → the
+  `product-owner` teammate (FR-023). Skills do not branch on mode;
+  every "ask the user" prompt resolves to a `PO_DECISION_REQUEST`
+  to the PO teammate in agent mode. See `rules/scrum-context.md`
+  § PO seat resolution and `agents/product-owner.md`.
+- Autonomous mode (`scrum-start.sh --autonomous`) drives the team
+  end-to-end without human input. The outer loop
+  (`scripts/autonomous/watchdog.sh`) re-launches `claude -p`
+  iterations, enforces safety valves (iterations / wall clock /
+  Sprints / consecutive failures / per-iteration + total budget /
+  per-phase Stop-block budget), backs off on rate-limit signals,
+  and writes a morning report to
+  `.scrum/reports/autonomous-run-<run_id>.md`. PO decisions are
+  audit-logged to `.scrum/po/decisions.json` (append-only) via
+  `append-po-decision.sh`. Full operator guide: `docs/autonomous-mode.md`.
+- **Stop-hook block policy diverges by mode.** The Stop hook is
+  registered as a single entry (`hooks/stop-dispatch.sh`) that
+  forwards the payload to `dashboard-event.sh` (best-effort) and
+  then to `completion-gate.sh`. In **autonomous mode** the gate's
+  historical block-every-turn-end behaviour is preserved (the
+  Ralph-Loop watchdog contract depends on it; `.scrum/stop-gate.json`
+  is neither read nor written). In **human mode** the gate
+  fingerprint-dedups: the first block of a `<phase, situation>`
+  tuple emits the verbose reason + exit 2; subsequent identical
+  blocks are logged-only and allow exit. `pbi_pipeline_active` in
+  human mode no longer blocks merely because PBIs are in flight —
+  only unresolved `escalated` PBIs still block. Teammate liveness
+  in human mode is monitored by the external
+  `scripts/stall-watchdog.sh` daemon launched by `scrum-start.sh`;
+  it sends a `[STALL-WATCHDOG]` nudge to the SM tmux pane when no
+  filesystem activity is observed within
+  `stall_watchdog.idle_threshold_minutes` (default 15).
 
 ## State management
 
@@ -113,15 +159,27 @@ Direct edits are blocked by `hooks/pre-tool-use-scrum-state-guard.sh`
 (registered as `PreToolUse`). Schemas under
 `docs/contracts/scrum-state/` are the SSOT. See
 `docs/MIGRATION-scrum-state-tools.md` for the wrapper map, the
-v1→v2 status migration history, and known gaps. The PBI state schema
+v1→v2 status migration history, and known gaps. Two runtime files
+are written **without** a `.scrum/scripts/*.sh` wrapper because
+they are hot-path bookkeeping rather than agent state:
+`.scrum/stop-gate.json` is the Stop-hook dedup ledger written by
+`hooks/lib/stop-gate-state.sh` (human mode only; schema
+`stop-gate.schema.json`), and `.scrum/runtime.json` records the
+tmux session, the SM pane id, and the stall-watchdog PID written
+by `scrum-start.sh` (consumed by `scripts/stall-watchdog.sh`).
+Both still match the guard's `.scrum/**/*.json` pattern, but their
+writers run outside agent tool calls (hook process / launcher
+script), so the guard never intercepts them; agents editing these
+files via Bash are blocked as usual. The PBI state schema
 gained worktree / merge fields (`branch`, `worktree`, `base_sha`,
 `head_sha`, `paths_touched`, `ready_at`, `merged_sha`, `merged_at`,
 `merge_failure`, `merge_failure_count`); the legacy `phase` field
 was removed in v2, with all PBI lifecycle now driven by the 12-value
 `backlog.json.items[].status` enum. Merge-failure detail is preserved
-via `pbi-state.json.merge_failure.kind ∈ {conflict, artifact_missing}`
-plus `escalation_reason ∈ {merge_conflict, merge_artifact_missing}`
-when 3 consecutive failures flip status to `escalated`. The sprint
+via `pbi-state.json.merge_failure.kind ∈ {conflict, artifact_missing,
+regression}` plus `escalation_reason ∈ {merge_conflict,
+merge_artifact_missing, merge_regression}` when 3 consecutive failures
+flip status to `escalated`. The sprint
 schema gained `base_sha` and `base_sha_captured_at`.
 
 ## Git workflow
@@ -140,11 +198,12 @@ and notify SM `[<pbi-id>] PBI_READY_TO_MERGE`.
 
 SM merges per-PBI immediately by running the `pbi-merge` skill
 (see [skills/pbi-merge/SKILL.md](skills/pbi-merge/SKILL.md) for
-the full protocol: `--no-ff` merge, `paths_touched` verification,
-SendMessage matrix for `conflict` / `artifact_missing`, and
-3-strike escalation to `pbi-escalation-handler`). Quality
-verification (lint/test) is performed Sprint-end by `cross-review`,
-not per-PBI merge.
+the full protocol: `--no-ff` merge, `paths_touched` verification, a
+per-merge regression gate that runs
+`.scrum/config.json.merge_regression.command` (skipped with WARN when
+unset), SendMessage matrix for `conflict` / `artifact_missing` /
+`regression`, and 3-strike escalation to `pbi-escalation-handler`).
+The full Sprint-end lint/quality review still runs in `cross-review`.
 
 In **deployed target projects** (registered via `setup-user.sh`), the
 hook `pre-tool-use-no-branch-ops.sh` blocks raw `git checkout -b`,

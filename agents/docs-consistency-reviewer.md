@@ -9,9 +9,9 @@ tools:
   - Grep
   - Glob
   - Bash
-model: sonnet
-effort: medium
-maxTurns: 40
+model: opus
+effort: xhigh
+maxTurns: 80
 ---
 
 # Docs Consistency Reviewer

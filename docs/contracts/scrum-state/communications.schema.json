@@ -19,7 +19,7 @@
           "recipient_id": {"type": ["string", "null"]},
           "type": {
             "enum": [
-              "file_change",
+              "file_changed",
               "tool_use",
               "status_transition",
               "subagent_start",
@@ -28,7 +28,7 @@
               "teammate_idle",
               "agent_spawn",
               "progress_update",
-              "status_change",
+              "message",
               "report",
               "review",
               "escalation",

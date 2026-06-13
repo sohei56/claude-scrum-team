@@ -117,12 +117,6 @@ apply_migration_with_args() {
   fi
 }
 
-# apply_migration <path> <jq_expr> <schema_path> — thin wrapper for callers
-# that do not need extra jq args.
-apply_migration() {
-  apply_migration_with_args "$@"
-}
-
 echo "Migrating $SCRUM_DIR (schemas: $SCHEMA_DIR)..."
 [ "$DRY_RUN" = 1 ] && echo "  (dry-run)"
 printf 'WARNING: for status migration after v1 -> v2, use this script carefully — phase-blind remap is best-effort. Manual review of any in_progress PBIs is recommended.\n' >&2
@@ -148,7 +142,7 @@ BACKLOG_EXPR='
          else . end)
     ))
 '
-apply_migration "$SCRUM_DIR/backlog.json" "$BACKLOG_EXPR" "$SCHEMA_DIR/backlog.schema.json" || true
+apply_migration_with_args "$SCRUM_DIR/backlog.json" "$BACKLOG_EXPR" "$SCHEMA_DIR/backlog.schema.json" || true
 
 # --- sprint.json ---
 # Lowercase pbi_ids[] and per-developer assigned_work.implement refs. Drop
@@ -198,7 +192,7 @@ STATE_EXPR='
   | (if (.updated_at // "" | type) == "string" and (.updated_at | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$"))
      then .updated_at += "T00:00:00Z" else . end)
 '
-apply_migration "$SCRUM_DIR/state.json" "$STATE_EXPR" "$SCHEMA_DIR/state.schema.json" || true
+apply_migration_with_args "$SCRUM_DIR/state.json" "$STATE_EXPR" "$SCHEMA_DIR/state.schema.json" || true
 
 echo ""
 echo "Migration done. Backups saved as <name>.legacy.bak alongside each migrated file."

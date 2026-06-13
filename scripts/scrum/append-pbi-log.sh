@@ -16,15 +16,15 @@ source "$HERE/lib/errors.sh"
 source "$HERE/lib/atomic.sh"
 
 [ "$#" -eq 5 ] || fail E_INVALID_ARG "usage: append-pbi-log.sh <pbi-id> <stage> <round> <event> <detail>"
-PBI="$1"; PHASE="$2"; ROUND="$3"; EVENT="$4"; DETAIL="$5"
+PBI="$1"; STAGE="$2"; ROUND="$3"; EVENT="$4"; DETAIL="$5"
 
 case "$PBI" in
   pbi-[0-9]*) ;;
   *) fail E_INVALID_ARG "bad pbi-id: $PBI" ;;
 esac
-case "$PHASE" in
+case "$STAGE" in
   init|design|pbi_review|ut_run|complete|escalated) ;;
-  *) fail E_INVALID_ARG "bad stage: $PHASE (allowed: init|design|pbi_review|ut_run|complete|escalated)" ;;
+  *) fail E_INVALID_ARG "bad stage: $STAGE (allowed: init|design|pbi_review|ut_run|complete|escalated)" ;;
 esac
 case "$ROUND" in
   ''|*[!0-9]*) fail E_INVALID_ARG "round must be non-negative integer (got: $ROUND)" ;;
@@ -33,4 +33,4 @@ esac
 LOGF=".scrum/pbi/$PBI/pipeline.log"
 mkdir -p "$(dirname "$LOGF")"
 ts="$(_iso_utc_now)"
-printf '%s\t%s\t%s\t%s\t%s\n' "$ts" "$PHASE" "$ROUND" "$EVENT" "$DETAIL" >> "$LOGF"
+printf '%s\t%s\t%s\t%s\t%s\n' "$ts" "$STAGE" "$ROUND" "$EVENT" "$DETAIL" >> "$LOGF"

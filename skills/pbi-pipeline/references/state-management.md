@@ -44,11 +44,15 @@ The 7 SM-managed status values (see [docs/data-model.md § State Transitions: st
 stagnation | divergence | max_rounds | budget_exhausted |
 requirements_unclear | coverage_tool_error | coverage_tool_unavailable |
 catalog_lock_timeout |
-merge_conflict | merge_artifact_missing
+reviewer_unavailable | stale_review_snapshot |
+merge_conflict | merge_artifact_missing | merge_regression
 ```
 
 The merge-* values are written by SM-side `mark-pbi-merge-failure.sh`,
-not by this skill.
+not by this skill. `reviewer_unavailable` and `stale_review_snapshot`
+are written by the impl/UT review path when the reviewer sub-agent
+cannot run or when a review snapshot has been invalidated by a
+subsequent commit.
 
 ## Initialization
 
@@ -68,7 +72,7 @@ an existing valid state is a no-op.
 ALWAYS update PBI state via the validated wrapper scripts (never raw jq):
 
 ```bash
-# Internal mechanics (rounds + per-stage *_status flags)
+# Internal mechanics (per-stage *_status flags, design_round, escalation_reason)
 .scrum/scripts/update-pbi-state.sh "$PBI_ID" design_round 1 design_status in_review
 
 # Stage transition (always via backlog status SSOT)
@@ -78,6 +82,30 @@ ALWAYS update PBI state via the validated wrapper scripts (never raw jq):
 .scrum/scripts/update-pbi-state.sh "$PBI_ID" escalation_reason stagnation
 .scrum/scripts/update-backlog-status.sh "$PBI_ID" escalated
 ```
+
+### `impl_round` is owned by `begin-impl-round.sh`
+
+The impl-Round counter has a dedicated wrapper that owns BOTH the
+arithmetic and the backlog-status transition:
+
+```bash
+n=$(.scrum/scripts/begin-impl-round.sh "$PBI_ID")
+```
+
+- Atomically increments `impl_round`, resets `impl_status` and
+  `ut_status` to `pending`, and (idempotently) sets backlog status
+  to `in_progress_impl`.
+- Idempotent on Developer respawn: if `impl_status == "pending"` and
+  `impl_round > 0`, it returns the current value without mutating.
+- Refuses if the backlog pre-state isn't one of
+  `{in_progress_design, in_progress_pbi_review, in_progress_ut_run,
+  cross_review, in_progress_impl}`.
+
+Conductors MUST NOT write `impl_round` via `update-pbi-state.sh`.
+Owning the counter in one place removes the failure mode where an
+agent resets `n` to 1 after a Cross Review revert (Round counter
+displayed in the dashboard regressed to 1 even though the PBI had
+already completed Rounds 1..N internally).
 
 `update-pbi-state.sh`:
 - validates against `docs/contracts/scrum-state/pbi-state.schema.json`

@@ -152,10 +152,14 @@ fi
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# From here: only Write/Edit/MultiEdit tools reach this code (fast path above).
+# From here: only Write/Edit/MultiEdit tools reach this code (fast path above
+# short-circuits everything else, including Bash). The fast-path guarantees
+# tool_name ∈ {Write,Edit,MultiEdit}, so `tool_input.file_path` is always
+# present and `get_target_path` returns it verbatim. An empty target_path at
+# this point would mean a malformed payload — treat as defensive allow to
+# avoid blocking legitimate edits on a payload glitch (no path = no scope
+# to gate against).
 # ---------------------------------------------------------------------------
-
-# No target path determinable (e.g. Bash tool) — allow
 if [ -z "$target_path" ]; then
   allow
 fi

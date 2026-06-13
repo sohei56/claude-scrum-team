@@ -14,6 +14,12 @@ disable-model-invocation: false
 - backlog.json `items[].status` for this PBI (must be `in_progress_merge`)
 - `.scrum/pbi/<pbi-id>/state.json` (head_sha, paths_touched, ready_at populated)
 - `.scrum/sprint.json.developers[]` (to find the Developer to message)
+- `.scrum/config.json` (optional) — `merge_regression.command` is a
+  single shell string run via `bash -c` from the main repo root after
+  the merge commit lands. Absent / empty / null → the regression gate
+  is skipped and a `WARN: no merge regression command configured` line
+  is printed. Output (stdout+stderr) is captured to
+  `.scrum/pbi/<pbi-id>/merge-regression.log` (overwritten per attempt).
 
 ## Outputs
 
@@ -21,13 +27,14 @@ disable-model-invocation: false
   - `awaiting_cross_review` (success — written by `mark-pbi-merged.sh`)
   - `in_progress_merge` (recoverable failure under the 3-strike threshold;
     `mark-pbi-merge-failure.sh` records `state.merge_failure.kind ∈
-    {conflict, artifact_missing}` but leaves backlog status untouched so
-    the Developer can fix on `pbi/<id>` and re-notify). Status stays
-    `in_progress_merge` across retries; each `mark-pbi-ready-to-merge.sh`
-    re-notification re-stamps `head_sha`, `paths_touched`, and `ready_at`.
+    {conflict, artifact_missing, regression}` but leaves backlog status
+    untouched so the Developer can fix on `pbi/<id>` and re-notify).
+    Status stays `in_progress_merge` across retries; each
+    `mark-pbi-ready-to-merge.sh` re-notification re-stamps `head_sha`,
+    `paths_touched`, and `ready_at`.
   - `escalated` (3rd consecutive failure — `mark-pbi-merge-failure.sh`
-    sets `escalation_reason ∈ {merge_conflict, merge_artifact_missing}`
-    and `pbi-escalation-handler` takes over).
+    sets `escalation_reason ∈ {merge_conflict, merge_artifact_missing,
+    merge_regression}` and `pbi-escalation-handler` takes over).
 - backlog.json `items[].merged_sha` mirrored on success
 - Worktree `.scrum/worktrees/<pbi-id>` removed on success
 - Sprint-level state untouched
@@ -37,8 +44,10 @@ disable-model-invocation: false
 - SM has just received `[<pbi-id>] PBI_READY_TO_MERGE` from a Developer
 - backlog.json `items[].status == "in_progress_merge"` for this PBI
 - Main worktree has no tracked-file changes (`git status --porcelain`
-  shows only untracked entries — `.scrum/` is untracked by design and
-  does not block the merge)
+  shows only untracked entries). `.scrum/` is untracked by design;
+  the wrapper additionally asserts `.scrum/` is **not tracked at all**
+  (`assert_scrum_untracked` in `lib/git-guards.sh`) and aborts with
+  `E_INVALID_ARG` if a stray commit ever made it tracked.
 
 ## Steps
 
@@ -60,7 +69,14 @@ disable-model-invocation: false
      (`sprint.json.developers[].current_pbi == <pbi-id>`):
      `[<pbi-id>] MERGED at <merged_sha>. Stand by for next assignment.`
    - non-zero → re-read `state.json.merge_failure.kind` (status remains
-     `in_progress_merge` while `merge_failure_count < 3`):
+     `in_progress_merge` while `merge_failure_count < 3`). The
+     wrapper's main-state cleanup differs by kind: `conflict` aborts
+     the merge via `git merge --abort` so main stays exactly where it
+     was; `artifact_missing` and `regression` both have a partial
+     merge commit on main that is rolled back via
+     `git reset --hard <pre-merge HEAD>`. The SM does not need to
+     redo any git operation on main — only the per-kind SendMessage
+     below.
      - `conflict` → SM runs
        `bash .scrum/scripts/merge-main-into-pbi.sh <pbi-id>` to merge
        main HEAD into the PBI worktree. If that wrapper also exits
@@ -72,16 +88,23 @@ disable-model-invocation: false
        `head_sha` / `paths_touched` and re-notify.)
      - `artifact_missing` → SendMessage:
        `[<pbi-id>] ARTIFACT_MISSING paths=[<state.merge_failure.paths>]. Re-add files on pbi/<pbi-id> via commit-pbi.sh (files likely lost during conflict resolution or .gitignore drift), re-notify PBI_READY_TO_MERGE.`
+     - `regression` → main has been rolled back to pre-merge HEAD, so
+       `merge-main-into-pbi.sh` would only bring pre-merge main forward
+       and **cannot reproduce** the post-merge state the regression
+       command actually ran against. The Developer reproduces the
+       failure from the captured log instead. SendMessage:
+       `[<pbi-id>] MERGE_REGRESSION log=.scrum/pbi/<pbi-id>/merge-regression.log. Reproduce/fix in .scrum/worktrees/<pbi-id> using the regression log (main was rolled back to pre-merge HEAD, so the post-merge state cannot be replayed locally), then commit-pbi.sh and mark-pbi-ready-to-merge.sh to re-notify.`
      - 3rd consecutive failure of any kind (status flips to `escalated`,
        `merge_failure_count >= 3`, `escalation_reason ∈ {merge_conflict,
-       merge_artifact_missing}`) → invoke `pbi-escalation-handler`
-       skill with `<pbi-id>` (further Developer iteration is
-       unproductive).
+       merge_artifact_missing, merge_regression}`) → invoke
+       `pbi-escalation-handler` skill with `<pbi-id>` (further Developer
+       iteration is unproductive).
 
    Note: `merge_failure.kind` uses unprefixed values (`conflict`,
-   `artifact_missing`) while `escalation_reason` uses the `merge_*`
-   prefix (`merge_conflict`, `merge_artifact_missing`). The mapping is
-   one-to-one; `mark-pbi-merge-failure.sh` writes both.
+   `artifact_missing`, `regression`) while `escalation_reason` uses the
+   `merge_*` prefix (`merge_conflict`, `merge_artifact_missing`,
+   `merge_regression`). The mapping is one-to-one;
+   `mark-pbi-merge-failure.sh` writes both.
 
    Throughout the recovery loop the backlog status remains
    `in_progress_merge`. The Developer fixes on `pbi/<pbi-id>` (in the

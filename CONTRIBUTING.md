@@ -45,7 +45,10 @@ bats tests/integration/script-compose.bats
 
 ```bash
 # Lint all shell scripts
-shellcheck scrum-start.sh scripts/*.sh scripts/lib/*.sh hooks/*.sh hooks/lib/*.sh
+shellcheck scrum-start.sh scripts/*.sh scripts/lib/*.sh \
+  scripts/scrum/*.sh scripts/scrum/lib/*.sh \
+  scripts/autonomous/*.sh scripts/autonomous/lib/*.sh \
+  hooks/*.sh hooks/lib/*.sh
 
 # Lint Python code
 ruff check dashboard/
@@ -71,7 +74,7 @@ bats tests/lint/skill-frontmatter.bats
 
 ## Commit Conventions
 
-Follow the task-based commit strategy (Constitution IV):
+Follow the task-based commit strategy:
 
 - One commit per logical task or change
 - Use conventional commit prefixes: `feat:`, `fix:`, `docs:`, `test:`,
@@ -88,7 +91,7 @@ tree. Top-level layout: `scrum-start.sh` (entry point), `agents/`,
 
 ## Key Files
 
-- `agents/scrum-master.md`, `agents/developer.md` — top-level agents
+- `agents/scrum-master.md`, `agents/developer.md`, `agents/product-owner.md` — top-level agents
 - Sub-agents (cross-review + PBI pipeline) — see [docs/contracts/sub-agents.md](docs/contracts/sub-agents.md)
 - `docs/design/catalog.md` — Design document type reference (read-only in working dirs)
 - `docs/design/catalog-config.json` — Editable list of enabled spec IDs

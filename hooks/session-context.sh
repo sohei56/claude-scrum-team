@@ -7,10 +7,38 @@ set -euo pipefail
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=lib/validate.sh
 . "$HOOK_DIR/lib/validate.sh"
+# shellcheck source=lib/autonomy.sh
+. "$HOOK_DIR/lib/autonomy.sh"
 
 STATE_FILE=".scrum/state.json"
 SPRINT_FILE=".scrum/sprint.json"
 BACKLOG_FILE=".scrum/backlog.json"
+
+# Build an autonomous-mode prologue to splice into additionalContext.
+# Returns empty string when not in autonomy mode (human-mode contract: zero
+# behaviour change). The prologue makes three things unambiguous to the lead
+# session every time it (re)starts:
+#   1. No human PO is present — never wait for human input; spawn the
+#      product-owner teammate if not already running.
+#   2. In-process Teammates do NOT survive session restarts (Agent-tool
+#      sub-agents are bound to the parent session). Backlog scan tells SM
+#      whether re-spawn is needed.
+#   3. Iteration N of M is a quick budget reminder.
+autonomous_prologue() {
+  if ! autonomy_enabled; then
+    return 0
+  fi
+  local iter max
+  iter="$(jq -r '.iteration // 0' .scrum/autonomy.json 2>/dev/null || echo 0)"
+  max="$(autonomy_config_int '.autonomous.max_iterations' 0)"
+  local iter_line=""
+  if [ "$max" -gt 0 ]; then
+    iter_line=" Autonomous run iteration ${iter} of ${max}."
+  else
+    iter_line=" Autonomous run iteration ${iter}."
+  fi
+  printf '%s' "AUTONOMOUS PO MODE: No human is present. The product-owner teammate is the PO — spawn it first if not running (see scrum-master.md § Autonomous PO Mode). Never wait for human input. In-process teammates do NOT survive session restarts. If backlog.json has in_progress_* PBIs, re-spawn Developers per the Teammate Liveness Protocol; re-spawn the product-owner teammate as well.${iter_line}"
+}
 
 # Build context based on available state
 if validate_json_file "$STATE_FILE" "phase" 2>/dev/null; then
@@ -48,6 +76,11 @@ if validate_json_file "$STATE_FILE" "phase" 2>/dev/null; then
 
   log_hook "session-context" "INFO" "Session started in phase: ${phase}"
 
+  prologue="$(autonomous_prologue)"
+  if [ -n "$prologue" ]; then
+    context="${prologue} ${context}"
+  fi
+
   # Output additionalContext JSON
   jq -n \
     --arg context "$context" \
@@ -56,7 +89,10 @@ if validate_json_file "$STATE_FILE" "phase" 2>/dev/null; then
     }'
 else
   # New project — no state yet
-  jq -n '{
-    "additionalContext": "New project. No .scrum/state.json found. Begin by starting a Requirements Sprint to define the Product Goal and gather requirements."
-  }'
+  base_context="New project. No .scrum/state.json found. Begin by starting a Requirements Sprint to define the Product Goal and gather requirements."
+  prologue="$(autonomous_prologue)"
+  if [ -n "$prologue" ]; then
+    base_context="${prologue} ${base_context}"
+  fi
+  jq -n --arg context "$base_context" '{"additionalContext": $context}'
 fi

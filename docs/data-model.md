@@ -87,8 +87,7 @@ Valid phases:
 
 ### State Transitions: `status` (12-value enum, actor-split)
 
-`status` is the sole SSOT for PBI lifecycle (the legacy
-`pbi-state.json.phase` was removed in v2). Two actors own disjoint
+`status` is the sole SSOT for PBI lifecycle. Two actors own disjoint
 slices of the enum:
 
 ```
@@ -168,9 +167,7 @@ State descriptions:
 | `base_sha_captured_at` | ISO 8601 string \| null | When `base_sha` was captured (set by `freeze-sprint-base.sh`). |
 | `type` | enum | `"development"` or `"integration"` |
 | `status` | enum | `"planning"`, `"active"`, `"cross_review"`, `"sprint_review"`, `"complete"`, `"failed"` |
-| `pbi_ids` | string[] | IDs of PBIs in the Sprint Backlog |
-| `developer_count` | integer | Number of Developer teammates: min(refined PBIs, 6) |
-| `developers` | Developer[] | Active Developer teammate definitions |
+| `developers` | Developer[] | Active Developer teammate definitions. Sprint PBI membership is derived from `backlog.items[]` where `sprint_id == sprint.id`; the developer count is `developers \| length`. (The legacy `pbi_ids` / `developer_count` fields were removed in the OD-4 single-source pass; pre-existing files retaining them keep validating because `sprint.schema.json.additionalProperties` is `true`, but no reader consults them.) |
 | `started_at` | ISO 8601 string | Sprint start timestamp |
 | `completed_at` | ISO 8601 string \| null | Sprint completion timestamp |
 
@@ -379,11 +376,13 @@ frontmatter to track edit history across Sprints. Each entry is a
 
 **File**: `.scrum/communications.json`
 **Owner**: Hook scripts (append-only)
-**Readers**: Textual dashboard app (Communication Log panel), statusline.sh
+**Readers**: Textual dashboard app (Work Log panel), statusline.sh
 
-Stores agent-to-agent messages captured by Claude Code hooks. Used by
-the Textual dashboard's Communication Log panel (FR-014c) to display
-messages with sender, recipient, and timestamp.
+Stores agent-to-agent messages captured by Claude Code hooks —
+SendMessage traffic (`message`), spawns (`agent_spawn`), and idle
+progress reports (`progress_update`). Used by the Textual dashboard's
+Work Log panel (FR-014c), which merges these messages chronologically
+with the work events from `.scrum/dashboard.json`.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -398,7 +397,7 @@ messages with sender, recipient, and timestamp.
 | `sender_id` | string | Agent ID of the sender (e.g., `"scrum-master"`, `"dev-001-s3"`) |
 | `sender_role` | string | Human-readable role (e.g., `"Scrum Master"`, `"Developer"`) |
 | `recipient_id` | string \| null | Agent ID of the recipient; null = broadcast to all |
-| `type` | enum | Message type. SSOT: `docs/contracts/scrum-state/communications.schema.json`. Allowed values: `"file_change"`, `"tool_use"`, `"status_transition"`, `"subagent_start"`, `"subagent_stop"`, `"task_completed"`, `"teammate_idle"`, `"agent_spawn"`, `"progress_update"`, `"status_change"`, `"report"`, `"review"`, `"escalation"`, `"info"`. |
+| `type` | enum | Message type. SSOT: `docs/contracts/scrum-state/communications.schema.json`. Allowed values: `"file_changed"`, `"tool_use"`, `"status_transition"`, `"subagent_start"`, `"subagent_stop"`, `"task_completed"`, `"teammate_idle"`, `"agent_spawn"`, `"progress_update"`, `"message"`, `"report"`, `"review"`, `"escalation"`, `"info"`. The enum mirrors `dashboard.events[].type` (past-tense convention). Hooks emit `message` (SendMessage), `agent_spawn`, and `progress_update`; the remaining kinds are available to manual `append-communication.sh` callers. (The legacy `"status_change"` value was dropped from the schema — `"status_transition"` is the canonical past-tense form; no writer ever emitted `"status_change"`.) |
 | `content` | string | Human-readable message summary |
 
 ### Rules
@@ -414,11 +413,13 @@ messages with sender, recipient, and timestamp.
 
 **File**: `.scrum/dashboard.json`
 **Owner**: Hook scripts (append-only)
-**Readers**: Textual dashboard app (Work Log panel), statusline.sh
+**Readers**: Textual dashboard app (Work Log panel), statusline.sh,
+completion-gate.sh (in-flight subagent counting), watchdog.sh
 
-Stores timestamped agent activity events written by Claude Code hooks
+Stores timestamped agent work events written by Claude Code hooks
 (R2 Layer 2). Used by the Textual dashboard's Work Log panel
-(FR-014d) and the status line for real-time agent activity.
+(FR-014d, merged chronologically with `communications.json` messages)
+and the status line for real-time agent activity.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -473,8 +474,11 @@ Levels: `INFO`, `WARN`, `ERROR`.
 **Readers**: Scrum Master (quality gate), completion-gate.sh, Textual dashboard app
 
 Tracks automated test execution results during the Integration Sprint.
-Written by Developer teammates running the `smoke-test` skill.
-The Scrum Master blocks UAT until `overall_status` is `"passed"` or `"passed_with_skips"`.
+Written by Developer teammates running the `smoke-test` skill and then
+the `design-completeness-check` skill (which appends a
+`design_completeness` TestCategory and recomputes `overall_status`).
+The Scrum Master blocks UAT until the combined `overall_status` is
+`"passed"` or `"passed_with_skips"`.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -487,7 +491,7 @@ The Scrum Master blocks UAT until `overall_status` is `"passed"` or `"passed_wit
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `name` | enum | `"unit"`, `"integration"`, `"e2e"`, `"smoke"`, `"regression"`, `"browser"` |
+| `name` | enum | `"unit"`, `"integration"`, `"e2e"`, `"smoke"`, `"regression"`, `"browser"`, `"design_completeness"` |
 | `status` | enum | `"pending"`, `"running"`, `"passed"`, `"failed"`, `"skipped"` |
 | `total` | integer | Total number of tests |
 | `passed` | integer | Tests that passed |
@@ -505,9 +509,13 @@ The Scrum Master blocks UAT until `overall_status` is `"passed"` or `"passed_wit
 | `message` | string | Error message or failure reason |
 
 ### Rules
-- Created by Developer teammates during the Integration Sprint via `smoke-test` skill.
+- Created by Developer teammates during the Integration Sprint via the
+  `smoke-test` skill, then extended by the `design-completeness-check`
+  skill which appends a `design_completeness` TestCategory and
+  recomputes `overall_status` in place.
 - The `completion-gate.sh` hook blocks session stop during `integration_sprint` phase unless `overall_status` is `"passed"` or `"passed_with_skips"`.
-- The Scrum Master reads this file to decide whether to proceed to UAT.
+- The Scrum Master reads this file and gates UAT on the combined
+  `overall_status` (smoke-test categories + `design_completeness`).
 - Categories with `status: "skipped"` do not block the overall status.
 
 ---
@@ -568,7 +576,8 @@ context.
 stagnation | divergence | max_rounds | budget_exhausted |
 requirements_unclear | coverage_tool_error | coverage_tool_unavailable |
 catalog_lock_timeout |
-merge_conflict | merge_artifact_missing
+reviewer_unavailable | stale_review_snapshot |
+merge_conflict | merge_artifact_missing | merge_regression
 ```
 
 ### Companion artifacts (under `.scrum/pbi/<pbi-id>/`)
@@ -599,7 +608,7 @@ merge_conflict | merge_artifact_missing
 
 - The conductor MUST update `state.json` atomically (temp file + rename).
 - Backlog `status: in_progress_merge` requires all four `*_status` fields to be `"pass"`.
-- Backlog `status: escalated` requires `escalation_reason` to be non-null. When the cause is a merge failure, `merge_failure.kind` MUST also be set to one of `conflict`, `artifact_missing` (corresponding `escalation_reason` values are `merge_conflict`, `merge_artifact_missing`).
+- Backlog `status: escalated` requires `escalation_reason` to be non-null. When the cause is a merge failure, `merge_failure.kind` MUST also be set to one of `conflict`, `artifact_missing`, `regression` (corresponding `escalation_reason` values are `merge_conflict`, `merge_artifact_missing`, `merge_regression`).
 - `coverage_status: pending` is permanent when `.scrum/config.json.coverage_tool` is `null` (project-wide coverage skip declared); evaluation logic skips this gate.
 
 ---
@@ -607,18 +616,249 @@ merge_conflict | merge_artifact_missing
 ## Entity: Config
 
 **File**: `.scrum/config.json` (optional; defaults apply if absent)
-**Owner**: Project (manually authored by the user)
-**Readers**: `pbi-pipeline` skill (test runner, coverage tool, path guard
-  globs), `quality-gate.sh`
+**Owner**: Project (authored by the user, or by `scrum-start.sh
+  --autonomous` for the autonomy keys)
+**Readers**: `pbi-pipeline` skill (test runner, coverage tool, path
+  guard globs), `quality-gate.sh`, `pre-tool-use-path-guard.sh` (PO
+  sandbox check), `hooks/lib/autonomy.sh`, `scripts/autonomous/watchdog.sh`
 
-There is no JSON Schema for `.scrum/config.json` — the de-facto contract
-is `.scrum-config.example.json` at the repo root, copied verbatim by
-`setup-user.sh` (when the user does not already have one). It documents
-the available keys (`test_runner`, `coverage_tool`, `pragma_pattern`,
-`path_guard`) and the substitutable templates (`{pbi_id}`, `{round}`).
-Add a schema only if/when an incompatible migration is actually needed
-(per the Phase B "Out of scope" stance in
-`docs/contracts/scrum-state/README.md`).
+| Field | Type | Description |
+|-------|------|-------------|
+| `test_runner` | object \| absent | Per-language test command templates (`{pbi_id}`, `{round}` substituted). Documented in `.scrum-config.example.json`. |
+| `coverage_tool` | object \| `null` \| absent | Per-language coverage tool. `null` disables the coverage gate project-wide. |
+| `pragma_pattern` | object \| absent | Regex per language for the pragma-audit step. |
+| `path_guard` | object \| absent | `impl_globs[]` and `test_globs[]` consumed by `pre-tool-use-path-guard.sh` for `pbi-implementer` / `pbi-ut-author`. |
+| `merge_regression` | object \| absent | `command` run by `merge-pbi.sh` after each per-PBI merge; skipped with WARN when absent. |
+| `po_mode` | enum (`"human"` \| `"agent"`) \| absent | Who plays the Product Owner role. Absent or `"human"` → the user; `"agent"` → the `product-owner` teammate (see `agents/product-owner.md`). Default-absent preserves existing behavior bit-for-bit. |
+| `po` | object \| absent | Settings for the autonomous PO (only consulted when `po_mode == "agent"`). |
+| `po.max_clarification_rounds` | integer ≥ 0 | Max `PO_CLARIFY` round-trips per `PO_DECISION_REQUEST` before the PO must commit a decision with `assumption=true` (default 2 when key absent). |
+| `po.max_integration_cycles` | integer ≥ 0 | Advisory cap on Integration-Sprint defect-fix loops before the PO must answer `release_decision=no_go`. |
+| `autonomous` | object \| absent | Watchdog (Ralph-Loop) settings; populated by `scrum-start.sh --autonomous`. |
+| `autonomous.max_iterations` | integer ≥ 1 | Hard cap on outer-loop iterations (default 50). |
+| `autonomous.max_wall_clock_hours` | number ≥ 0 | Hard cap on wall-clock from `started_at` (default 8). |
+| `autonomous.max_sprints` | integer ≥ 1 | Watchdog stops once `sprint-history.sprints.length` reaches this (default 5). |
+| `autonomous.max_consecutive_failures` | integer ≥ 1 | Consecutive zero-progress iterations before the watchdog gives up (default 3). |
+| `autonomous.stop_block_budget_per_phase` | integer ≥ 1 | Per workflow phase, how many times `completion-gate.sh` may block exit before tripping the circuit breaker (default 8). |
+| `autonomous.max_budget_usd_per_iteration` | number ≥ 0 | Passed to `claude -p --max-budget-usd` (default 10). |
+| `autonomous.max_total_budget_usd` | number ≥ 0 | Cumulative spend ceiling across iterations (default 50). |
+| `autonomous.permission_mode` | enum (`"dontAsk"` \| `"bypassPermissions"`) | Passed to `claude -p --permission-mode` (default `"dontAsk"`). |
+| `autonomous.notify_command` | string \| `null` | Shell command run on watchdog exit with `WATCHDOG_EXIT` in env. Failures are swallowed. |
+| `autonomous.fallback_model` | string \| `null` | Passed to `claude -p --fallback-model` when non-null. |
+| `stall_watchdog` | object \| absent | Settings for the external teammate-stall monitor `scripts/stall-watchdog.sh` (non-autonomous mode only). |
+| `stall_watchdog.enabled` | boolean | When `false`, the daemon exits without nudging. Default `true`. |
+| `stall_watchdog.idle_threshold_minutes` | integer ≥ 1 | Idle window (no `.scrum/dashboard.json` mtime AND no `.scrum/pbi/*/` mtime change) after which a nudge is sent. Default 15. |
+| `stall_watchdog.cooldown_minutes` | integer ≥ 1 | Minimum gap between consecutive nudges. Default 15. |
+| `stall_watchdog.poll_interval_seconds` | integer ≥ 1 | Sleep between iterations of the daemon's main loop. Default 60. |
+
+`po_mode`, `po`, and `autonomous` are constrained by
+`docs/contracts/scrum-state/config.schema.json`. Other keys are
+tolerated via the schema's top-level `additionalProperties: true`
+(the legacy de-facto contract `.scrum-config.example.json` still
+documents them and is copied verbatim by `setup-user.sh`).
+
+### Rules
+
+- Direct edits via Write/Edit are blocked by
+  `pre-tool-use-scrum-state-guard.sh`; the file is written by the
+  user manually (interactive mode) or by `scrum-start.sh
+  --autonomous` (autonomous mode).
+- `po_mode` absent and `po_mode == "human"` are
+  behaviourally identical — every Skill's "ask the user" prompt
+  resolves to the human.
+- The PO **cannot** mutate this file (`pre-tool-use-path-guard.sh`
+  fences PO writes to `docs/product/**` and `.scrum/po/**`); the
+  engineering-quality keys (`coverage`, `merge_regression`,
+  `path_guard`, cross-review routing) are SM/engineering territory.
+
+---
+
+## Entity: Autonomy
+
+**File**: `.scrum/autonomy.json` (created by `scrum-start.sh
+  --autonomous`; absent in human mode)
+**Owner**: Hook scripts (`hooks/lib/autonomy.sh`) and
+  `scripts/autonomous/watchdog.sh`
+**Readers**: `hooks/completion-gate.sh`, `hooks/session-context.sh`,
+  `hooks/stop-failure.sh`, `scripts/autonomous/lib/report.sh`,
+  the Textual dashboard
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `run_id` | string (UUID or `run-<ts>-<pid>`) | Unique identifier for one autonomous-PO run. |
+| `started_at` | ISO 8601 string | When the watchdog booted this run. |
+| `lead_session_id` | string \| `null` | Session id issued by the watchdog for the current `claude -p` iteration. `is_lead_session()` compares against this to gate the autonomous Stop-hook extension. |
+| `iteration` | integer ≥ 0 | Current outer-loop iteration counter (0 before the first iteration). |
+| `total_cost_usd` | number ≥ 0 | Cumulative `total_cost_usd` summed from each `iter-<N>.json` output. |
+| `stop_blocks` | object `{phase, count}` | Stop-block counter for the current workflow phase. Reset to `{phase, 1}` on phase change by `bump_stop_block_counter`. |
+| `circuit_breaker_tripped` | object `{phase, at}` \| `null` | Set by `record_circuit_breaker` when `stop_blocks.count` exceeds `autonomous.stop_block_budget_per_phase`. Cleared by the watchdog at the start of the next iteration. |
+| `last_failure` | object `{reason, at}` \| `null` | Most recent unrecoverable failure observed by the watchdog or persisted by `stop-failure.sh`. |
+| `updated_at` | ISO 8601 string | Touched on every mutation. |
+
+### Rules
+
+- **No wrapper script.** Unlike every other file in `.scrum/`,
+  writes go through library helpers in `hooks/lib/autonomy.sh`
+  (`bump_stop_block_counter`, `record_circuit_breaker`,
+  `autonomy_atomic_write` in the watchdog) — there is no
+  `.scrum/scripts/*.sh` for `autonomy.json`. The schema is
+  enforced by the watchdog on rotation, not per call; the runtime
+  hot-path is latency-sensitive.
+- **Agent writes blocked.** Direct Write/Edit by any agent is
+  rejected by `pre-tool-use-scrum-state-guard.sh`; the only
+  permitted writers are the hook process and the watchdog
+  process.
+- **Fail-open.** Missing file, malformed JSON, or unreadable
+  counter values must never crash a hook — the hooks fall back to
+  "autonomy disabled" or "not lead" semantics.
+- Schema: `docs/contracts/scrum-state/autonomy.schema.json`.
+
+---
+
+## Entity: PoDecisions
+
+**File**: `.scrum/po/decisions.json` (created on first
+  `append-po-decision.sh` invocation; absent until then)
+**Owner**: `scripts/scrum/append-po-decision.sh` (deployed as
+  `.scrum/scripts/append-po-decision.sh`) — the only permitted
+  writer
+**Readers**: `product-owner` agent (on respawn, last 20 entries),
+  `po-acceptance` skill, retrospectives, morning report
+
+Append-only audit log of every Product Owner decision (whether
+human or autonomous). Schema:
+`docs/contracts/scrum-state/po-decisions.schema.json`.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `decisions[]` | PoDecision[] | Ordered list of decisions, oldest first. |
+
+### Embedded: PoDecision
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Auto-assigned `dec-NNNN` (zero-padded). The wrapper echoes this on stdout; the PO must include it in the `PO_DECISION` reply so SM can back-link. |
+| `timestamp` | ISO 8601 string | When the decision was recorded. |
+| `kind` | enum (12 values) | `sprint_goal_approval` \| `pbi_split` \| `escalation_choice` \| `spec_clarification` \| `change_request` \| `demo_acceptance` \| `uat_item` \| `defect_triage` \| `release_decision` \| `git_dirty` \| `backlog_approval` \| `scope_change`. |
+| `sprint_id` | string \| `null` | Set when scope is sprint-bound (`sprint-N` pattern). |
+| `pbi_id` | string \| `null` | Set when scope is PBI-bound (`pbi-N` pattern). |
+| `request` | string \| absent | Summary of what SM asked the PO to decide. |
+| `decision` | string | Verdict text (`approve`/`reject`/`go`/`no_go`/`pass`/`fail`/`waive`/`choice:<label>`). |
+| `rationale` | string | Why this decision was made. Required even for autonomous PO so post-hoc review is possible. |
+| `evidence[]` | string[] \| absent | Paths/anchors that ground the decision. **Required** (non-empty) for `kind ∈ {demo_acceptance, uat_item, release_decision}` — enforced by the wrapper. |
+| `assumption` | boolean | `true` iff the PO committed under best-effort with unverified assumptions (clarification budget exhausted etc.). Used to flag risky decisions for human review. |
+
+### Companion artifacts (under `.scrum/po/`)
+
+| Path | Purpose |
+|------|---------|
+| `.scrum/po/decisions.json` | This entity. |
+| `.scrum/po/acceptance/<sprint-id>/<pbi-id>.md` | Per-PBI demo-mode `po-acceptance` transcript; referenced as `evidence` on the matching `demo_acceptance` decision. |
+| `.scrum/po/acceptance/<sprint-id>/<pbi-id>-r<n>.md` | Re-entry transcript when `po-acceptance` is re-run for a defect-fix loop. |
+| `.scrum/po/uat-<sprint-id>.md` | Single UAT-mode transcript per Sprint; section anchors are referenced as `evidence` on `uat_item` decisions. |
+| `.scrum/po/uat-stories-<sprint-id>.md` | UAT user-story inventory derived from `docs/requirements.md` with FR⇄US traceability appendix; each story (`US-NNN`) carries a verdict (`pass \| fail \| waive` + feedback) recorded during the walkthrough. One file per Sprint. |
+| `.scrum/po/attention.md` | Human-only queue: numbered entries the PO appended for issues only a human can resolve (credentials, billing, legal, prod deploy). Entries tagged `release-blocking: yes` block `release_decision=go`. |
+
+### Rules
+
+- **Append-only.** IDs are auto-assigned (monotonically
+  increasing `dec-NNNN`); the wrapper never rewrites existing
+  records. Direct Write/Edit is blocked by
+  `pre-tool-use-scrum-state-guard.sh`.
+- **Evidence gate.** For `kind ∈ {demo_acceptance, uat_item,
+  release_decision}` the wrapper rejects calls with no
+  `--evidence` flag — no evidence, no approval.
+- **Release gate.** `kind=release_decision` with
+  `decision=go` also requires `.scrum/test-results.json` to exist
+  with `overall_status ∈ {passed, passed_with_skips}`; `no_go`
+  may be recorded freely.
+- **Wrapper-only writes.** Agents call
+  `.scrum/scripts/append-po-decision.sh`; library code never opens
+  the file directly.
+- **PO writes only.** The path-guard hook restricts the
+  `product-owner` agent to `docs/product/**` and `.scrum/po/**`,
+  so this file (under `.scrum/po/`) is the only `.scrum/` JSON the
+  PO may indirectly mutate — and even then, only via the wrapper.
+
+---
+
+## Entity: StopGateLedger
+
+**File**: `.scrum/stop-gate.json` (created on first human-mode block;
+  absent until then; absent entirely in autonomous mode)
+**Owner**: `hooks/lib/stop-gate-state.sh` (sourced by
+  `hooks/completion-gate.sh`) — atomic tmp + mv writes
+**Readers**: `hooks/completion-gate.sh` only
+
+Human-mode dedup ledger for the Stop hook. Records the most recent
+`<phase, fingerprint>` pair plus a counter so repeated identical
+Stop blocks collapse to a single notification per situation: the
+first block emits the verbose reason and exits 2; subsequent
+blocks for the same `<phase, fingerprint>` are logged-only and
+allow exit. Phase change or fingerprint change resets
+`block_count` to 1.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `phase` | string | The `state.json.phase` at the recorded block. |
+| `fingerprint` | string | Stable identifier of the block-triggering situation within the phase (e.g. `review_incomplete\|pbi-001,pbi-003`, `sprint_history_missing\|sprint-002`). Caller-defined; any change resets `block_count`. |
+| `block_count` | integer ≥ 1 | Number of consecutive Stop blocks observed for the current `<phase, fingerprint>`. |
+| `first_block_at` | ISO 8601 string | When the first block of this situation was recorded. |
+| `last_block_at` | ISO 8601 string | When the most recent block was recorded; refreshed on every REPEAT. |
+
+### Rules
+
+- **Human mode only.** In autonomous mode the Stop hook bypasses
+  the ledger entirely so the Ralph-Loop watchdog's "block on every
+  Stop while condition holds" contract is preserved.
+- **No wrapper script.** Like `autonomy.json`, writes go through
+  a hook-side library (`stop_gate_check_and_bump` in
+  `hooks/lib/stop-gate-state.sh`) — there is no
+  `.scrum/scripts/*.sh` for `stop-gate.json`. The hook runs
+  outside the agent's Bash/Write/Edit tool surface, so
+  `pre-tool-use-scrum-state-guard.sh` (which only intercepts
+  those tools) does not apply; agent direct edits via Write/Edit
+  are still rejected by that guard.
+- **Fail-open toward block.** Any I/O / JSON failure path emits
+  `FIRST` (verbose block) rather than `REPEAT` so the gate is
+  never silently muted by a corrupted ledger.
+- **In `pbi_pipeline_active` (human mode)** the gate only blocks
+  on unresolved `escalated` PBIs. In-flight `in_progress_*` PBIs
+  do not trigger a block at all — teammate liveness is monitored
+  by `scripts/stall-watchdog.sh` instead.
+- Schema: `docs/contracts/scrum-state/stop-gate.schema.json`.
+
+---
+
+## Entity: Runtime
+
+**File**: `.scrum/runtime.json` (created by `scrum-start.sh` when
+  tmux is available; absent in the no-tmux fallback)
+**Owner**: `scrum-start.sh` — writes the initial record at session
+  launch and then patches `stall_watchdog_pid` after the daemon
+  forks. Atomic tmp + mv via `jq`. No wrapper script.
+**Readers**: `scripts/stall-watchdog.sh` (resolves `tmux_session`
+  and `sm_pane_id` on each iteration; exits when the session no
+  longer exists)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `tmux_session` | string | tmux session name (`scrum-team-<sanitized-basename>-<pwd-hash>`). |
+| `sm_pane_id` | string | tmux pane id (`%N`) of the Scrum Master pane, captured before any split-window. Used as the target for `tmux send-keys` nudges. |
+| `started_at` | ISO 8601 string | When the tmux session was created. |
+| `stall_watchdog_pid` | integer \| `null` | PID of the detached `scripts/stall-watchdog.sh` daemon. `null` in autonomous mode (the Ralph-Loop watchdog owns liveness, no stall daemon is launched). |
+
+### Rules
+
+- **No wrapper.** Outside the `.scrum/scripts/*.sh` SSOT writer
+  set — see CLAUDE.md § State management. Agent direct
+  Write/Edit/raw-Bash edits to `.scrum/runtime.json` are still
+  rejected by `pre-tool-use-scrum-state-guard.sh` (it matches all
+  `.scrum/*.json` paths); only `scrum-start.sh` writes the file.
+- **Absent → degraded mode.** When `runtime.json` is missing or
+  unreadable, the stall watchdog logs a warning and skips its
+  iteration without crashing.
+- **No schema today.** Format is ad-hoc; readers tolerate missing
+  or invalid fields by falling through.
 
 ---
 
@@ -644,9 +884,9 @@ backlog.json
   └── items[].depends_on_pbi_ids[] -> items[].id (cross-reference)
 
 sprint.json
-  └── pbi_ids[] -> backlog.json.items[].id
   └── developers[].current_pbi -> backlog.json.items[].id
   └── developers[].assigned_work.implement[] -> backlog.json.items[].id
+  └── (Sprint PBI set is derived: backlog.json.items[] where sprint_id == sprint.id)
 
 .scrum/pbi/<pbi-id>/state.json (PbiPipelineState)
   └── pbi_id -> backlog.json.items[].id
@@ -664,4 +904,30 @@ dashboard.json
 
 test-results.json
   (standalone — no foreign key references; read by completion-gate.sh and dashboard)
+
+config.json
+  └── po_mode -> rules/scrum-context.md § PO seat resolution (selects PO seat)
+  └── po.* -> agents/product-owner.md § Anti-loop rules (read by PO teammate)
+  └── autonomous.* -> .scrum/autonomy.json + scripts/autonomous/watchdog.sh
+
+autonomy.json
+  └── lead_session_id -> claude session id of the current `claude -p` iteration
+                         (matched by hooks/lib/autonomy.sh::is_lead_session)
+  └── stop_blocks.phase -> state.json.phase (resets when phase changes)
+  └── circuit_breaker_tripped.phase -> state.json.phase
+
+po/decisions.json
+  └── decisions[].sprint_id -> sprint.json.id | sprint-history.json.sprints[].id
+  └── decisions[].pbi_id    -> backlog.json.items[].id
+  └── decisions[].evidence[] -> .scrum/po/acceptance/<sprint-id>/<pbi-id>.md (demo)
+                              | .scrum/po/uat-<sprint-id>.md#us-nnn        (uat)
+                              | .scrum/test-results.json                   (release_decision=go)
+
+stop-gate.json
+  └── phase -> state.json.phase (reset on phase change)
+  (human-mode only; absent in autonomous mode)
+
+runtime.json
+  └── tmux_session, sm_pane_id, stall_watchdog_pid
+        -> consumed by scripts/stall-watchdog.sh (non-autonomous mode)
 ```

@@ -10,8 +10,8 @@ tools:
   - Glob
   - Bash
 model: opus
-effort: high
-maxTurns: 50
+effort: xhigh
+maxTurns: 80
 ---
 
 # Requirement Conformance Reviewer
@@ -28,6 +28,12 @@ relevant `docs/design/specs/**` for every PBI in scope.
   `status ∈ {cross_review, escalated}`. For each PBI: `id`, `title`,
   `acceptance_criteria`, `paths_touched`
 - Sprint-wide source path list (union of all PBIs' `paths_touched`)
+- Per-PBI design AC mapping:
+  `.scrum/pbi/<pbi-id>/design/design.md` (the `Acceptance Criteria
+  Mapping` section is the AC→interface contract)
+- Per-PBI final AC coverage map:
+  `.scrum/pbi/<pbi-id>/ut/ac-coverage-r{last}.json` (the AC→test
+  evidence from the last impl+UT Round)
 
 ## Does NOT Receive (intentional)
 
@@ -38,6 +44,16 @@ test code (UT-side correctness is out of scope for this aspect).
 
 1. **Requirement coverage** — every requirement / acceptance criterion
    referenced by a Sprint PBI is implemented in the Sprint Increment.
+   For each Sprint PBI, verify the AC-traceability chain end-to-end:
+   - The PBI's `acceptance_criteria` array (from `backlog.json`) is
+     reproduced verbatim in the design doc's `Acceptance Criteria
+     Mapping` table (same text, same order).
+   - `ac-coverage-r{last}.json` exists for the PBI, lists every AC
+     by matching `index` and verbatim `text`, and every
+     `criteria[].tests` array is non-empty.
+   Missing `ac-coverage-r{last}.json`, an AC absent from the map,
+   or an AC with empty `tests` → Finding (criterion_key
+   `missing_requirement`).
 2. **Scope drift** — flag implementations that go beyond the design
    spec or beyond the PBI's `acceptance_criteria`.
 3. **Design-spec alignment** — code behavior matches what the design

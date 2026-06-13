@@ -16,6 +16,8 @@ case "$PHASE" in
   *) fail E_INVALID_ARG "bad phase: $PHASE" ;;
 esac
 
+[ -f .scrum/state.json ] || fail E_FILE_MISSING ".scrum/state.json — bootstrap it first: .scrum/scripts/init-state.sh"
+
 atomic_write ".scrum/state.json" \
   ".phase = \"$PHASE\"" \
   "$ROOT/docs/contracts/scrum-state/state.schema.json"

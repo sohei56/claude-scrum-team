@@ -29,16 +29,37 @@ pip install textual watchdog
 #   Or: apt install python3-pip    (Debian/Ubuntu)
 #   Or: brew install python3       (macOS, includes pip)
 
-# 4. Run the setup script (validates prerequisites, configures project)
-sh ~/claude-scrum-team/scripts/setup-user.sh
-
-# 5. Launch the Scrum team (opens tmux with Claude Code + dashboard)
+# 4. Launch the Scrum team (opens tmux with Claude Code + dashboard).
+#    This invokes setup-user.sh internally — no separate setup step
+#    is required.
 sh ~/claude-scrum-team/scrum-start.sh
+
+# (Optional) Run setup without launching the team, e.g. to inspect
+# what the framework copies into .claude/ before going live:
+#   sh ~/claude-scrum-team/scripts/setup-user.sh
 ```
 
 The setup script copies agent definitions and Skills to your project's
 `.claude/` directory, configures the status line dashboard, and sets up
 hooks. It NEVER modifies your global `~/.claude/` settings.
+
+### Autonomous mode
+
+When you do not want a human at the keyboard, launch with `--autonomous`:
+
+```bash
+sh ~/claude-scrum-team/scrum-start.sh \
+   --autonomous --brief docs/product/brief.md --max-sprints 3
+```
+
+This sets `.scrum/config.json.po_mode == "agent"` so the `product-owner`
+teammate takes every PO decision, and starts the outer Ralph-Loop
+watchdog (`scripts/autonomous/watchdog.sh`) which re-launches headless
+Claude sessions, enforces safety valves (iterations / wall clock /
+Sprints / budget / consecutive-failure / per-phase Stop-block budgets),
+backs off on rate-limit signals, and writes a morning report to
+`.scrum/reports/autonomous-run-<run_id>.md`. Full operator guide:
+[docs/autonomous-mode.md](autonomous-mode.md).
 
 ### Configure PBI Pipeline coverage tooling
 
@@ -110,32 +131,25 @@ command -v shellcheck && echo "shellcheck: OK"
 ## Repository Layout
 
 See [CLAUDE.md § Project Structure](../CLAUDE.md) for the canonical
-tree. The repository is organized as: `agents/` (Scrum Master,
-Developer, and 6 PBI-pipeline + 5 cross-review sub-agent
-definitions), `skills/` (15 Skills covering all Scrum ceremonies),
-`.claude/skills/` (dev-only skills for this repo, e.g. cleanup-audit),
-`hooks/`, `dashboard/`, `scripts/`, `tests/`, `docs/`, and the runtime
-`.scrum/` directory.
-
-## Running Tests and Linting
-
-This document targets end users running the framework. Contributors
-should refer to [CONTRIBUTING.md § Running Tests](../CONTRIBUTING.md#running-tests)
-for the full bats / shellcheck / ruff invocations and dev-tool
-prerequisites.
+annotated tree.
 
 ## Key Concepts
 
 For deeper detail, follow these pointers:
 
-- **Agents and sub-agents**: top-level Scrum Master + Developer plus 9
-  specialist sub-agents — see [docs/contracts/sub-agents.md](contracts/sub-agents.md).
+- **Agents and sub-agents**: top-level Scrum Master + Developer +
+  Product Owner plus 11 specialist sub-agents (6 PBI pipeline + 5
+  cross-review) — see [docs/contracts/sub-agents.md](contracts/sub-agents.md).
 - **Skills**: Markdown + YAML frontmatter under `.claude/skills/<name>/SKILL.md`,
   each with `## Inputs` / `## Outputs`. Invocation, side effects, and
   state writes are documented per skill.
-- **Hooks** (`status-gate`, `session-context`, `completion-gate`,
-  `quality-gate`, `pre-tool-use-*`): enforce Sprint workflow at the
-  Claude Code tool layer — see [docs/architecture.md](architecture.md) R7.
+- **Hooks** (`status-gate`, `session-context`, `stop-dispatch`
+  → `dashboard-event` + `completion-gate`, `quality-gate`,
+  `pre-tool-use-*`): enforce Sprint workflow at the Claude Code
+  tool layer — see [docs/architecture.md](architecture.md) R7. The
+  Stop event is registered once via `stop-dispatch.sh`, which
+  forwards to `dashboard-event.sh` (best-effort) and then
+  `completion-gate.sh` (gate verdict).
 - **State files** in `.scrum/` (one JSON file per concern): schemas in
   [docs/data-model.md](data-model.md); writes go through
   `.scrum/scripts/*.sh` wrappers.
@@ -152,7 +166,7 @@ For deeper detail, follow these pointers:
 4. Make changes
 5. Run `shellcheck` on modified shell scripts
 6. Run `bats tests/unit/ tests/lint/` to verify
-7. Commit per the task-based commit strategy (Constitution IV)
+7. Commit per the conventions in [CONTRIBUTING.md § Commit Conventions](../CONTRIBUTING.md#commit-conventions)
 
 ## Testing an End-to-End Flow
 

@@ -10,7 +10,6 @@ tools:
   - Edit
   - Grep
   - Glob
-  - Bash
 model: opus
 effort: high
 maxTurns: 150
@@ -43,6 +42,18 @@ Implementation author. Spawned by Developer per impl+UT Round.
 - AVOID unnecessary defensive code (interferes with C1=100%).
 - Address ALL impl-reviewer findings + test failures from prior
   feedback file before re-emitting code.
+- **DO NOT guess unspecified behavior.** If the design doc or
+  requirements do not unambiguously determine one of the items below,
+  STOP and raise to Developer instead of inventing a behavior:
+  - function/method/API signatures and parameter semantics
+  - business rules (conditions, thresholds, ordering, state
+    transitions)
+  - I/O contracts (return types, error conditions, exceptions raised)
+  - persistence schema, authentication/authorization boundaries
+  Guessing IS permitted for: error message wording, log levels,
+  local variable names, internal helper decomposition, comments.
+  See `rules/scrum-context.md` § "When you don't know" for the
+  escalation route (implementer → Developer → SM → PO).
 
 ## Output Envelope
 

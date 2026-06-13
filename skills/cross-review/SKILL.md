@@ -25,12 +25,10 @@ Sprint-wide review**, evaluated independently along five axes:
 | 5 | Docs consistency | `docs-consistency-reviewer`                    | follow-up PBI in next Sprint |
 
 Each reviewer ingests the **entire Sprint Increment**, not per-PBI
-slices. PBI mapping is recorded inside Findings via reverse-lookup
-against `paths_touched`.
-
-Do NOT duplicate per-PBI quality work; assume per-PBI Pass criteria
-already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
-`ut/review-r{last}.md` for prior context).
+slices, and assumes per-PBI Pass criteria are already satisfied
+(prior context in `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
+`ut/review-r{last}.md`). PBI mapping is recorded inside Findings via
+reverse-lookup against `paths_touched`.
 
 ## Inputs
 
@@ -46,6 +44,8 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
   - `.scrum/pbi/<pbi-id>/impl/review-r{last}.md`
   - `.scrum/pbi/<pbi-id>/ut/review-r{last}.md`
   - `.scrum/pbi/<pbi-id>/metrics/coverage-r{last}.json`
+  - `.scrum/pbi/<pbi-id>/ut/ac-coverage-r{last}.json` (AC → test
+    map; consumed by `requirement-conformance-reviewer`)
 - Reviewer agent definitions:
   - `agents/requirement-conformance-reviewer.md`
   - `agents/functional-quality-reviewer.md`
@@ -158,9 +158,8 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
 7. **Announce expected duration to the user (mandatory).** Before
    spawning, output a single short notice so the user does not
    interpret silence or `completion-gate.sh` Stop-blocks as failure
-   and try to `/clear` the session mid-review. cars_auction_scraping_proto
-   retrospectives showed this UX failure 5 Sprints in a row
-   (imp-005 / imp-008 / imp-010 / imp-014 / imp-016) before the
+   and try to `/clear` the session mid-review. Target-project
+   retrospectives showed this UX failure 5 Sprints in a row before the
    announcement convention was made explicit. Use this exact wording
    so the user learns to recognise it:
 
@@ -180,7 +179,7 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
    **as their final assistant message**. The Scrum Master persists
    that message to `.scrum/reviews/aspect-*.md` in Step 9 of this
    skill. Do NOT prompt reviewers to write the file themselves — that
-   creates the failure mode logged in kaiten_bot imp-s27 / imp-s29-04
+   creates the failure mode logged in target-project retrospectives
    where reviewers either refuse (Strict Rule "DO NOT modify files")
    or silently do nothing. Tell each reviewer explicitly: "Return the
    review content as your final message; the orchestrator will
@@ -190,7 +189,10 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
    - `requirement-conformance-reviewer` → `requirements.md`,
      `docs/design/specs/**` (touched), Sprint PBI summary (id, title,
      `acceptance_criteria`, `paths_touched`), Sprint-wide source path
-     list. SM persists final message to
+     list, per-PBI `.scrum/pbi/<pbi-id>/design/design.md` (for the
+     AC Mapping section) and
+     `.scrum/pbi/<pbi-id>/ut/ac-coverage-r{last}.json` (the AC →
+     test evidence). SM persists final message to
      `.scrum/reviews/aspect-requirement-conformance-review.md`.
    - `functional-quality-reviewer` → same Sprint summary + source
      list, with explicit reminder that scope is **cross-PBI seams
@@ -246,16 +248,72 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
      security):** for each PBI named in any Critical/High Finding
      under those aspects:
      ```bash
+     # Place the per-PBI digest where the Developer's next impl Round
+     # will read it as feedback. `begin-impl-round.sh` (called by the
+     # Developer at re-entry) doesn't know `n` yet, so use a
+     # Round-independent path.
+     cp ".scrum/reviews/${PBI_ID}-review.md" \
+        ".scrum/pbi/${PBI_ID}/feedback/from-cross-review.md"
      .scrum/scripts/update-backlog-status.sh "$PBI_ID" in_progress_impl
      ```
      Then `TaskGet` the PBI's Developer; terminated → re-spawn
      (Teammate Liveness Protocol). Relay the Findings as the fix
-     directive. Developer fixes on top of merged code, re-runs PBI
-     Review → UT Run → ready-to-merge handoff. SM re-merges; PBI
+     directive. Developer re-enters `pbi-pipeline` →
+     `begin-impl-round.sh` advances `impl_round` atomically (the
+     Round counter is owned by that wrapper; the Developer never
+     computes `n+1`). Developer fixes on top of merged code, re-runs
+     PBI Review → UT Run → ready-to-merge handoff. SM re-merges; PBI
      returns to `awaiting_cross_review`.
    - **Aspects 4/5 (maintainability / docs-consistency):** for each
      PBI named in any Critical/High Finding under those aspects,
-     append a follow-up PBI:
+     append a follow-up PBI. **The `--ac` flag is mandatory** — past
+     follow-up PBIs created without AC required inline rework at
+     Sprint Planning in a target project.
+
+     **Opus override for follow-up AC drafting (mandatory).** Same
+     reasoning as `skills/backlog-refinement/SKILL.md` § Step 3b
+     Opus override: the SM main loop running on Sonnet has produced
+     AC-empty or coverage-thin follow-up PBIs that re-fail cross-review
+     in the next Sprint. Delegate follow-up AC drafting to an
+     Opus-backed sub-agent via the `Agent` tool before invoking
+     `add-backlog-item.sh`:
+
+     ```
+     Agent({
+       subagent_type: "general-purpose",
+       model: "opus",
+       description: "Follow-up PBI AC drafting",
+       prompt: <<<EOF
+         Draft acceptance_criteria for a cross-review follow-up PBI.
+
+         Inputs:
+         - Parent PBI id, title, paths_touched
+         - Aspect: maintainability | docs-consistency
+         - Findings (Critical/High only) from the per-PBI digest
+         - Per-PBI digest path: .scrum/reviews/<pbi-id>-review.md
+
+         Constraints:
+         - Each AC is independently verifiable (Given/When/Then or
+           measurable assertion).
+         - Cover normal-path + at least one failure / regression-prevention
+           check.
+         - docs-consistency follow-up: AC must include a grep-style
+           check ("grep <symbol> returns zero across the spec" or
+           "spec file contains <new-value> in every occurrence").
+         - maintainability follow-up: AC must reference the specific
+           static-analysis rule (ruff/shellcheck code) or the named
+           Finding from the digest.
+
+         Output: JSON
+           {
+             "title_summary": "<short summary for the follow-up>",
+             "ac": ["<criterion 1>", "<criterion 2>", ...]
+           }
+       EOF
+     })
+     ```
+
+     Then invoke the wrapper with `--ac` flags built from the JSON:
      ```bash
      # dedup guard — skip if a matching follow-up already exists
      TITLE_PREFIX="[cross-review-followup:${PBI_ID}:${ASPECT}]"
@@ -263,10 +321,17 @@ already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
        '[.items[] | select(.title | startswith($p))] | length' \
        .scrum/backlog.json)
      if [ "$EXISTS" = "0" ]; then
+       # build --ac arguments from the Opus JSON output above
+       AC_ARGS=()
+       while IFS= read -r line; do AC_ARGS+=(--ac "$line"); done < <(
+         jq -r '.ac[]' <<<"$OPUS_JSON"
+       )
+       SUMMARY=$(jq -r '.title_summary' <<<"$OPUS_JSON")
        .scrum/scripts/add-backlog-item.sh \
-         --title "${TITLE_PREFIX} <short summary>" \
+         --title "${TITLE_PREFIX} ${SUMMARY}" \
          --description "<aspect> follow-up for ${PBI_ID}. See .scrum/reviews/${PBI_ID}-review.md for findings." \
-         --parent "${PBI_ID}"
+         --parent "${PBI_ID}" \
+         "${AC_ARGS[@]}"
      else
        echo "skip dedup ${TITLE_PREFIX}"
      fi

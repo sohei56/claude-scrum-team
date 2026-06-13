@@ -16,6 +16,18 @@ case "$STATUS" in
   *) fail E_INVALID_ARG "bad status: $STATUS" ;;
 esac
 
+# Stamp completed_at on terminal transitions so Sprint Review can read it
+# from sprint.json (the schema declares completed_at: ISO 8601 | null and
+# init-sprint.sh seeds null; without this stamp the field would stay null
+# forever).
+EXPR=".status = \"$STATUS\""
+case "$STATUS" in
+  complete|failed)
+    NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo "1970-01-01T00:00:00Z")"
+    EXPR="$EXPR | .completed_at = \"$NOW\""
+    ;;
+esac
+
 atomic_write ".scrum/sprint.json" \
-  ".status = \"$STATUS\"" \
+  "$EXPR" \
   "$ROOT/docs/contracts/scrum-state/sprint.schema.json"

@@ -17,7 +17,8 @@
 #   escalation_reason null|stagnation|divergence|max_rounds|budget_exhausted|
 #                     requirements_unclear|coverage_tool_error|
 #                     coverage_tool_unavailable|catalog_lock_timeout|
-#                     merge_conflict|merge_artifact_missing
+#                     reviewer_unavailable|stale_review_snapshot|
+#                     merge_conflict|merge_artifact_missing|merge_regression
 #   branch            pbi/pbi-NNN (validated: must match pbi/pbi-[0-9]*)
 #   worktree          .scrum/worktrees/pbi-NNN (validated)
 #   base_sha          hex sha, 7..40 chars
@@ -26,10 +27,18 @@
 #   ready_at          ISO-8601 datetime string
 #   merged_at         ISO-8601 datetime string
 #   merge_failure_count  non-negative integer
+#   merge_failure        null only (drops the object). Non-null values
+#                        of merge_failure are written by
+#                        mark-pbi-merge-failure.sh, not here. The retry
+#                        path in pbi-escalation-handler resets both the
+#                        count and the object atomically; without this
+#                        allowlist entry the object would survive a
+#                        count=0 reset and read as a live failure
+#                        record to dashboards / gates mid-retry.
 #
 # pbi_id, started_at, updated_at are NOT settable here.
 # updated_at is auto-stamped by atomic_write.
-# Complex fields (paths_touched, merge_failure) use dedicated wrappers.
+# Complex fields (paths_touched, non-null merge_failure) use dedicated wrappers.
 # Backlog status is written via update-backlog-status.sh (no projection here).
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -84,7 +93,7 @@ while [ "$#" -ge 2 ]; do
     escalation_reason)
       case "$V" in
         null) EXPR="$EXPR | .escalation_reason = null" ;;
-        stagnation|divergence|max_rounds|budget_exhausted|requirements_unclear|coverage_tool_error|coverage_tool_unavailable|catalog_lock_timeout|merge_conflict|merge_artifact_missing)
+        stagnation|divergence|max_rounds|budget_exhausted|requirements_unclear|coverage_tool_error|coverage_tool_unavailable|catalog_lock_timeout|reviewer_unavailable|stale_review_snapshot|merge_conflict|merge_artifact_missing|merge_regression)
           EXPR="$EXPR | .escalation_reason = \"$V\""
           ;;
         *) fail E_INVALID_ARG "bad escalation_reason: $V" ;;
@@ -121,6 +130,14 @@ while [ "$#" -ge 2 ]; do
         ''|*[!0-9]*) fail E_INVALID_ARG "merge_failure_count must be non-negative integer (got: $V)" ;;
       esac
       EXPR="$EXPR | .merge_failure_count = $V"
+      ;;
+    merge_failure)
+      # Only null is accepted here — non-null objects must go through
+      # mark-pbi-merge-failure.sh which builds the kind/paths/pre_head triple.
+      case "$V" in
+        null) EXPR="$EXPR | del(.merge_failure)" ;;
+        *) fail E_INVALID_ARG "merge_failure may only be set to 'null' via this wrapper (got: $V); non-null values are written by mark-pbi-merge-failure.sh" ;;
+      esac
       ;;
     *) fail E_INVALID_ARG "unknown field: $F" ;;
   esac

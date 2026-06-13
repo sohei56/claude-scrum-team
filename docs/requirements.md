@@ -168,23 +168,23 @@ and confirm the user can declare the product release-ready.
 ### User Story 4 - TUI Dashboard (Priority: P4)
 
 The user can view project progress through a rich terminal UI
-dashboard. The dashboard shows four panels: Sprint Overview,
-real-time PBI Progress Board, Communication Log, and File
-Change Log. The user never needs to inspect raw files or logs
-to understand project status.
+dashboard. The dashboard shows three panels: Sprint Overview,
+real-time PBI Progress Board, and a unified Work Log that merges
+agent messages and work events into one chronological stream. The
+user never needs to inspect raw files or logs to understand
+project status.
 
 **Verification**: Launch the dashboard during a Development
 Sprint and verify it displays Sprint Overview, PBI Progress
-Board, Communication Log, and File Change Log, all updating
-in real time.
+Board, and Work Log, all updating in real time.
 
 **Acceptance Scenarios**:
 
 1. **Given** a Development Sprint is in progress,
    **When** the dashboard is displayed,
    **Then** the Sprint Overview (goal, PBIs, developers),
-   PBI Progress Board, Communication Log, and File Change Log
-   are persistently visible alongside the conversation.
+   PBI Progress Board, and Work Log are persistently visible
+   alongside the conversation.
 
 2. **Given** a Developer completes a PBI,
    **When** the dashboard updates,
@@ -192,15 +192,17 @@ in real time.
    in real time without the user needing to refresh or invoke a
    command.
 
-3. **Given** agents exchange messages during a Sprint,
-   **When** the Communication Log updates,
+3. **Given** agents exchange messages during a Sprint (e.g. a
+   Developer reports to the Scrum Master or PO via SendMessage),
+   **When** the Work Log updates,
    **Then** the messages are displayed with sender, recipient,
-   and timestamp.
+   and timestamp, interleaved chronologically with work events.
 
 4. **Given** a Developer modifies files during implementation,
-   **When** the File Change Log updates,
+   **When** the Work Log updates,
    **Then** the file path and change type (created, modified,
-   deleted) are displayed in real time.
+   deleted) are displayed in real time, and the user can narrow
+   the view to messages-only or work-only via a filter toggle.
 
 ---
 
@@ -434,10 +436,20 @@ Observe implementation and verify Developers use support sub-agents.
   the user indicates the Product Goal is achieved, covering
   integration testing, end-to-end testing, regression testing,
   documentation consistency checks, and user acceptance testing.
-  For user acceptance testing, the team MUST prepare the product
-  for hands-on use (e.g. launch locally, share URL or start
-  command), provide a guided testing flow covering key user
-  workflows, and collect the user's feedback at each step.
+  Before user acceptance testing, the team MUST verify
+  design-document functional completeness at integration-test
+  granularity — every function described in the enabled design
+  specs is verified against the running system, and unimplemented
+  spec'd functions are treated as release-blocking defects. For
+  user acceptance testing, the team MUST prepare the product for
+  hands-on use (e.g. launch locally, share URL or start command),
+  and MUST drive verification from a user-story inventory
+  exhaustively derived from the requirements document — every
+  release-relevant Functional Requirement traced to ≥1 user story,
+  every story traced to ≥1 FR. Each story MUST be confirmed with
+  the Product Owner **one at a time**, recording a verdict and
+  feedback per story; multiple stories MUST NOT be batched in a
+  single confirmation.
 
 - **FR-014**: The system MUST provide a TUI dashboard that runs
   alongside the conversation and displays the following panels:
@@ -447,10 +459,11 @@ Observe implementation and verify Developers use support sub-agents.
   (b) **Real-time PBI Progress Board** — each PBI's 12-value
   status (see Q&A 2026-02-25 below and `docs/data-model.md` §
   State Transitions: status) updated as work progresses;
-  (c) **Communication Log** — messages exchanged between agents
-  (Scrum Master <-> Developers, Developer <-> Developer);
-  (d) **File Change Log** — files created, modified, or deleted
-  by agents during implementation.
+  (c) **Work Log** — a single chronological stream merging
+  messages exchanged between agents (Scrum Master <-> Developers,
+  Developer <-> PO) and work events (files created, modified, or
+  deleted by agents, status transitions, agent lifecycle), with a
+  filter toggle (all / messages / work).
   The dashboard MUST update in real time as work progresses.
 
 - **FR-015**: All user interactions MUST be in natural language.
@@ -512,6 +525,37 @@ Observe implementation and verify Developers use support sub-agents.
   implementation, the Scrum Master MUST detect the failure,
   reassign the PBI to a new Developer teammate, and resume work
   without requiring user intervention.
+
+- **FR-023**: The system MUST support an Autonomous PO mode in
+  which a `product-owner` teammate replaces the human user as the
+  Product Owner. When `.scrum/config.json.po_mode == "agent"`,
+  every PO-approval point in every Scrum ceremony (Sprint Goal,
+  PBI split, escalation choice, spec clarification, change
+  request, demo acceptance, UAT verdict, defect triage, release
+  decision, git-dirty, backlog approval, scope change) MUST be
+  routed to that teammate via `[<scope>] PO_DECISION_REQUEST`,
+  resolved via `[<scope>] PO_DECISION dec_id=<dec-NNNN>`, and
+  persisted to `.scrum/po/decisions.json` through
+  `.scrum/scripts/append-po-decision.sh`. The team MUST be drivable
+  end-to-end (Requirements Sprint → Development Sprints →
+  Integration Sprint → release decision) without human input by
+  the `scripts/autonomous/watchdog.sh` outer loop. The watchdog
+  MUST enforce all of: `max_iterations`, `max_wall_clock_hours`,
+  `max_sprints`, `max_consecutive_failures`,
+  `stop_block_budget_per_phase`, `max_budget_usd_per_iteration`,
+  `max_total_budget_usd`, exponential backoff on observed
+  rate-limit signals, and produce a morning report under
+  `.scrum/reports/autonomous-run-<run_id>.md` on exit. The PO
+  teammate MUST defer human-only matters (credentials, billing,
+  legal/compliance, production deploy) to `.scrum/po/attention.md`
+  rather than guessing, MUST NOT weaken any engineering quality
+  gate (coverage thresholds, merge regression gate, path guard,
+  cross-review routing), and MUST refuse `kind=release_decision`
+  with `decision=go` when `.scrum/test-results.json.overall_status`
+  is not `passed`/`passed_with_skips` or any
+  `.scrum/po/attention.md` entry is tagged `release-blocking: yes`.
+  When `po_mode` is absent or `"human"`, the system MUST behave
+  bit-for-bit as before (zero behaviour change).
 
 ## Key Entities
 
@@ -650,7 +694,7 @@ Observe implementation and verify Developers use support sub-agents.
 
 ### 2026-02-26
 
-- Q: Should external dependencies be allowed for the TUI dashboard? A: Yes — Python 3.9+ with `textual` and `watchdog` packages are allowed as TUI dependencies. FR-018 revised to permit this. The dashboard must display four panels: Sprint Overview, PBI Progress Board, Communication Log, and File Change Log.
+- Q: Should external dependencies be allowed for the TUI dashboard? A: Yes — Python 3.9+ with `textual` and `watchdog` packages are allowed as TUI dependencies. FR-018 revised to permit this. The dashboard must display three panels: Sprint Overview, PBI Progress Board, and Work Log (history: 2026-06-12 merged the former Communication Log and File Change Log panels into a single panel originally named "Team Log"; renamed to "Work Log" in 6996cf6).
 - Q: Should the awesome-claude-code-subagents catalog be installed into `.claude/skills/` instead of `.claude/agents/`? A: No — catalog entries are subagent definition files (`.md` with subagent YAML frontmatter: `tools`, `model`), not Skill format. They require context isolation, model routing, and tool sandboxing that only subagents provide. Keep `.claude/agents/` as the installation target.
 
 ### 2026-02-25

@@ -27,10 +27,14 @@ disable-model-invocation: false
   with raw `git commit`: a raw `git commit -A` would stage the
   `.scrum -> ../../../.scrum` symlink that `create-pbi-worktree.sh`
   installs, and that symlink would then propagate to `main` on the
-  per-PBI merge. `commit-pbi.sh` excludes the symlink via
-  `git add -A -- ':!.scrum'` and only it is safe.
+  per-PBI merge. `commit-pbi.sh` does a two-step `git add -A` then
+  `git reset --quiet HEAD -- .scrum` to drop the symlink; only the
+  wrapper is safe. (The single-step pathspec form
+  `git add -A -- ':!.scrum'` returned rc=1 under git 2.36+ when
+  `.scrum` is already gitignored — see `commit-pbi.sh`'s in-file
+  comment for the rationale.)
 - .scrum/pbi/<pbi-id>/ artifacts (design, reviews, metrics, feedback,
-  summaries, pipeline.log)
+  summaries, pipeline.log, ut/ac-coverage-r{n}.json)
 - backlog.json `items[].status` driven via
   `.scrum/scripts/update-backlog-status.sh` (Developer manages the
   `in_progress_*` range; SM owns the rest of the 12-value enum).
@@ -92,6 +96,23 @@ See `references/sub-agent-prompts.md` for full input prompt templates.
 All three `codex-*-reviewer` spawns share the stall fallback protocol
 in `references/reviewer-stall-fallback.md` (2-min stall detect →
 single Explore-agent retry → escalate as `reviewer_unavailable`).
+
+All three also share a snapshot-pin contract. The conductor captures
+pins immediately before spawn and passes them as input slots:
+
+- design reviewer: `{design_hash}` (SHA-256 of design.md)
+- impl + UT reviewers: `{worktree_path}`, `{review_sha}`
+  (`git rev-parse HEAD` of `pbi/<id>` after `commit-pbi.sh`), and
+  `{design_hash}`
+
+Reviewers verify pins as their FIRST action and emit a
+`stale_snapshot:` error envelope on mismatch (no review file
+written). On PASS/FAIL the review file MUST begin with header lines
+`Reviewed-Head: <sha>` (impl/UT) and `Reviewed-Design-Hash: <hash>`.
+The conductor verifies these headers after reading each review file;
+mismatch / `stale_snapshot:` error → one respawn with refreshed pins
+→ escalate `stale_review_snapshot`. See `references/design-stage.md`
+and `references/impl-ut-stage.md` for the full conductor procedure.
 
 ## State management
 

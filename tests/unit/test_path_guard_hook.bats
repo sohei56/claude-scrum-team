@@ -92,3 +92,65 @@ payload() {
   run bash -c "echo '$(payload pbi-ut-author Read src/auth.py)' | $HOOK"
   [ "$status" -eq 0 ]
 }
+
+# ---------------------------------------------------------------------------
+# product-owner path sandbox
+# ---------------------------------------------------------------------------
+
+@test "allows product-owner to write docs/product/vision.md" {
+  mkdir -p docs/product
+  run bash -c "echo '$(payload product-owner Write docs/product/vision.md)' | $HOOK"
+  [ "$status" -eq 0 ]
+}
+
+@test "allows product-owner to edit docs/product/brief.md" {
+  mkdir -p docs/product
+  run bash -c "echo '$(payload product-owner Edit docs/product/brief.md)' | $HOOK"
+  [ "$status" -eq 0 ]
+}
+
+@test "allows product-owner to write .scrum/po/attention.md" {
+  mkdir -p .scrum/po
+  run bash -c "echo '$(payload product-owner Write .scrum/po/attention.md)' | $HOOK"
+  [ "$status" -eq 0 ]
+}
+
+@test "allows product-owner to write nested .scrum/po path" {
+  mkdir -p .scrum/po/acceptance/sprint-1
+  run bash -c "echo '$(payload product-owner Write .scrum/po/acceptance/sprint-1/pbi-001.md)' | $HOOK"
+  [ "$status" -eq 0 ]
+}
+
+@test "blocks product-owner from writing src/main.py" {
+  run bash -c "echo '$(payload product-owner Write src/main.py)' | $HOOK"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"BLOCKED"* ]]
+}
+
+@test "blocks product-owner from editing tests/test_main.py" {
+  run bash -c "echo '$(payload product-owner Edit tests/test_main.py)' | $HOOK"
+  [ "$status" -eq 2 ]
+}
+
+@test "blocks product-owner from multi-editing docs/requirements.md" {
+  run bash -c "echo '$(payload product-owner MultiEdit docs/requirements.md)' | $HOOK"
+  [ "$status" -eq 2 ]
+}
+
+@test "allows product-owner Bash (app launch / verification)" {
+  run bash -c "echo '{\"agent_name\":\"product-owner\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"curl -sf http://localhost:3000/healthz\"}}' | $HOOK"
+  [ "$status" -eq 0 ]
+}
+
+@test "product-owner sandbox holds when .scrum/config.json missing" {
+  rm -f .scrum/config.json
+  run bash -c "echo '$(payload product-owner Write src/main.py)' | $HOOK"
+  [ "$status" -eq 2 ]
+}
+
+@test "product-owner allowed paths still allowed when config missing" {
+  rm -f .scrum/config.json
+  mkdir -p docs/product
+  run bash -c "echo '$(payload product-owner Write docs/product/vision.md)' | $HOOK"
+  [ "$status" -eq 0 ]
+}

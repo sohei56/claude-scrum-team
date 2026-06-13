@@ -11,8 +11,8 @@ disable-model-invocation: false
 
 ## Outputs
 
-- `sprint.json`: id, goal, type: development, status: planning, pbi_ids, developer_count
-- `backlog.json` → items[].sprint_id, implementer_id assigned (review handled SM-side at Sprint end via `cross-review`)
+- `sprint.json`: id, goal, type: development, status: planning
+- `backlog.json` → items[].sprint_id, implementer_id assigned (review handled SM-side at Sprint end via `cross-review`). **Sprint PBI membership is derived from these `sprint_id` assignments** — `sprint.json` no longer carries a `pbi_ids` array (OD-4 single-source).
 - Oversized PBIs split into children (parent_pbi_id set)
 - `state.json` → phase: sprint_planning
 
@@ -21,6 +21,28 @@ disable-model-invocation: false
 - state.json phase: "backlog_created" or "retrospective"
 - backlog.json has ≥1 refined PBI
 - No active Sprint in progress
+
+## PO Mode (po_mode: "agent")
+
+This section only applies when `.scrum/config.json.po_mode == "agent"`.
+Human-mode readers can skip it; the numbered Steps below are unchanged.
+In agent mode the SM resolves every user-approval point by sending a
+`PO_DECISION_REQUEST` to the `product-owner` teammate and continuing on
+`PO_DECISION` — never by waiting on human input
+(`rules/scrum-context.md` § PO seat resolution).
+
+The points in the numbered Steps that read as "ask the user" are
+re-targeted as follows:
+
+| Step | Phrase in human mode | Agent-mode override (kind, scope, defaults) |
+|---|---|---|
+| 1 | Uncommitted-file 3-way choice (commit now / stash / proceed anyway) | `kind=git_dirty`, `scope=sprint-N`, `options=[commit_now,stash,proceed_anyway]`. The full `git status` file list is included as payload. **PO default policy:** if every changed path lies inside a deliverable directory → `choice:commit_now`; if only temporary files (build/, dist/, *.tmp, etc.) → `choice:proceed_anyway`. Mixed cases fall back to `commit_now`. |
+| 3 | Propose Sprint Goal → user approval | `kind=sprint_goal_approval`, `scope=sprint-N`, `options=[approve,reject]`. **Reject is capped at 2 rounds.** On the third request the PO must reply `decision=approve` with the verbatim Sprint Goal in the `rationale` (`PROPOSED_GOAL: <text>` — see `agents/product-owner.md` § Anti-loop rules); the SM **adopts that goal verbatim** and ends the ping-pong. |
+| 5 | Oversized PBI split → user confirmation | `kind=pbi_split`, `scope=pbi-NNN`, `options=[approve,reject]`. The parent PBI id, the child PBI breakdown, and the split rationale are payload. On `reject` the SM keeps the parent and reports the un-split risk in the Sprint summary. |
+| 12 | Present Sprint summary + 6-option menu → wait for user selection | The same summary is sent as `kind=scope_change` if it mutates Sprint membership, otherwise as `kind=sprint_goal_approval` for re-approval. `options=[choice:start_sprint, choice:adjust_goal, choice:change_pbis, choice:reassign_devs, choice:view_backlog, choice:other]`. PO replies `decision=choice:<label>`. **Default recommendation: `choice:start_sprint`.** Any non-start choice loops the SM back to the corresponding step (3 / 4-5 / 7) and re-asks. |
+
+Step 13 ("On Start Sprint") fires automatically when the Step 12
+decision is `choice:start_sprint`. No additional PO request is needed.
 
 ## Steps
 
@@ -32,7 +54,7 @@ disable-model-invocation: false
 3. Propose Sprint Goal→user approval before proceeding
 4. Select refined PBIs. Avoid dependent PBIs in same Sprint (FR-008)
 5. **Evaluate + split oversized PBIs**: Too large→create child PBIs (status: "refined", parent_pbi_id set, split acceptance_criteria, copy design_doc_paths/ux_change)→remove parent from Sprint→replace with children→user confirmation
-6. developer_count = min(selected PBI count, 6). **1 Developer = 1 PBI (hard constraint).** >6 PBIs→select 6, defer rest
+6. Compute target developer count: `min(selected PBI count, 6)`. **1 Developer = 1 PBI (hard constraint).** >6 PBIs→select 6, defer rest. This number is **not persisted** in `sprint.json`; it is enforced by spawn-teammates writing exactly that many entries to `developers[]`.
 7. Assign implementers: format `dev-001-s{N}`, `dev-002-s{N}` (zero-pad mandatory, -s{N} suffix mandatory, no short forms). No reviewer assignment — Sprint-end cross-review is performed by the Scrum Master via independent reviewer sub-agents (FR-009 Layer 2)
 8. **Create sprint.json + update state.current_sprint_id (atomic
    pair).** `init-sprint.sh` creates `.scrum/sprint.json` at
@@ -87,20 +109,20 @@ disable-model-invocation: false
 
     - **Epic + leaf overlap.** An "Epic" PBI that touches many files
       across modules, scheduled alongside individual leaf PBIs in the
-      same module. kaiten_bot Sprint 30 (`imp-s30-02`): 11-file
-      conflict across 5 PBIs because the Epic and leaves were
-      parallel. **Rule:** if a PBI's predicted footprint exceeds
-      ~5 source files OR explicitly says "all strategies" / "全
-      strategies" / "cross-module", schedule it as a single-PBI
+      same module. Observed in a target project: an 11-file conflict
+      across 5 PBIs in a single Sprint because the Epic and leaves
+      ran in parallel. **Rule:** if a PBI's predicted footprint
+      exceeds ~5 source files OR explicitly says "all strategies" /
+      "全 strategies" / "cross-module", schedule it as a single-PBI
       Sprint (or merge it last after all leaves).
-    - **Rename / module-shuffle PBIs in parallel.** kaiten_bot Sprint
-      24 (`imp-023`): two rename PBIs hit 11 overlapping files.
-      **Rule:** rename / file-move / module-restructure PBIs are
-      serial — at most one per Sprint, or chained on a single
-      developer with `depends_on_pbi_ids` set.
-    - **Shared design-spec edits beyond catalog_targets.** kaiten_bot
-      Sprint 19 (`imp-006`): three PBIs all touched the same spec
-      section. The `catalog_targets` check in step 10 covers spec
+    - **Rename / module-shuffle PBIs in parallel.** Observed in a
+      target project: two rename PBIs in the same Sprint hit 11
+      overlapping files. **Rule:** rename / file-move /
+      module-restructure PBIs are serial — at most one per Sprint, or
+      chained on a single developer with `depends_on_pbi_ids` set.
+    - **Shared design-spec edits beyond catalog_targets.** Observed
+      in a target project: three PBIs in the same Sprint all touched
+      the same spec section. The `catalog_targets` check in step 10 covers spec
       *files*, not section-level overlap. **Rule:** if 3+ PBIs in the
       Sprint touch the same `docs/design/specs/<file>.md`, carve out
       a separate "spec consolidation" PBI to be merged first and
@@ -121,6 +143,63 @@ disable-model-invocation: false
     This is the planning-time defense. Runtime defense (per-PBI
     worktree + `merge-pbi.sh` 3-strike escalation) still applies, but
     is far more expensive to recover from once it fires.
+
+    **Opus override for the path overlap analysis (mandatory).** The
+    same failure mode has recurred across 4 Sprints in 2 target
+    projects even after the three rules above were pinned into this
+    SKILL. The SM
+    main loop runs on Sonnet (see `agents/scrum-master.md`); pinned
+    text alone has not been sufficient. Delegate the overlap analysis
+    to an Opus-backed sub-agent via the `Agent` tool — do NOT compute
+    the matrix in the SM main loop:
+
+    ```
+    Agent({
+      subagent_type: "general-purpose",
+      model: "opus",
+      description: "Sprint path-overlap pre-flight",
+      prompt: <<<EOF
+        Analyse merge-conflict risk for this Sprint's PBI selection.
+
+        Inputs (paste verbatim from .scrum/backlog.json + history):
+        - Sprint PBIs: id, title, description, acceptance_criteria
+        - For each PBI, similar prior PBIs' paths_touched if available
+          (jq from completed PBIs in backlog.json + .scrum/pbi/<id>/state.json)
+        - Catalog spec targets per PBI (items[].catalog_targets)
+
+        Steps:
+        1. Sketch predicted source paths for each PBI (file-level, not directory).
+        2. Build a path-overlap matrix; flag any pair with >=1 predicted
+           path overlap AND different implementer_id.
+        3. Match each flagged pair against the three rules:
+           (a) Epic + leaf: PBI predicted footprint >5 files OR
+               description mentions "all strategies" / "全 strategies" /
+               "cross-module"
+           (b) Rename / module-shuffle: rename / file-move / module-restructure
+           (c) Shared design-spec: >=3 PBIs touch the same
+               docs/design/specs/<file>.md section
+        4. For each match, recommend: serialize-on-one-dev / split into pre+post /
+           defer lower-priority. Cite the rule.
+
+        Output: JSON
+          {
+            "predicted_paths": { "<pbi-id>": ["path1", ...], ... },
+            "overlap_pairs": [
+              { "a": "<pbi>", "b": "<pbi>", "shared": ["..."],
+                "rule": "epic|rename|shared-spec",
+                "recommendation": "...", "reason": "..." }
+            ],
+            "safe": ["<pbi>", ...]
+          }
+      EOF
+    })
+    ```
+
+    SM main loop reads the JSON and applies the recommendations
+    (re-assignment / split / defer) via the wrappers in Step 5/6/7.
+    The Opus sub-agent does NOT call wrappers itself — it is read-only
+    analysis. Record the decision visibly in the Sprint summary so the
+    PO (po_mode=agent) or user can override at Step 12.
 
 12. **Present Sprint summary + options**:
     - 1. Start Sprint

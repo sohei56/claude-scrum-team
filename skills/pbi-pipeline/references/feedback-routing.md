@@ -89,3 +89,34 @@ pragma-audit-r{n}.json, list:}
 - {file}:{line} — exclusion has no inline-comment reason. Either
   remove the exclusion (and add a test) or add a justifying reason.
 ````
+
+## Cross Review revert input
+
+When a Sprint-end Cross Review aspect 1/2/3 FAIL reverts a PBI to
+`in_progress_impl`, the `cross-review` skill drops a single
+Round-independent file at
+`.scrum/pbi/{pbi_id}/feedback/from-cross-review.md` (a copy of the
+per-PBI digest, `.scrum/reviews/{pbi_id}-review.md`). The skill
+cannot pre-pick a Round number — `begin-impl-round.sh` owns that.
+
+The conductor MUST, at the start of the next impl Round (i.e. right
+after `n=$(begin-impl-round.sh "$PBI_ID")`), fold this file into both
+per-Round feedback files and then archive it so subsequent Rounds do
+not double-consume the same findings:
+
+```bash
+SRC=".scrum/pbi/${PBI_ID}/feedback/from-cross-review.md"
+if [ -f "$SRC" ]; then
+  for tgt in "impl-r${n}.md" "ut-r${n}.md"; do
+    {
+      printf '\n## Cross Review feedback (Sprint-end aspect 1/2/3)\n\n'
+      cat "$SRC"
+    } >> ".scrum/pbi/${PBI_ID}/feedback/${tgt}"
+  done
+  mv "$SRC" ".scrum/pbi/${PBI_ID}/feedback/from-cross-review.r${n}.archived.md"
+fi
+```
+
+Both impl and UT agents receive the same Cross Review findings — the
+aspect reviewers do not pre-split impl vs UT concerns, so it is the
+sub-agents' job to interpret which lines apply to them.

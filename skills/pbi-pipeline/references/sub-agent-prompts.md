@@ -8,6 +8,45 @@ NOT receive" boundaries) live in the corresponding agent definition
 under `agents/` and are not restated here. All sub-agents must end
 output with the JSON envelope from spec 4.1.
 
+## Conductor codex preflight (codex-*-reviewer spawns only)
+
+The three reviewer agents `codex-design-reviewer`,
+`codex-impl-reviewer`, and `codex-ut-reviewer` are sized in their
+frontmatter for the **Codex-success path** (`model: sonnet`). When
+Codex is unavailable they each fall back to a full Claude review
+under their own model, which is heavier work and benefits from
+opus.
+
+**Immediately before every codex-\*-reviewer spawn**, the conductor
+runs a one-shot preflight and chooses the spawn model accordingly:
+
+```bash
+source scripts/lib/codex-invoke.sh
+if codex_is_available; then
+  CODEX_REVIEWER_MODEL=""     # default → frontmatter (sonnet)
+else
+  CODEX_REVIEWER_MODEL="opus"
+fi
+```
+
+Then spawn:
+
+- Codex present:
+  `Agent(subagent_type="codex-<stage>-reviewer", prompt=<...>)`
+- Codex absent:
+  `Agent(subagent_type="codex-<stage>-reviewer", model="opus", prompt=<...>)`
+
+`effort` and `maxTurns` cannot be overridden at spawn time, so the
+frontmatter (`effort: high`, `maxTurns: 80`) is sized as the
+safe envelope for both modes. Codex-success runs are short and
+under-consume the envelope; fallback runs use the full budget.
+
+The preflight is **per spawn**, not per Sprint — `codex` may become
+available or unavailable between PBIs. Caching the result is
+incorrect. The stall-fallback protocol in
+`reviewer-stall-fallback.md` is independent: it handles `codex` that
+**hangs** after a successful preflight, not `codex` that is absent.
+
 ## Common envelope reminder (append to every prompt)
 
 ```text
@@ -68,11 +107,22 @@ critical review of the PBI design doc.
 
 Inputs:
 - Design doc: .scrum/pbi/{pbi_id}/design/design.md
+- Design doc SHA-256: {design_hash}
 - Related catalog specs (consistency check):
   - <path1>
 - requirements.md: <path>
+- PBI backlog entry (for verbatim AC comparison against the design's
+  `Acceptance Criteria Mapping` table):
+{paste backlog.json entry for {pbi_id}}
 
 Output to: .scrum/pbi/{pbi_id}/design/review-r{n}.md
+
+FIRST action: recompute `shasum -a 256` of the design doc. If it
+differs from {design_hash}, end immediately with the JSON envelope
+status=error, verdict=null, summary
+"stale_snapshot: design.md expected=<hash> actual=<hash>", and do
+NOT write a review file. Otherwise the review file MUST begin with
+line 1 `Reviewed-Design-Hash: <hash>`.
 
 {common envelope reminder}
 ```
@@ -98,7 +148,8 @@ Write source code to project's normal implementation paths (e.g., src/).
 
 ```text
 You are pbi-ut-author for {pbi_id} Round {n}. Author unit tests
-strictly from the design doc's `Interfaces` section.
+strictly from the design doc's `Interfaces` and `Acceptance Criteria
+Mapping` sections.
 
 Inputs:
 - Design doc: .scrum/pbi/{pbi_id}/design/design.md
@@ -110,6 +161,15 @@ Inputs:
 
 Write tests to project's normal test paths (e.g., tests/).
 
+Also emit the AC coverage map to:
+  .scrum/pbi/{pbi_id}/ut/ac-coverage-r{n}.json
+
+Schema (see agents/pbi-ut-author.md § "AC coverage map" for full
+rules): one entry per AC from the design doc's `Acceptance Criteria
+Mapping` table; each entry has `index` (1-based), `text` (verbatim),
+and `tests` (non-empty array of "<file>::<test-name>" ids written
+this Round). List the file in the envelope `artifacts`.
+
 {common envelope reminder}
 ```
 
@@ -120,13 +180,28 @@ You are codex-impl-reviewer for {pbi_id} Round {n}. Independent review
 of implementation source against the design doc only.
 
 Inputs:
+- Worktree root: {worktree_path}
+- Review target SHA: {review_sha}
 - Design doc: .scrum/pbi/{pbi_id}/design/design.md
-- Implementation files:
+- Design doc SHA-256: {design_hash}
+- Implementation files (paths are relative to the worktree root):
   - <path1>
   - <path2>
 - requirements.md: <path>
 
 Output to: .scrum/pbi/{pbi_id}/impl/review-r{n}.md
+
+FIRST action: verify pins. Both must match:
+- `git -C {worktree_path} rev-parse HEAD` == {review_sha}
+- `shasum -a 256` of the design doc == {design_hash}
+On any mismatch, end immediately with the JSON envelope status=error,
+verdict=null, summary
+"stale_snapshot: <field> expected=<value> actual=<value>", and do
+NOT write a review file. All implementation file paths MUST be
+resolved under {worktree_path} — never read the main repo checkout.
+Otherwise the review file MUST begin with two header lines:
+  Reviewed-Head: <review_sha>
+  Reviewed-Design-Hash: <design_hash>
 
 {common envelope reminder}
 ```
@@ -138,14 +213,30 @@ You are codex-ut-reviewer for {pbi_id} Round {n}. Independent review
 of tests + coverage against the design doc only.
 
 Inputs:
+- Worktree root: {worktree_path}
+- Review target SHA: {review_sha}
 - Design doc: .scrum/pbi/{pbi_id}/design/design.md
-- Test files:
+- Design doc SHA-256: {design_hash}
+- Test files (paths are relative to the worktree root):
   - <path1>
 - Coverage report: .scrum/pbi/{pbi_id}/metrics/coverage-r{n}.json
 - Pragma audit: .scrum/pbi/{pbi_id}/metrics/pragma-audit-r{n}.json
+- AC coverage map: .scrum/pbi/{pbi_id}/ut/ac-coverage-r{n}.json
 - requirements.md: <path>
 
 Output to: .scrum/pbi/{pbi_id}/ut/review-r{n}.md
+
+FIRST action: verify pins. Both must match:
+- `git -C {worktree_path} rev-parse HEAD` == {review_sha}
+- `shasum -a 256` of the design doc == {design_hash}
+On any mismatch, end immediately with the JSON envelope status=error,
+verdict=null, summary
+"stale_snapshot: <field> expected=<value> actual=<value>", and do
+NOT write a review file. All test file paths MUST be
+resolved under {worktree_path} — never read the main repo checkout.
+Otherwise the review file MUST begin with two header lines:
+  Reviewed-Head: <review_sha>
+  Reviewed-Design-Hash: <design_hash>
 
 {common envelope reminder}
 ```
