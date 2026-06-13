@@ -278,6 +278,38 @@ _jq_safe() {
   printf '%s\n' "$out"
 }
 
+# print_startup_banner
+# One-shot ASCII banner that announces autonomous mode and steers the
+# operator's eye to the right tmux pane (Textual dashboard), where live
+# PBI / work-log state is rendered. This pane (watchdog) only emits at
+# iteration boundaries — claude -p stdout is file-logged, not streamed —
+# so without the banner the pane looks frozen and users miss that the
+# dashboard is the place to watch.
+print_startup_banner() {
+  # Figlet-style "Claude Scrum Team / Auto Mode" wordmark, drawn with
+  # standard ASCII glyphs so it renders identically on every TERM.
+  cat >&2 <<EOF
+
+   ____ _                 _        ____                              _____
+  / ___| | __ _ _   _  __| | ___  / ___|  ___ _ __ _   _ _ __ ___   |_   _|__  __ _ _ __ ___
+ | |   | |/ _\` | | | |/ _\` |/ _ \\ \\___ \\ / __| '__| | | | '_ \` _ \\    | |/ _ \\/ _\` | '_ \` _ \\
+ | |___| | (_| | |_| | (_| |  __/  ___) | (__| |  | |_| | | | | | |   | |  __/ (_| | | | | | |
+  \\____|_|\\__,_|\\__,_|\\__,_|\\___| |____/ \\___|_|   \\__,_|_| |_| |_|   |_|\\___|\\__,_|_| |_| |_|
+             _         _          __  __           _
+            / \\  _   _| |_ ___   |  \\/  | ___   __| | ___
+  _____    / _ \\| | | | __/ _ \\  | |\\/| |/ _ \\ / _\` |/ _ \\
+ |_____|  / ___ \\ |_| | || (_) | | |  | | (_) | (_| |  __/
+         /_/   \\_\\__,_|\\__\\___/  |_|  |_|\\___/ \\__,_|\\___|
+
+       Ralph Loop  ·  Limits: ${MAX_ITERATIONS} iter · ${MAX_WALL_HOURS}h · ${MAX_SPRINTS} sprints · \$${MAX_TOTAL_BUDGET} total
+
+       ▸ This pane shows iteration boundaries only.
+       ▸ Live PBI board · work log · PO decisions →  RIGHT PANE
+         focus with  Ctrl-b o
+
+EOF
+}
+
 # finalize <exit_code> <reason>
 # Always invoked on watchdog exit (success or failure).
 finalize() {
@@ -322,6 +354,8 @@ FALLBACK_MODEL="$(cfg_str_or_null '.autonomous.fallback_model')"
 # wall-clock seconds limit
 MAX_WALL_SECS="$(awk -v h="$MAX_WALL_HOURS" 'BEGIN{printf "%d", h*3600}')"
 START_EPOCH="$(now_epoch)"
+
+print_startup_banner
 
 printf 'watchdog: starting (max_iter=%s, max_hours=%s, max_sprints=%s, max_failures=%s, max_total_budget=%s)\n' \
   "$MAX_ITERATIONS" "$MAX_WALL_HOURS" "$MAX_SPRINTS" "$MAX_CONSECUTIVE_FAILURES" "$MAX_TOTAL_BUDGET" >&2
