@@ -48,20 +48,22 @@ One command sets up agents, skills, and hooks — then launches Claude Code with
 1. **You describe your project** — the Scrum Master spawns a Developer to elicit requirements and write `requirements.md`
 2. **Backlog Refinement** — the SM creates and refines PBIs from your requirements
 3. **Sprint Planning** — the SM proposes a Sprint Goal; you approve or adjust
-4. **Design + Implementation + Cross-Review** — Developers design and implement their PBIs in parallel; the Scrum Master then runs cross-review by spawning 5 aspect-specialized reviewer sub-agents over the whole Sprint Increment
-5. **Sprint Review** — the SM launches the app and demos every completed PBI; you confirm each works
-6. **Retrospective** — the team reflects and records improvements for the next Sprint
-7. **Repeat** until the Product Goal is achieved, then an **Integration Sprint** runs automated tests and a final UAT
+4. **PBI Pipeline (parallel, per-PBI)** — each Developer acts as a conductor running the `pbi-pipeline` skill on its assigned PBI in its own git worktree (`.scrum/worktrees/<pbi-id>/`, branch `pbi/<pbi-id>`): rounds of design → implementation + black-box UT → cross-model (Codex) review, with deterministic termination gates and real C0/C1 coverage measurement. On PBI completion the SM merges that PBI immediately (`--no-ff` + per-merge regression gate, 3-strike escalation).
+5. **Cross-Review** — once all PBIs are merged, the SM spawns 5 aspect-specialized reviewer sub-agents (requirement-conformance, functional-quality, security, maintainability, docs-consistency) in parallel over the whole Sprint Increment
+6. **Sprint Review** — the SM launches the app and demos every completed PBI; you confirm each works
+7. **Retrospective** — the team reflects and records improvements for the next Sprint
+8. **Repeat** until the Product Goal is achieved, then an **Integration Sprint** runs smoke tests, design-completeness verification, and a final story-driven UAT
 
 ## Features
 
-- **15 ceremony skills** covering the full Scrum lifecycle: requirements elicitation, backlog refinement, sprint planning, design, implementation, per-PBI merge, cross-review, sprint review, retrospective, and integration testing
-- **Multi-agent coordination** — Scrum Master (Delegate mode) orchestrates up to 6 parallel Developer agents per Sprint
-- **Real-time TUI dashboard** — Textual-based three-panel display (Sprint Overview, PBI Progress Board, unified Team Log of agent messages + work events) with watchdog filesystem monitoring
+- **17 Skills** (16 Scrum ceremonies + 1 PO acceptance) covering the full Scrum lifecycle: requirements elicitation, backlog refinement, sprint planning, PBI pipeline (design + impl + UT + per-PBI review), per-PBI merge, cross-review, sprint review, retrospective, and integration testing
+- **Multi-agent coordination** — Scrum Master (Delegate mode) orchestrates up to 6 parallel Developer agents per Sprint (1 Developer per PBI, capped at 6)
+- **Autonomous PO mode** (`--autonomous`) — runs the team end-to-end with an AI Product Owner (`po_mode=agent`). An outer Ralph-Loop watchdog (`scripts/autonomous/watchdog.sh`) re-launches headless Claude sessions, enforces safety valves (iterations / wall clock / Sprints / budget) and writes a morning report to `.scrum/reports/`. See [docs/autonomous-mode.md](docs/autonomous-mode.md).
+- **Real-time TUI dashboard** — Textual-based three-panel display (Sprint Overview, PBI Progress Board, unified Work Log of agent messages + work events) with watchdog filesystem monitoring
 - **Design document governance** — immutable catalog (`catalog.md`) with editable enablement config (`catalog-config.json`), enforced by status-gate hooks
-- **Quality enforcement hooks** — phase gates (source code restrictions), completion gates (exit criteria), quality gates (Definition of Done), dashboard events, and session context restoration
+- **Quality enforcement hooks** — status gates, path guards, branch-ops guard, a single Stop entry (`stop-dispatch.sh` → `dashboard-event.sh` + `completion-gate.sh`), quality gates (Definition of Done), session context restoration, plus an external stall watchdog (`scripts/stall-watchdog.sh`) in human mode
 - **State persistence** — all state in `.scrum/` JSON files for full session resume capability
-- **Automated testing** — Integration Sprints run smoke tests, unit tests, and E2E via Playwright
+- **Automated testing** — Integration Sprints run smoke tests (unit + e2e from `package.json` / language conventions), design-completeness verification, optional browser E2E via Playwright MCP, and a story-driven UAT
 - **Retrospective-driven improvement** — improvements from past Sprints are applied automatically
 
 ### AI-Specific Adaptations
@@ -97,11 +99,17 @@ This is not a carbon copy of human Scrum — it adapts the framework to how AI a
  │          ▼                                                  │
  │  3. Scaffold Specs    Create design doc stubs from catalog  │
  │          ▼                                                  │
- │  4. Spawn Teammates   Launch Developer agents for PBIs      │
+ │  4. Spawn Teammates   Launch Developer agents + worktrees   │
  │          ▼                                                  │
- │  5. Design            Write design specs (parallel)         │
+ │  5. PBI Pipeline      Per Developer / per PBI, in parallel: │
+ │                         design → impl + black-box UT →      │
+ │                         cross-model (Codex) review, with    │
+ │                         deterministic termination gates     │
+ │                         and real C0/C1 coverage             │
  │          ▼                                                  │
- │  6. Implementation    Build features with TDD (parallel)    │
+ │  6. Per-PBI Merge     SM merges each ready PBI immediately  │
+ │                         (--no-ff + regression gate;         │
+ │                         3-strike escalation)                │
  │          ▼                                                  │
  │  7. Cross-Review      SM spawns 5 aspect reviewer agents    │
  │          ▼                                                  │
@@ -113,7 +121,8 @@ This is not a carbon copy of human Scrum — it adapts the framework to how AI a
             ▼                          ▼
      Next Sprint N+1   ┌───────────────────────────────────────┐
                        │  Integration Sprint                   │
-                       │  Smoke Tests ──▶ UAT ──▶ Release      │
+                       │  Smoke ──▶ Design-Completeness ──▶    │
+                       │  Story-driven UAT ──▶ Release         │
                        └───────────────────────────────────────┘
 ```
 
@@ -128,11 +137,15 @@ cd /path/to/your/project
 
 # Launch the Scrum team (auto-installs Python dependencies if needed)
 sh /path/to/claude-scrum-team/scrum-start.sh
+
+# Or: launch in autonomous PO mode (no human at the keyboard)
+sh /path/to/claude-scrum-team/scrum-start.sh \
+   --autonomous --brief docs/product/brief.md --max-sprints 3
 ```
 
 The script validates prerequisites (auto-installing `textual` and `watchdog` if missing), copies agent definitions, Skills, hooks, shared rules, and the design catalog to your project's `.claude/` directory, and launches a tmux session with Claude Code (Scrum Master) and the TUI dashboard.
 
-For detailed setup instructions, see [quickstart.md](docs/quickstart.md).
+For detailed setup instructions, see [quickstart.md](docs/quickstart.md). For autonomous-mode operation (safety valves, budgets, morning report), see [docs/autonomous-mode.md](docs/autonomous-mode.md).
 
 ### Prerequisites
 
@@ -150,18 +163,21 @@ For detailed setup instructions, see [quickstart.md](docs/quickstart.md).
 | Report defects during UAT | Fix defects and re-test automatically |
 | Make release decisions | Run automated test suites |
 
+> The PO seat can also be delegated to the `product-owner` agent via `po_mode=agent` (autonomous mode); decisions are persisted to `.scrum/po/decisions.json`. See [docs/autonomous-mode.md](docs/autonomous-mode.md).
+
 ## Architecture
 
-- **`scrum-start.sh`** — Entry point: validates prereqs, copies agents/skills, launches tmux
-- **`agents/`** — Scrum Master (Delegate mode) and Developer agent definitions, plus project-managed specialist sub-agents (cross-review + PBI Pipeline). Catalog: [docs/contracts/sub-agents.md](docs/contracts/sub-agents.md)
-- **`skills/`** — 15 ceremony Skills with mandatory Inputs/Outputs
-- **`hooks/`** — Phase gates, completion gates, quality gates, dashboard events, session context
+- **`scrum-start.sh`** — Entry point: validates prereqs, runs `scripts/setup-user.sh` internally to copy agents/skills/hooks/rules into the target project, then launches tmux. Supports `--autonomous --brief <file> --max-sprints <N>`.
+- **`agents/`** — 3 top-level agents (Scrum Master in Delegate mode, Developer, Product Owner) plus 11 specialist sub-agents (5 cross-review reviewers + 6 PBI Pipeline sub-agents, including the Codex-CLI cross-model reviewers). Catalog: [docs/contracts/sub-agents.md](docs/contracts/sub-agents.md)
+- **`skills/`** — 17 Skills (16 Scrum ceremonies + 1 PO acceptance) with mandatory Inputs/Outputs
+- **`hooks/`** — Status gates, path guards, branch-ops guard, single Stop entry (`stop-dispatch.sh` → `dashboard-event.sh` + `completion-gate.sh`), quality gates, session context. Plus `scripts/stall-watchdog.sh` (external teammate-stall monitor in human mode).
 - **`rules/`** — Cross-cutting Scrum context (team map, SSOT locations, communication protocol) auto-loaded by every agent via `.claude/rules/`
-- **`dashboard/app.py`** — Textual TUI with real-time panels
-- **`scripts/`** — Status line, user setup, contributor setup
+- **`dashboard/app.py`** — Textual TUI with real-time panels (Sprint Overview, PBI Board, Work Log)
+- **`scripts/`** — Status line, user setup, contributor setup, autonomous-mode watchdog (`scripts/autonomous/`)
 - **`.scrum/`** — Runtime state (JSON, gitignored)
 - **`docs/design/`** — Design documents governed by `catalog.md` (read-only) + `catalog-config.json` (enabled list)
-- **`.mcp-servers/`** — MCP server implementations (OpenAI/Codex bridge for cross-model review)
+
+Per-PBI cross-model review is performed by the `codex-{design,impl,ut}-reviewer` sub-agents, which shell out to the OpenAI Codex CLI (`codex`). No bundled MCP-server bridge is required.
 
 ## Development
 
