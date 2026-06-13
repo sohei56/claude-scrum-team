@@ -83,7 +83,7 @@ Reference: [sinjorjob/claude-code-agent-teams-dashboard](https://github.com/sinj
 - `scrum-start.sh` launches tmux with two panes: Claude Code (main) +
   `python dashboard/app.py` (side). Falls back to status line only.
 - Three panels (FR-014): Sprint Overview, PBI Progress Board,
-  Team Log (merged chronological stream of agent messages and work
+  Work Log (merged chronological stream of agent messages and work
   events). See [contracts/agent-interfaces.md](contracts/agent-interfaces.md) for
   widget details and source files.
 - Status line (`scripts/statusline.sh`): compact 3-line supplementary
@@ -328,67 +328,31 @@ prompt-only management:
 ### Decision
 Design documents are governed by `docs/design/catalog.md`. No design
 document may be created unless its spec type is listed and enabled in
-the catalog. Design files live at `docs/design/specs/{category}/{id}-{slug}.md`
-following the catalog's existing governance rules.
+the catalog. Design files live at `docs/design/specs/{category}/{id}-{slug}.md`.
 
-The catalog provides a richer taxonomy than a simple hierarchy:
-
-| Category | Catalog Entries | Maps to R8 hierarchy |
-|----------|----------------|---------------------|
-| System-Wide | S-001 System Architecture, S-002 Application Overview | Architecture |
-| Data | S-010 Data Model / Entity Design | Component |
-| Interface | S-020 API Specification | Component |
-| UI | S-030 Screen / Page Design, S-031 UI Component Design | UI |
-| Logic | S-040 Business Rule / Domain Logic | Component |
-| Quality | S-050 Test Strategy | Cross-cutting |
-| Decision Records | D-001 Architecture Decision Record | Cross-cutting |
-| Operations | S-060 Migration / Upgrade | Cross-cutting |
+The governance rules themselves (catalog-first, enabled = file
+required, disabled = file prohibited, no undocumented specs,
+category directories, immediate stub creation on enable) live in
+[`docs/design/catalog.md`](design/catalog.md). The entity schema —
+catalog config shape, validation rules, frontmatter contract — lives
+in [`docs/data-model.md` § DesignCatalogConfig](data-model.md#entity-designcatalogconfig)
+and [§ DesignDocument](data-model.md#entity-designdocument). This
+section only records the architectural **decision** to use a
+catalog-first model, not the rules or schema.
 
 ### Rationale
 - Per-PBI documents are too granular — related PBIs share a design spec.
 - **Catalog-first governance** prevents ad-hoc document proliferation.
   The Scrum Master enables catalog entries; Developers create only what
   the catalog allows.
-- Reuses the existing `docs/design/catalog.md` governance rules (enabled/
-  disabled status, catalog-first workflow, no undocumented specs).
 - PBIs reference design documents via `design_doc_paths: string[]`.
 
-### Key Technical Details
+### Workflow (high level)
 
-**Catalog** (`docs/design/catalog.md`):
-- Already exists with governance rules, categories, and entries.
-- Scrum Master enables entries during Sprint Planning.
-- Six governance rules apply: catalog-first, enabled = file required,
-  disabled = file prohibited, no undocumented specs, category directories,
-  immediate stub creation on enable.
-
-**Workflow**:
-1. Sprint Planning: Scrum Master reviews PBIs, determines which catalog
-   entries need to be enabled.
-2. Scrum Master updates `docs/design/catalog.md` — flips entries to `enabled`
-   or adds new entries (default `disabled`, then flip).
-3. Scrum Master invokes `scaffold-design-spec` Skill — creates template
-   stub files for all newly enabled entries (required frontmatter +
-   placeholder sections).
-4. Design phase: Developers populate the stub files at
-   `docs/design/specs/{category}/{id}-{slug}.md` for enabled entries.
-5. Hook enforcement: `PreToolUse` hook denies `Write`/`Edit` under
-   `docs/design/specs/` if the target file has no enabled catalog entry.
-
-**Directory structure**:
-```
-docs/design/
-  catalog.md                                        # Single source of truth
-  specs/
-    system-wide/S-001-system-architecture.md        # Enabled
-    data/S-010-data-model.md                        # Enabled
-    ui/S-030-login-screen.md                        # Enabled
-```
-
-**Design document frontmatter**: schema and `revision_history` rules
-are defined in `docs/data-model.md` § DesignDocument. Updates follow
-FR-020 freeze / Change Process and MUST append a `revision_history`
-entry.
+The runtime steps (catalog edits, `scaffold-design-spec` skill, hook
+enforcement under `docs/design/specs/`) are owned by the SM
+ceremony skills; see `skills/scaffold-design-spec/SKILL.md` and the
+PreToolUse hook for the executable contract.
 
 ### Alternatives Considered
 - **Separate `.scrum/designs/catalog.md`**: Rejected — duplicates

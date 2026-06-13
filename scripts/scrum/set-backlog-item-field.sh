@@ -10,10 +10,25 @@
 #   set-backlog-item-field.sh <pbi-id> review_doc_path <path|null>
 #   set-backlog-item-field.sh <pbi-id> catalog_targets <json-array>
 #   set-backlog-item-field.sh <pbi-id> priority <non-negative-integer|null>
+#   set-backlog-item-field.sh <pbi-id> description <text|null>
+#   set-backlog-item-field.sh <pbi-id> ux_change <true|false>
+#   set-backlog-item-field.sh <pbi-id> acceptance_criteria <json-array-of-strings>
+#   set-backlog-item-field.sh <pbi-id> design_doc_paths <json-array-of-strings>
+#   set-backlog-item-field.sh <pbi-id> depends_on_pbi_ids <json-array-of-pbi-ids>
 #
-# `catalog_targets` takes a JSON string literal (e.g.
-# '["docs/design/specs/foo.md","docs/design/specs/bar.md"]'); the wrapper
-# validates it parses as an array of strings before applying.
+# `catalog_targets`, `acceptance_criteria`, `design_doc_paths`, and
+# `depends_on_pbi_ids` all take JSON string literals (e.g.
+# '["docs/design/specs/foo.md","docs/design/specs/bar.md"]'); the
+# wrapper validates each parses as an array of strings (and, for
+# `depends_on_pbi_ids`, that each element matches `pbi-NNN`).
+#
+# `description` accepts an arbitrary string or `null`; `ux_change`
+# accepts only `true` / `false`. These are the fields the
+# `backlog-refinement` skill needs to fill on the `draft → refined`
+# transition — without them the schema's "refined PBIs have non-empty
+# acceptance_criteria" expectation can't be satisfied through wrappers,
+# and the PreToolUse guard blocks any direct edit of
+# `.scrum/backlog.json`.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
@@ -69,10 +84,39 @@ case "$FIELD" in
       *)                 VALUE_JSON="$VALUE" ;;
     esac
     ;;
+  description)
+    if [ "$VALUE" = "null" ]; then
+      VALUE_JSON="null"
+    else
+      VALUE_JSON="$(printf '%s' "$VALUE" | jq -Rs .)"
+    fi
+    ;;
+  ux_change)
+    case "$VALUE" in
+      true|false) VALUE_JSON="$VALUE" ;;
+      *) fail E_INVALID_ARG "bad ux_change: $VALUE (expected true or false)" ;;
+    esac
+    ;;
+  acceptance_criteria|design_doc_paths)
+    if ! VALUE_JSON="$(printf '%s' "$VALUE" | jq -ce '.')"; then
+      fail E_INVALID_ARG "$FIELD: not valid JSON: $VALUE"
+    fi
+    if ! printf '%s' "$VALUE_JSON" | jq -e 'type == "array" and all(.[]; type == "string")' >/dev/null; then
+      fail E_INVALID_ARG "$FIELD: must be a JSON array of strings"
+    fi
+    ;;
+  depends_on_pbi_ids)
+    if ! VALUE_JSON="$(printf '%s' "$VALUE" | jq -ce '.')"; then
+      fail E_INVALID_ARG "depends_on_pbi_ids: not valid JSON: $VALUE"
+    fi
+    if ! printf '%s' "$VALUE_JSON" | jq -e 'type == "array" and all(.[]; type == "string" and test("^pbi-[0-9]+$"))' >/dev/null; then
+      fail E_INVALID_ARG "depends_on_pbi_ids: must be a JSON array of pbi-NNN strings"
+    fi
+    ;;
   status)
     fail E_INVALID_ARG "use update-backlog-status.sh to write status (12-value enum has its own wrapper)"
     ;;
-  *) fail E_INVALID_ARG "unknown field: $FIELD (expected sprint_id|implementer_id|review_doc_path|catalog_targets|priority)" ;;
+  *) fail E_INVALID_ARG "unknown field: $FIELD (expected sprint_id|implementer_id|review_doc_path|catalog_targets|priority|description|ux_change|acceptance_criteria|design_doc_paths|depends_on_pbi_ids)" ;;
 esac
 
 PATHF=".scrum/backlog.json"

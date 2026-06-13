@@ -22,7 +22,7 @@ Agents must no longer edit `.scrum/*.json` directly. All writes flow through val
 | `jq '.events += [{...}]' .scrum/dashboard.json > tmp && mv ...` | **Removed**: `.scrum/dashboard.json` is hook-only telemetry written by `hooks/dashboard-event.sh` via `hooks/lib/dashboard.sh::append_dashboard_event`. No agent-callable wrapper. Agents instead emit dashboard signals indirectly via the tools they use (PostToolUse / SendMessage / SubagentStop). |
 | `update_state ".scrum/pbi/$PBI/" '.design_round = 1'` (PR #22 inline helper) | `.scrum/scripts/update-pbi-state.sh "$PBI" design_round 1` (variadic field/value pairs in one atomic write) |
 | `printf '%s\t%s\t...\n' >> .scrum/pbi/$PBI/pipeline.log` | `.scrum/scripts/append-pbi-log.sh "$PBI" <stage> <round> <event> <detail>` |
-| `jq '(.items[]\|select(.id==$id)).sprint_id = "sprint-NNN"' .scrum/backlog.json > tmp && mv ...` | `.scrum/scripts/set-backlog-item-field.sh "$PBI" sprint_id sprint-NNN` (also: `implementer_id`, `review_doc_path`, `catalog_targets`) |
+| `jq '(.items[]\|select(.id==$id)).sprint_id = "sprint-NNN"' .scrum/backlog.json > tmp && mv ...` | `.scrum/scripts/set-backlog-item-field.sh "$PBI" sprint_id sprint-NNN` (also: `implementer_id`, `review_doc_path`, `catalog_targets`, `priority`, `description`, `ux_change`, `acceptance_criteria`, `design_doc_paths`, `depends_on_pbi_ids`) |
 | Create `.scrum/sprint.json` at planning AND set `state.current_sprint_id` (was: raw `jq` + `mv` + separate `update-state-phase.sh` pair, which leaked the lag bug surfaced by IMP-003/IMP-009/imp-s28-02) | `.scrum/scripts/init-sprint.sh <sprint-id> [--goal <goal>] [--type development\|integration]` (writes both files; refuses if `sprint.json` already exists) |
 
 `update-pbi-state.sh` accepts variadic field/value pairs (the `phase`
@@ -173,10 +173,16 @@ The v1 schema split PBI lifecycle across two fields:
 unifies these into a single 12-value `status` enum and removes the
 `phase` field entirely.
 
-The one-shot migration was performed via `scripts/migrate-status-v2.sh`
-(now removed; refer to git history if a deployed project still needs
-it). The mapping table, run procedure, and caveats are preserved
-under that commit's snapshot of this file.
+The one-shot migration is now performed via
+`scripts/scrum/migrate-legacy.sh`, which folds the v1→v2 status remap
+into the broader legacy-cleanup pass (lowercases enum casing, drops
+removed fields, etc.). The previously-named
+`scripts/migrate-status-v2.sh` was retired in favour of that single
+entry point; the original status mapping table, run procedure, and
+caveats are preserved under the retiring commit's snapshot of this
+file. Concretely: `in_progress → in_progress_design` and
+`review → awaiting_cross_review` are applied in
+`migrate-legacy.sh`'s backlog branch.
 
 The dashboard event type `phase_transition` was renamed to
 `status_transition` in v2. New writes always use `status_transition`

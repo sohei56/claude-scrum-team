@@ -143,8 +143,10 @@ Escalation routes are fixed — do not invent new ones:
   <pbi> escalated` + `update-pbi-state.sh <pbi> escalation_reason
   <kind>` → notify SM → SM runs `pbi-escalation-handler`.
 - Per-PBI merge failure (SM-owned) → `mark-pbi-merge-failure.sh`
-  records `merge_failure.kind` ∈ `{conflict, artifact_missing}`;
-  3 consecutive failures flip status to `escalated`.
+  records `merge_failure.kind` ∈ `{conflict, artifact_missing,
+  regression}`; 3 consecutive failures flip status to `escalated`.
+  See `skills/pbi-merge/SKILL.md` § Outputs for the kind →
+  `escalation_reason` mapping.
 - Requirements unclear (designer/implementer) → raise to Developer →
   Developer raises to SM → SM consults PO (route depends on
   `.scrum/config.json.po_mode`: `human` = SM asks the user in the

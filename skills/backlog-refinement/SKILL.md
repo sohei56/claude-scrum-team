@@ -107,17 +107,45 @@ disable-model-invocation: false
       apply `rewrite_suggestion` for flagged AC and append every
       `missing_acs` entry before persisting. Do not advance status to
       `refined` until the next audit returns `verdict: pass`.
-   c. Set ux_change (user-facing changes)
-   d. Set design_doc_paths (docs needing creation/update)
-   e. Assign priority (non-negative integer, lower = higher priority, 1 = highest) via wrapper:
+
+      Persist the audited AC list via the wrapper:
+      ```bash
+      .scrum/scripts/set-backlog-item-field.sh "$PBI_ID" \
+        acceptance_criteria '["AC 1 ...","AC 2 ..."]'
+      ```
+      The wrapper validates JSON-array-of-strings; status remains
+      `draft` until step 4 below.
+   c. Set ux_change (user-facing changes) via wrapper:
+      ```bash
+      .scrum/scripts/set-backlog-item-field.sh "$PBI_ID" ux_change <true|false>
+      ```
+   d. Set design_doc_paths (docs needing creation/update) via wrapper:
+      ```bash
+      .scrum/scripts/set-backlog-item-field.sh "$PBI_ID" \
+        design_doc_paths '["docs/design/specs/feature-x.md","docs/design/specs/feature-y.md"]'
+      ```
+   e. (Optional) Set description / depends_on_pbi_ids via wrapper:
+      ```bash
+      .scrum/scripts/set-backlog-item-field.sh "$PBI_ID" description "..."
+      .scrum/scripts/set-backlog-item-field.sh "$PBI_ID" \
+        depends_on_pbi_ids '["pbi-001","pbi-002"]'
+      ```
+   f. Assign priority (non-negative integer, lower = higher priority, 1 = highest) via wrapper:
       ```bash
       .scrum/scripts/set-backlog-item-field.sh "$PBI_ID" priority <integer>
       ```
       **Integer only.** String labels (`"high"`/`"medium"`/`"low"`) violate the
       schema and break the dashboard PBI Board. The wrapper rejects non-integers.
-4. Set status→"refined"
-5. Write backlog.json
-6. Report: count refined, total refined WIP
+
+   All field writes above MUST go through
+   `.scrum/scripts/set-backlog-item-field.sh`. The PreToolUse guard
+   blocks raw edits to `.scrum/backlog.json`; status is the only field
+   with its own wrapper (`update-backlog-status.sh`).
+4. Flip status→"refined" via wrapper:
+   ```bash
+   .scrum/scripts/update-backlog-status.sh "$PBI_ID" refined
+   ```
+5. Report: count refined, total refined WIP
 
 Ref: FR-003
 

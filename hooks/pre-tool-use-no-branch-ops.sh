@@ -87,5 +87,13 @@ if echo "$CANON_CMD" | grep -Eq '^git[[:space:]]+rebase([[:space:]]|$)'; then
     block "git rebase"
   fi
 fi
+# `git worktree add -b <branch>` also creates a branch. The framework's
+# legitimate caller is `.scrum/scripts/create-pbi-worktree.sh`; raw agent
+# use is blocked so a stray agent cannot create arbitrary branches via the
+# worktree-add side-door. Read-only worktree forms (`git worktree list`,
+# `worktree prune`, `worktree remove`) pass through.
+if echo "$CANON_CMD" | grep -Eq '^git[[:space:]]+worktree[[:space:]]+add\b.*[[:space:]]-b\b'; then
+  block "git worktree add -b <branch>"
+fi
 
 exit 0

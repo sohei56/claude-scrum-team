@@ -23,6 +23,7 @@ skills:
   - pbi-pipeline
   - install-subagents
   - smoke-test
+  - design-completeness-check
 ---
 
 # Developer Agent
@@ -103,8 +104,9 @@ catalog_lock_timeout / reviewer_unavailable / stale_review_snapshot) →
 `update-pbi-state.sh "$PBI" escalation_reason <kind>` →
 notify SM `[<pbi-id>] ESCALATED reason=<kind>`. SM runs
 `pbi-escalation-handler`. (Merge-side reasons —
-`merge_conflict`, `merge_artifact_missing` — are SM-owned and set by
-`mark-pbi-merge-failure.sh`; Developer never writes those.)
+`merge_conflict`, `merge_artifact_missing`, `merge_regression` — are
+SM-owned and set by `mark-pbi-merge-failure.sh`; Developer never
+writes those.)
 
 ## Communication
 

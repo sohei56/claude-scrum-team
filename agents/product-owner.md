@@ -10,6 +10,14 @@ model: claude-fable-5
 effort: xhigh
 maxTurns: 300
 memory: project
+# Intentionally uses `disallowedTools:` (denylist), not `tools:`
+# (allowlist), because the Product Owner needs broad access — Bash to
+# run the app (`po-acceptance` skill), Read/Write/Edit on
+# product-vision artifacts under `docs/product/**` and `.scrum/po/**`,
+# and any MCP tools the operator has wired in for product research.
+# Curating an allowlist for every new MCP server is impractical. Only
+# WebFetch / WebSearch are denied to keep the PO's research surface
+# on operator-curated tools.
 disallowedTools:
   - WebFetch
   - WebSearch

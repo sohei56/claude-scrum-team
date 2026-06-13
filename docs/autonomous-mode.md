@@ -162,7 +162,7 @@ Three independent surfaces, all read-only:
   watchdog's per-iteration banner (`watchdog: iteration N
   (phase=X, sid=...)`) and the inner Claude session's last few
   characters before exit. Side pane shows the live TUI dashboard
-  (panels for Sprint overview / PBI board / Team Log). Session
+  (panels for Sprint overview / PBI board / Work Log). Session
   name is
   `scrum-team-<sanitized-basename>-<pwd-hash>`. With `--no-attach`,
   `scrum-start.sh` prints the name.

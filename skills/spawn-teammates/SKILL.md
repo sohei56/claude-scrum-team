@@ -59,9 +59,17 @@ disable-model-invocation: false
    ```bash
    .scrum/scripts/set-sprint-developer.sh "$DEV_ID" status active
    .scrum/scripts/set-sprint-developer.sh "$DEV_ID" current_pbi "$ASSIGNED_PBI"
+   .scrum/scripts/set-sprint-developer.sh "$DEV_ID" assigned_work \
+     "$(jq -nc --arg pbi "$ASSIGNED_PBI" '{implement:[$pbi]}')"
+   .scrum/scripts/set-sprint-developer.sh "$DEV_ID" sub_agents '[]'
    ```
-   (The wrapper above auto-grows the `developers[]` array. There is no
-   `developer_count` field to seed anymore — count is `developers | length`.)
+   (The wrapper above auto-grows the `developers[]` array. The
+   `assigned_work` write seeds `assigned_work.implement[]` so the
+   schema-required PBI-allocation surface is set through wrappers — raw
+   edits of `.scrum/sprint.json` are guard-blocked. `sub_agents` starts
+   empty and is populated later by `install-subagents`. There is no
+   `developer_count` field to seed anymore — count is
+   `developers | length`.)
 8. Spawn Agent Teams teammates (agents/developer.md). Name = exact ID
    from 5a. Compute `PROJECT_ROOT=$(git rev-parse --show-toplevel)` at
    spawn time and substitute it into the task prompt below in place of

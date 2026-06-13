@@ -96,6 +96,50 @@ Anthropic 公式ドキュメント上で `FileChanged` という event は明記
 - いずれか NG → 別 PR (`fix(setup-user): drop dead matcher` 等) を切り、
   該当箇所を修正してこのファイルを削除
 
+## 2026-06-13 cleanup-audit 追加項目
+
+cleanup-audit 2026-06-13 の OD-B / OD-E / OD-F は本 checklist と
+同じ実機検証パスでまとめて潰すのが効率的。Item 1〜3 のついでに
+以下も観測する。
+
+### OD-B addendum: `dashboard.json.change_type` 実機分布
+
+Item 3 (FileChanged 発火) と同セッションで観測:
+
+- FileChanged が発火する場合、`.scrum/dashboard.json.events[].change_type`
+  に `created` / `modified` / `deleted` が現れるか?
+  - **すべて `modified`** → schema enum を `"modified" | null` に絞れる
+  - **`created` / `deleted` も出現** → 現行 schema enum を維持し説明文を
+    追加 (`docs/contracts/scrum-state/dashboard.schema.json`)。
+
+判定後、stale-refs #27 を閉じる。
+
+### OD-E addendum: `effort: xhigh` が parser に honor されるか
+
+Item 1 (`claude-fable-5` alias) と同セッションで観測:
+
+- PO teammate (`agents/product-owner.md`) は `model: claude-fable-5`
+  かつ `effort: xhigh`。Item 1 が PASS (alias 解決) した時点で teammate
+  session 開始ログを確認:
+  - `effort: xhigh` が strapline / debug log に現れる → 効いている。pin
+    維持で OK。
+  - `effort` が `ultra` (or 公式 enum 値) に silently coerce されている →
+    `agents/{requirement-conformance,functional-quality,security,maintainability,docs-consistency}-reviewer.md` および `product-owner.md` の `effort:` を `ultra` に書き換える別 PR を切る。
+
+### OD-F addendum: dead-hooks F1-F4 確認方針
+
+dead-hooks 監査 § Findings (F1-F4) の各 matcher について、本 checklist
+Item 2, 3 と同セッション内で `.scrum/dashboard.json` / `.scrum/communications.json` を tail:
+
+- `tool_name: "Agent"` の PostToolUse → F1 (Agent / SendMessage)
+- `event_type` に `task_completed` → F3
+- `event_type` に `teammate_idle` / `subagent_start` / `stop_failure` → F4
+- `event_type: "file_changed"` で外部 emitter 起源のもの → F2
+
+各 matcher について 1 Sprint 観測後 0 件であれば、setup-user.sh
+heredoc の該当ブロック + `dashboard-event.sh` の case 分岐を別 PR で
+削除する。OD-F の決着もそこで付く。
+
 ## 関連
 
 - cleanup-audit Synthesis: `/tmp/claude/cleanup-audit/SYNTHESIS.md` § OD-5

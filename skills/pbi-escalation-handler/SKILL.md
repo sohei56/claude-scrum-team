@@ -48,7 +48,7 @@ disable-model-invocation: false
 | `requirements_unclear` | SM consults PO via clarification ticket; on PO answer, retry (status → `in_progress_design`) and re-spawn Developer to resume PBI |
 | `coverage_tool_unavailable` | Surface install instruction (e.g. `pip install coverage`) to user; PBI on hold (status stays `escalated`, or move to `blocked`) until installed |
 | `coverage_tool_error` | Inspect last pipeline.log entries for the tool error; surface to user; hold |
-| `catalog_lock_timeout` | Check `.scrum/locks/` for stale lock holders. If holder Developer is dead, force-release and retry (status → `in_progress_design`). Else human-escalate. |
+| `catalog_lock_timeout` | Check `.scrum/.locks/` for stale lock holders. If holder Developer is dead, force-release and retry (status → `in_progress_design`). Else human-escalate. |
 | `reviewer_unavailable` | The conductor already attempted a single Explore-agent retry inside the pipeline. Re-spawn the reviewer sub-agent with the conductor's `codex_is_available` preflight forced to the alternate model path (codex→opus or vice versa) and retry (status → `in_progress_design`). If the alternate path also fails, human-escalate. |
 | `stale_review_snapshot` | Reviewer signed off against an out-of-date SHA. Refresh the pinned `base_sha` / `head_sha` on the affected pipeline.log entry and retry the same Round (status → `in_progress_design`). No human needed unless the snapshot drift recurs ≥ 2 times — then human-escalate. |
 | `merge_conflict` | Diagnose conflict scope; for trivial cases redirect Developer back to fix on `pbi/<id>` (manual SendMessage; status remains `escalated` until the `mark-pbi-ready-to-merge.sh` round flips it back to `in_progress_merge`). For structural conflicts, human-escalate. |
@@ -109,16 +109,18 @@ Rules common to every row above:
 4. **For retry** (e.g. `stagnation` after user picks `redesign`,
    `requirements_unclear` after PO answer, `catalog_lock_timeout`
    after stale-lock cleanup): spawn fresh Developer instance for the
-   PBI; reset round counters, per-stage flags, and `merge_failure_count`
-   (so a retried PBI starts merge attempts at strike 0), then flip
-   backlog status:
+   PBI; reset round counters, per-stage flags, `merge_failure_count`,
+   and the `merge_failure` object (so a retried PBI starts merge
+   attempts at strike 0 *and* dashboards/gates do not see a stale
+   failure record), then flip backlog status:
    ```bash
    .scrum/scripts/update-pbi-state.sh "$PBI_ID" \
      escalation_reason null \
      design_round 0 impl_round 0 \
      design_status pending impl_status pending \
      ut_status pending coverage_status pending \
-     merge_failure_count 0
+     merge_failure_count 0 \
+     merge_failure null
    .scrum/scripts/update-backlog-status.sh "$PBI_ID" in_progress_design
    ```
    The existing worktree at `.scrum/worktrees/<pbi-id>/` is preserved —

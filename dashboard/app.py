@@ -287,18 +287,19 @@ class SprintOverview(Static):
             goal = sprint.get("goal") or "No goal"
             sprint_status = sprint.get("status", "?")
 
-            pbi_ids = list(sprint.get("pbi_ids") or [])
-            pbi_count = len(pbi_ids)
-
-            # Count done PBIs by joining sprint.pbi_ids[] against backlog items.
+            # Derive PBI counts from backlog.items where sprint_id matches —
+            # sprint.pbi_ids was demoted to a derived field in OD-4 (1c240b4).
+            pbi_count = 0
             done_count = 0
-            if backlog and pbi_ids:
+            if backlog:
                 for item in get_backlog_items(backlog):
-                    if item.get("id", "") in pbi_ids and item.get("status") == "done":
-                        done_count += 1
+                    if item.get("sprint_id") == sprint_id:
+                        pbi_count += 1
+                        if item.get("status") == "done":
+                            done_count += 1
 
             devs = sprint.get("developers") or []
-            dev_count = sprint.get("developer_count") or len(devs) or 0
+            dev_count = len(devs)
 
             lines.append(
                 f"[bold]Sprint:[/bold] {sprint_id}"
@@ -857,7 +858,7 @@ class ScrumDashboard(App):
         )
         yield Vertical(
             Static("[bold]Work Log[/bold] [dim](all)[/dim]", id="log-title"),
-            UnifiedLog(id="team-log"),
+            UnifiedLog(id="work-log"),
         )
         yield Footer()
 
@@ -895,14 +896,14 @@ class ScrumDashboard(App):
         test_results = self.query_one("#test-results", TestResultsPanel)
         test_results.update_content()
 
-        team_log = self.query_one("#team-log", UnifiedLog)
-        team_log.update_content()
+        work_log = self.query_one("#work-log", UnifiedLog)
+        work_log.update_content()
 
     def action_refresh(self) -> None:
         self.refresh_panels()
 
     def action_cycle_log_filter(self) -> None:
-        mode = self.query_one("#team-log", UnifiedLog).cycle_filter()
+        mode = self.query_one("#work-log", UnifiedLog).cycle_filter()
         self.query_one("#log-title", Static).update(f"[bold]Work Log[/bold] [dim]({mode})[/dim]")
 
     def on_unmount(self) -> None:

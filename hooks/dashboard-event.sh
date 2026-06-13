@@ -5,7 +5,7 @@
 # Each happening is appended to exactly one file: work events
 # (file changes, lifecycle, task completion) to .scrum/dashboard.json,
 # agent messages (SendMessage, spawns, idle progress) to
-# .scrum/communications.json. The dashboard's Team Log panel merges
+# .scrum/communications.json. The dashboard's Work Log panel merges
 # both chronologically.
 set -euo pipefail
 

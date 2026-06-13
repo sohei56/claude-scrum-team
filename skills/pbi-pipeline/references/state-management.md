@@ -44,11 +44,15 @@ The 7 SM-managed status values (see [docs/data-model.md § State Transitions: st
 stagnation | divergence | max_rounds | budget_exhausted |
 requirements_unclear | coverage_tool_error | coverage_tool_unavailable |
 catalog_lock_timeout |
-merge_conflict | merge_artifact_missing
+reviewer_unavailable | stale_review_snapshot |
+merge_conflict | merge_artifact_missing | merge_regression
 ```
 
 The merge-* values are written by SM-side `mark-pbi-merge-failure.sh`,
-not by this skill.
+not by this skill. `reviewer_unavailable` and `stale_review_snapshot`
+are written by the impl/UT review path when the reviewer sub-agent
+cannot run or when a review snapshot has been invalidated by a
+subsequent commit.
 
 ## Initialization
 

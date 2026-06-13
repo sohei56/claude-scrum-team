@@ -348,7 +348,7 @@ class TestUnifiedPbiBoard:
 
 
 # ---------------------------------------------------------------------------
-# UnifiedLog (merged Team Log panel)
+# UnifiedLog (merged Work Log panel)
 # ---------------------------------------------------------------------------
 
 

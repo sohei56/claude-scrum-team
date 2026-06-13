@@ -20,7 +20,7 @@ Deterministic — no fuzzy heuristics.
 | Stagnation | Same `signature` repeats in 2 consecutive Rounds (Critical/High only) | STOP escalate (`stagnation`) |
 | Divergence | (CRITICAL+HIGH count) increases Round n → n+1 | STOP escalate (`divergence`) |
 | Hard cap | `round_n >= 5` | STOP escalate (`max_rounds`) |
-| Budget cap (future) | (cumulative token > threshold) | STOP escalate (`budget_exhausted`) |
+| Budget cap | (cumulative token > threshold) | STOP escalate (`budget_exhausted`) — the value is live: schema accepts it, `update-pbi-state.sh` writes it, and `pbi-escalation-handler` matches it as "Immediate human-escalate". The threshold itself is operator-configurable (no gate code wires up the comparison yet); declare a target via `.scrum/config.json` to enable. |
 
 ## Status transition on escalation
 

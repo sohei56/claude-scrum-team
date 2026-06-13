@@ -10,7 +10,6 @@ tools:
   - Edit
   - Grep
   - Glob
-  - Bash
 model: opus
 effort: high
 maxTurns: 150

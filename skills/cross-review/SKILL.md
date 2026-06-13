@@ -25,12 +25,10 @@ Sprint-wide review**, evaluated independently along five axes:
 | 5 | Docs consistency | `docs-consistency-reviewer`                    | follow-up PBI in next Sprint |
 
 Each reviewer ingests the **entire Sprint Increment**, not per-PBI
-slices. PBI mapping is recorded inside Findings via reverse-lookup
-against `paths_touched`.
-
-Do NOT duplicate per-PBI quality work; assume per-PBI Pass criteria
-already satisfied (see `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
-`ut/review-r{last}.md` for prior context).
+slices, and assumes per-PBI Pass criteria are already satisfied
+(prior context in `.scrum/pbi/<pbi-id>/impl/review-r{last}.md` and
+`ut/review-r{last}.md`). PBI mapping is recorded inside Findings via
+reverse-lookup against `paths_touched`.
 
 ## Inputs
 

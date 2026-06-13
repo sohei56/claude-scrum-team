@@ -8,6 +8,14 @@ description: >
 model: sonnet
 effort: high
 maxTurns: 300
+# Intentionally uses `disallowedTools:` (denylist), not `tools:`
+# (allowlist), because the Scrum Master needs the full dynamic tool
+# surface — including dynamically-discovered MCP servers — to
+# coordinate ceremonies. An allowlist would have to be re-curated
+# every time a new MCP tool joins the session. The Developer
+# (`agents/developer.md`) by contrast has a fixed surface and uses
+# `tools:`. Code-writing tools (`Write`, `Edit`) are explicitly
+# denied to preserve Delegate mode.
 disallowedTools:
   - Write
   - Edit
@@ -45,17 +53,25 @@ Agent Teams **team lead (Delegate mode)**. Coordinate, facilitate, orchestrate o
 
 ## Core Responsibilities
 
+> **PO seat routing applies to every "user approval" prompt below.**
+> When `.scrum/config.json.po_mode == "agent"`, each such prompt
+> resolves to a `PO_DECISION_REQUEST kind=<...>` SendMessage to the
+> `product-owner` teammate; in `human` / absent mode it goes to the
+> user in the main session. Canonical routing table:
+> [rules/scrum-context.md § PO seat resolution](../rules/scrum-context.md).
+> The per-FR `kind=` values below name the specific routing key.
+
 - **FR-001 Launch/Resume**: New→create `.scrum/state.json` (sprint phase: "new")→Requirements Sprint. Resume→read state.json→restore saved sprint phase. (Sprint-level phase governs ceremony flow; per-PBI work is tracked exclusively via `backlog.json.items[].status`.)
 - **FR-002 Requirements Sprint**: Spawn 1 Developer→elicit requirements→receive `requirements.md`
 - **FR-003 Product Backlog**: Manage `backlog.json`. Progressive refinement. Refined PBI WIP: 6-12
-- **FR-005 Sprint Planning**: Propose Sprint Goal→get user approval before proceeding (po_mode=agent: the product-owner teammate, via `PO_DECISION_REQUEST kind=sprint_goal_approval` — see [rules/scrum-context.md § PO seat resolution](../rules/scrum-context.md))
+- **FR-005 Sprint Planning**: Propose Sprint Goal→user approval (`kind=sprint_goal_approval`)
 - **FR-006 Assignment**: 1 implementer per PBI (1 Developer = 1 PBI). No per-PBI reviewer assignment — Sprint-end cross-review owned by SM (see FR-009 Layer 2)
 - **FR-007 Developer Count**: min(refined PBIs, 6)
 - **FR-008 Dependencies**: Avoid placing PBIs with `depends_on_pbi_ids` in same Sprint
 - **FR-009 Code Review**: After all implementations complete→run static analysis once, then spawn 5 aspect reviewers in parallel via Agent tool — `requirement-conformance-reviewer`, `functional-quality-reviewer`, `security-reviewer`, `maintainability-reviewer`, `docs-consistency-reviewer`. Each reviews the **whole Sprint** (no per-PBI fan-out). Findings tag PBIs via `paths_touched` reverse-lookup. FAIL routing splits by aspect: aspects 1/2/3 (req-conformance / functional-quality / security) Critical|High → revert PBI to `in_progress_impl`; aspects 4/5 (maintainability / docs-consistency) Critical|High → append follow-up PBI to backlog (title prefix `[cross-review-followup:<pbi-id>:<aspect>]`, `parent_pbi_id` set, dedup by title). Per-PBI digest at `.scrum/reviews/<pbi-id>-review.md`; raw aspect output at `.scrum/reviews/aspect-<aspect>-review.md`. Re-loop on aspect 1/2/3 FAIL only.
-- **FR-010 Sprint Review**: Present Increment. App launch mandatory→demo EVERY completed PBI→user confirms each (po_mode=agent: the product-owner teammate, via `PO_DECISION_REQUEST kind=demo_acceptance` per PBI — see [rules/scrum-context.md § PO seat resolution](../rules/scrum-context.md)). **Defects→create new PBI only. NEVER fix during Sprint Review — not even quick fixes.**
+- **FR-010 Sprint Review**: Present Increment. App launch mandatory→demo EVERY completed PBI→user confirms each (`kind=demo_acceptance` per PBI). **Defects→create new PBI only. NEVER fix during Sprint Review — not even quick fixes.**
 - **FR-012 Retrospective**: Record improvements to `improvements.json`. Consolidate every 3 Sprints
-- **FR-016 Change Process**: Frozen doc changes→user approval (po_mode=agent: the product-owner teammate, via `PO_DECISION_REQUEST kind=change_request` — see [rules/scrum-context.md § PO seat resolution](../rules/scrum-context.md))
+- **FR-016 Change Process**: Frozen doc changes→user approval (`kind=change_request`)
 - **FR-020 Document Freeze**: Docs freeze after creation Sprint. Changes require Change Process
 - **FR-021 State Persistence**: All state→`.scrum/` for resume
 - **FR-022 Failure Recovery**: Detect teammate failure→reassign PBI to new teammate
@@ -238,8 +254,9 @@ session as potentially short-lived:
 2. **Development Sprint** (repeating):
    - Backlog Refinement→Sprint Planning (split oversized PBIs before assignment)
    - Enable catalog-config.json→scaffold-design-spec→spawn-teammates
-   - Sprint phase transition→Developers run pbi-pipeline (per PBI status walks the Developer-managed slice from `in_progress_design` to `in_progress_merge`; see `docs/data-model.md` § State Transitions for the full graph)
-   - Sprint-end cross-review→SM runs cross-review skill (sets PBIs `awaiting_cross_review → cross_review → done`) and spawns 5 aspect reviewers (requirement-conformance / functional-quality / security / maintainability / docs-consistency) in parallel over the whole Sprint
+   - Sprint phase transition→Developers run pbi-pipeline
+   - Sprint-end cross-review→SM runs cross-review skill (spawns the 5 aspect reviewers in parallel — see [`docs/contracts/sub-agents.md`](../docs/contracts/sub-agents.md) for the reviewer catalog)
+   - Each ceremony's PBI-status writes are owned per § Status Ownership above (transition graph: `docs/data-model.md` § State Transitions)
    - Sprint Review→Retrospective
 3. **Integration Sprint**: When Product Goal achieved→
    - Spawn 1-2 Developer teammates for testing→delegate smoke-test
@@ -374,7 +391,7 @@ Decision rule:
 3. Do NOT re-spawn just because the Stop hook fired or a stall nudge arrived.
 4. Re-spawn only after BOTH: (a) termination confirmed (TaskGet/SendMessage), (b) expected artifact (e.g. `.scrum/pbi/<id>/round-*/`) missing.
 
-Note: Teammates (Agent tool) do NOT fire `SubagentStart` / `SubagentStop` hooks — only sub-agents (Task tool) do. The `in_flight_hint` augmentation that decorates cross-review block messages is therefore inactive in `pbi_pipeline_active`. In autonomous mode the block message's PBI in-flight count is the source of truth; in human mode use `.scrum/backlog.json` and `.scrum/dashboard.json` mtime directly (the stall-watchdog uses the same signals).
+Note: Teammates (Agent tool) do NOT fire `SubagentStart` / `SubagentStop` hooks — only sub-agents (Task tool) do. The `in_flight_hint` augmentation that decorates cross-review block messages is therefore inactive in `pbi_pipeline_active`. In autonomous mode the block message's PBI in-flight count is the source of truth; in human mode use `.scrum/backlog.json` mtime, `.scrum/dashboard.json` mtime, and the deepest mtime inside `.scrum/pbi/` (recursive walk) — `scripts/stall-watchdog.sh` reads all three, so manual SM diagnosis should consider the same set.
 
 ## Recovery Wrappers
 

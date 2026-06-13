@@ -494,8 +494,13 @@ EOF
           msg="${msg}; escalated without resolution: ${escalated_unresolved}"
         fi
         # in_flight_total > 0 with no escalations is also a "still
-        # running" signal under autonomy; emit a generic block_kind for
-        # the dedup ledger even though autonomy ignores it.
+        # running" signal under autonomy. We pass a block_kind
+        # argument to block_stop for shape parity with the human
+        # path; in autonomous mode the early short-circuit at the
+        # top of this function (see lines around the `is_autonomous`
+        # guard) means we never reach the dedup ledger — neither
+        # `stop-gate.json` nor any block_kind tag is read or
+        # persisted here under autonomy.
         if [ -n "$escalated_unresolved" ]; then
           block_stop "$msg" "escalated_unresolved" "$escalated_unresolved"
         else

@@ -70,6 +70,9 @@ generate_morning_report() {
   iteration="$(_jq_safe "$AUTON_REPORT_AUTONOMY_FILE" '.iteration // 0' '0')"
   total_cost="$(_jq_safe "$AUTON_REPORT_AUTONOMY_FILE" '.total_cost_usd // 0' '0')"
   final_phase="$(_jq_safe "$AUTON_REPORT_STATE_FILE" '.phase // "unknown"' 'unknown')"
+  local last_failure_reason last_failure_at
+  last_failure_reason="$(_jq_safe "$AUTON_REPORT_AUTONOMY_FILE" '.last_failure.reason // empty' '')"
+  last_failure_at="$(_jq_safe "$AUTON_REPORT_AUTONOMY_FILE" '.last_failure.at // empty' '')"
 
   mkdir -p "$AUTON_REPORT_DIR"
   report_path="${AUTON_REPORT_DIR}/autonomous-run-${run_id}.md"
@@ -87,7 +90,15 @@ generate_morning_report() {
     printf -- '- **Final workflow phase**: `%s`\n' "$final_phase"
     printf -- '- **Iterations**: %s\n' "$iteration"
     printf -- '- **Total cost (USD)**: %s\n' "$total_cost"
-    printf -- '- **Last lead session id**: `%s`\n\n' "$lead_sid"
+    printf -- '- **Last lead session id**: `%s`\n' "$lead_sid"
+    # last_failure surfaces the most recent watchdog/Stop-hook failure
+    # so the morning report has a single visible reason — without this
+    # the field would be write-only state on .scrum/autonomy.json
+    # (docs/autonomous-mode.md promises operators can see it here).
+    if [ -n "$last_failure_reason" ]; then
+      printf -- '- **Last failure**: `%s` at `%s`\n' "$last_failure_reason" "${last_failure_at:-unknown}"
+    fi
+    printf '\n'
   } >> "$report_path"
 
   # --- Completed Sprints ---

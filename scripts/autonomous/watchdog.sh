@@ -113,8 +113,14 @@ generate_uuid() {
     "${hex:0:8}" "${hex:8:4}" "${hex:13:3}" "8" "${hex:17:3}" "${hex:20:12}"
 }
 
-# cfg_num <jq_path> <default>
-cfg_num() {
+# cfg_value <jq_path> <default>
+# Reads a scalar from .scrum/config.json with fall-through-to-default on
+# missing file / invalid JSON / missing key / null. NO type validation —
+# callers that need numeric / enum guarantees must validate the returned
+# string themselves. (Historical name: cfg_num; the function never
+# enforced integer typing and was being used for both numeric limits and
+# the string-valued permission_mode.)
+cfg_value() {
   local path="$1" default="$2" val
   if [ ! -f "$CONFIG_FILE" ]; then
     printf '%s\n' "$default"
@@ -300,13 +306,13 @@ if ! jq empty "$AUTONOMY_FILE" >/dev/null 2>&1; then
 fi
 mkdir -p "$ITER_OUT_DIR"
 
-MAX_ITERATIONS="$(cfg_num '.autonomous.max_iterations' "$DEFAULT_MAX_ITERATIONS")"
-MAX_WALL_HOURS="$(cfg_num '.autonomous.max_wall_clock_hours' "$DEFAULT_MAX_WALL_HOURS")"
-MAX_SPRINTS="$(cfg_num '.autonomous.max_sprints' "$DEFAULT_MAX_SPRINTS")"
-MAX_CONSECUTIVE_FAILURES="$(cfg_num '.autonomous.max_consecutive_failures' "$DEFAULT_MAX_CONSECUTIVE_FAILURES")"
-MAX_BUDGET_PER_ITER="$(cfg_num '.autonomous.max_budget_usd_per_iteration' "$DEFAULT_MAX_BUDGET_PER_ITER")"
-MAX_TOTAL_BUDGET="$(cfg_num '.autonomous.max_total_budget_usd' "$DEFAULT_MAX_TOTAL_BUDGET")"
-PERMISSION_MODE="$(cfg_num '.autonomous.permission_mode' "$DEFAULT_PERMISSION_MODE")"
+MAX_ITERATIONS="$(cfg_value '.autonomous.max_iterations' "$DEFAULT_MAX_ITERATIONS")"
+MAX_WALL_HOURS="$(cfg_value '.autonomous.max_wall_clock_hours' "$DEFAULT_MAX_WALL_HOURS")"
+MAX_SPRINTS="$(cfg_value '.autonomous.max_sprints' "$DEFAULT_MAX_SPRINTS")"
+MAX_CONSECUTIVE_FAILURES="$(cfg_value '.autonomous.max_consecutive_failures' "$DEFAULT_MAX_CONSECUTIVE_FAILURES")"
+MAX_BUDGET_PER_ITER="$(cfg_value '.autonomous.max_budget_usd_per_iteration' "$DEFAULT_MAX_BUDGET_PER_ITER")"
+MAX_TOTAL_BUDGET="$(cfg_value '.autonomous.max_total_budget_usd' "$DEFAULT_MAX_TOTAL_BUDGET")"
+PERMISSION_MODE="$(cfg_value '.autonomous.permission_mode' "$DEFAULT_PERMISSION_MODE")"
 case "$PERMISSION_MODE" in
   dontAsk|bypassPermissions) ;;
   *) PERMISSION_MODE="$DEFAULT_PERMISSION_MODE" ;;

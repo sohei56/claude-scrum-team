@@ -87,8 +87,7 @@ Valid phases:
 
 ### State Transitions: `status` (12-value enum, actor-split)
 
-`status` is the sole SSOT for PBI lifecycle (the legacy
-`pbi-state.json.phase` was removed in v2). Two actors own disjoint
+`status` is the sole SSOT for PBI lifecycle. Two actors own disjoint
 slices of the enum:
 
 ```
@@ -377,12 +376,12 @@ frontmatter to track edit history across Sprints. Each entry is a
 
 **File**: `.scrum/communications.json`
 **Owner**: Hook scripts (append-only)
-**Readers**: Textual dashboard app (Team Log panel), statusline.sh
+**Readers**: Textual dashboard app (Work Log panel), statusline.sh
 
 Stores agent-to-agent messages captured by Claude Code hooks —
 SendMessage traffic (`message`), spawns (`agent_spawn`), and idle
 progress reports (`progress_update`). Used by the Textual dashboard's
-Team Log panel (FR-014c), which merges these messages chronologically
+Work Log panel (FR-014c), which merges these messages chronologically
 with the work events from `.scrum/dashboard.json`.
 
 | Field | Type | Description |
@@ -398,7 +397,7 @@ with the work events from `.scrum/dashboard.json`.
 | `sender_id` | string | Agent ID of the sender (e.g., `"scrum-master"`, `"dev-001-s3"`) |
 | `sender_role` | string | Human-readable role (e.g., `"Scrum Master"`, `"Developer"`) |
 | `recipient_id` | string \| null | Agent ID of the recipient; null = broadcast to all |
-| `type` | enum | Message type. SSOT: `docs/contracts/scrum-state/communications.schema.json`. Allowed values: `"file_changed"`, `"tool_use"`, `"status_transition"`, `"subagent_start"`, `"subagent_stop"`, `"task_completed"`, `"teammate_idle"`, `"agent_spawn"`, `"progress_update"`, `"status_change"`, `"message"`, `"report"`, `"review"`, `"escalation"`, `"info"`. The enum mirrors `dashboard.events[].type` (past-tense convention). Hooks emit `message` (SendMessage), `agent_spawn`, and `progress_update`; the remaining kinds are available to manual `append-communication.sh` callers. |
+| `type` | enum | Message type. SSOT: `docs/contracts/scrum-state/communications.schema.json`. Allowed values: `"file_changed"`, `"tool_use"`, `"status_transition"`, `"subagent_start"`, `"subagent_stop"`, `"task_completed"`, `"teammate_idle"`, `"agent_spawn"`, `"progress_update"`, `"message"`, `"report"`, `"review"`, `"escalation"`, `"info"`. The enum mirrors `dashboard.events[].type` (past-tense convention). Hooks emit `message` (SendMessage), `agent_spawn`, and `progress_update`; the remaining kinds are available to manual `append-communication.sh` callers. (The legacy `"status_change"` value was dropped from the schema — `"status_transition"` is the canonical past-tense form; no writer ever emitted `"status_change"`.) |
 | `content` | string | Human-readable message summary |
 
 ### Rules
@@ -414,11 +413,11 @@ with the work events from `.scrum/dashboard.json`.
 
 **File**: `.scrum/dashboard.json`
 **Owner**: Hook scripts (append-only)
-**Readers**: Textual dashboard app (Team Log panel), statusline.sh,
+**Readers**: Textual dashboard app (Work Log panel), statusline.sh,
 completion-gate.sh (in-flight subagent counting), watchdog.sh
 
 Stores timestamped agent work events written by Claude Code hooks
-(R2 Layer 2). Used by the Textual dashboard's Team Log panel
+(R2 Layer 2). Used by the Textual dashboard's Work Log panel
 (FR-014d, merged chronologically with `communications.json` messages)
 and the status line for real-time agent activity.
 
@@ -577,6 +576,7 @@ context.
 stagnation | divergence | max_rounds | budget_exhausted |
 requirements_unclear | coverage_tool_error | coverage_tool_unavailable |
 catalog_lock_timeout |
+reviewer_unavailable | stale_review_snapshot |
 merge_conflict | merge_artifact_missing | merge_regression
 ```
 

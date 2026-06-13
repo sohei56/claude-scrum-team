@@ -169,21 +169,21 @@ and confirm the user can declare the product release-ready.
 
 The user can view project progress through a rich terminal UI
 dashboard. The dashboard shows three panels: Sprint Overview,
-real-time PBI Progress Board, and a unified Team Log that merges
+real-time PBI Progress Board, and a unified Work Log that merges
 agent messages and work events into one chronological stream. The
 user never needs to inspect raw files or logs to understand
 project status.
 
 **Verification**: Launch the dashboard during a Development
 Sprint and verify it displays Sprint Overview, PBI Progress
-Board, and Team Log, all updating in real time.
+Board, and Work Log, all updating in real time.
 
 **Acceptance Scenarios**:
 
 1. **Given** a Development Sprint is in progress,
    **When** the dashboard is displayed,
    **Then** the Sprint Overview (goal, PBIs, developers),
-   PBI Progress Board, and Team Log are persistently visible
+   PBI Progress Board, and Work Log are persistently visible
    alongside the conversation.
 
 2. **Given** a Developer completes a PBI,
@@ -194,12 +194,12 @@ Board, and Team Log, all updating in real time.
 
 3. **Given** agents exchange messages during a Sprint (e.g. a
    Developer reports to the Scrum Master or PO via SendMessage),
-   **When** the Team Log updates,
+   **When** the Work Log updates,
    **Then** the messages are displayed with sender, recipient,
    and timestamp, interleaved chronologically with work events.
 
 4. **Given** a Developer modifies files during implementation,
-   **When** the Team Log updates,
+   **When** the Work Log updates,
    **Then** the file path and change type (created, modified,
    deleted) are displayed in real time, and the user can narrow
    the view to messages-only or work-only via a filter toggle.
@@ -459,7 +459,7 @@ Observe implementation and verify Developers use support sub-agents.
   (b) **Real-time PBI Progress Board** — each PBI's 12-value
   status (see Q&A 2026-02-25 below and `docs/data-model.md` §
   State Transitions: status) updated as work progresses;
-  (c) **Team Log** — a single chronological stream merging
+  (c) **Work Log** — a single chronological stream merging
   messages exchanged between agents (Scrum Master <-> Developers,
   Developer <-> PO) and work events (files created, modified, or
   deleted by agents, status transitions, agent lifecycle), with a
@@ -694,7 +694,7 @@ Observe implementation and verify Developers use support sub-agents.
 
 ### 2026-02-26
 
-- Q: Should external dependencies be allowed for the TUI dashboard? A: Yes — Python 3.9+ with `textual` and `watchdog` packages are allowed as TUI dependencies. FR-018 revised to permit this. The dashboard must display three panels: Sprint Overview, PBI Progress Board, and Team Log (2026-06-12: the former Communication Log and File Change Log panels were merged into the Team Log).
+- Q: Should external dependencies be allowed for the TUI dashboard? A: Yes — Python 3.9+ with `textual` and `watchdog` packages are allowed as TUI dependencies. FR-018 revised to permit this. The dashboard must display three panels: Sprint Overview, PBI Progress Board, and Work Log (history: 2026-06-12 merged the former Communication Log and File Change Log panels into a single panel originally named "Team Log"; renamed to "Work Log" in 6996cf6).
 - Q: Should the awesome-claude-code-subagents catalog be installed into `.claude/skills/` instead of `.claude/agents/`? A: No — catalog entries are subagent definition files (`.md` with subagent YAML frontmatter: `tools`, `model`), not Skill format. They require context isolation, model routing, and tool sandboxing that only subagents provide. Keep `.claude/agents/` as the installation target.
 
 ### 2026-02-25

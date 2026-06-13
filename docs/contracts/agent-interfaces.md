@@ -362,7 +362,7 @@ If pip is not available:
 **Inputs**:
 - `.scrum/state.json` + `.scrum/sprint.json` (Sprint Overview panel)
 - `.scrum/backlog.json` (PBI Progress Board panel)
-- `.scrum/communications.json` + `.scrum/dashboard.json` (Team Log panel)
+- `.scrum/communications.json` + `.scrum/dashboard.json` (Work Log panel)
 
 **Outputs**: Full-screen interactive TUI in dedicated tmux pane with three panels:
 
@@ -370,7 +370,7 @@ If pip is not available:
 |-------|--------|-------------|-------------|
 | **(a) Sprint Overview** | `DataTable` or `Static` | `state.json` + `sprint.json` | Sprint Goal, phase, PBI count, Developer assignments |
 | **(b) PBI Progress Board** | `DataTable` (sortable, colored rows) | `backlog.json` | Each PBI with status, assignee, progress indicator |
-| **(c) Team Log** | `RichLog` (scrollable) | `communications.json` + `dashboard.json` | Merged chronological stream: agent messages (sender → recipient) and work events (file changes, status transitions, lifecycle). `f` cycles filter all → messages → work |
+| **(c) Work Log** | `RichLog` (scrollable) | `communications.json` + `dashboard.json` | Merged chronological stream: agent messages (sender → recipient) and work events (file changes, status transitions, lifecycle). `f` cycles filter all → messages → work |
 
 **Update Mechanism**: `watchdog` watches `.scrum/` for file changes →
 panels re-read and update. Worker threads handle blocking reads.

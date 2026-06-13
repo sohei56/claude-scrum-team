@@ -27,8 +27,12 @@ disable-model-invocation: false
   with raw `git commit`: a raw `git commit -A` would stage the
   `.scrum -> ../../../.scrum` symlink that `create-pbi-worktree.sh`
   installs, and that symlink would then propagate to `main` on the
-  per-PBI merge. `commit-pbi.sh` excludes the symlink via
-  `git add -A -- ':!.scrum'` and only it is safe.
+  per-PBI merge. `commit-pbi.sh` does a two-step `git add -A` then
+  `git reset --quiet HEAD -- .scrum` to drop the symlink; only the
+  wrapper is safe. (The single-step pathspec form
+  `git add -A -- ':!.scrum'` returned rc=1 under git 2.36+ when
+  `.scrum` is already gitignored — see `commit-pbi.sh`'s in-file
+  comment for the rationale.)
 - .scrum/pbi/<pbi-id>/ artifacts (design, reviews, metrics, feedback,
   summaries, pipeline.log, ut/ac-coverage-r{n}.json)
 - backlog.json `items[].status` driven via

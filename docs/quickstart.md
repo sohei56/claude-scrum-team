@@ -131,20 +131,7 @@ command -v shellcheck && echo "shellcheck: OK"
 ## Repository Layout
 
 See [CLAUDE.md § Project Structure](../CLAUDE.md) for the canonical
-tree. The repository is organized as: `agents/` (3 top-level agents —
-Scrum Master, Developer, Product Owner — plus 11 specialist
-sub-agents: 6 PBI-pipeline + 5 cross-review), `skills/` (17 Skills:
-16 Scrum ceremonies + 1 PO acceptance), `.claude/skills/` (dev-only
-skills for this repo, e.g. cleanup-audit), `hooks/`, `dashboard/`,
-`scripts/` (including `scripts/autonomous/` for autonomous-PO mode),
-`tests/`, `docs/`, and the runtime `.scrum/` directory.
-
-## Running Tests and Linting
-
-This document targets end users running the framework. Contributors
-should refer to [CONTRIBUTING.md § Running Tests](../CONTRIBUTING.md#running-tests)
-for the full bats / shellcheck / ruff invocations and dev-tool
-prerequisites.
+annotated tree.
 
 ## Key Concepts
 

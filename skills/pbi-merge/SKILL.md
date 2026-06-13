@@ -44,8 +44,10 @@ disable-model-invocation: false
 - SM has just received `[<pbi-id>] PBI_READY_TO_MERGE` from a Developer
 - backlog.json `items[].status == "in_progress_merge"` for this PBI
 - Main worktree has no tracked-file changes (`git status --porcelain`
-  shows only untracked entries — `.scrum/` is untracked by design and
-  does not block the merge)
+  shows only untracked entries). `.scrum/` is untracked by design;
+  the wrapper additionally asserts `.scrum/` is **not tracked at all**
+  (`assert_scrum_untracked` in `lib/git-guards.sh`) and aborts with
+  `E_INVALID_ARG` if a stray commit ever made it tracked.
 
 ## Steps
 
@@ -67,7 +69,14 @@ disable-model-invocation: false
      (`sprint.json.developers[].current_pbi == <pbi-id>`):
      `[<pbi-id>] MERGED at <merged_sha>. Stand by for next assignment.`
    - non-zero → re-read `state.json.merge_failure.kind` (status remains
-     `in_progress_merge` while `merge_failure_count < 3`):
+     `in_progress_merge` while `merge_failure_count < 3`). The
+     wrapper's main-state cleanup differs by kind: `conflict` aborts
+     the merge via `git merge --abort` so main stays exactly where it
+     was; `artifact_missing` and `regression` both have a partial
+     merge commit on main that is rolled back via
+     `git reset --hard <pre-merge HEAD>`. The SM does not need to
+     redo any git operation on main — only the per-kind SendMessage
+     below.
      - `conflict` → SM runs
        `bash .scrum/scripts/merge-main-into-pbi.sh <pbi-id>` to merge
        main HEAD into the PBI worktree. If that wrapper also exits
@@ -79,11 +88,12 @@ disable-model-invocation: false
        `head_sha` / `paths_touched` and re-notify.)
      - `artifact_missing` → SendMessage:
        `[<pbi-id>] ARTIFACT_MISSING paths=[<state.merge_failure.paths>]. Re-add files on pbi/<pbi-id> via commit-pbi.sh (files likely lost during conflict resolution or .gitignore drift), re-notify PBI_READY_TO_MERGE.`
-     - `regression` → main has been rolled back to pre-merge HEAD. SM
-       runs `bash .scrum/scripts/merge-main-into-pbi.sh <pbi-id>` so the
-       Developer's worktree contains main+PBI combined (reproducing the
-       merged state the regression ran against). Then SendMessage:
-       `[<pbi-id>] MERGE_REGRESSION log=.scrum/pbi/<pbi-id>/merge-regression.log. Reproduce/fix in .scrum/worktrees/<pbi-id>, then commit-pbi.sh and mark-pbi-ready-to-merge.sh to re-notify. Main was rolled back to pre-merge HEAD.`
+     - `regression` → main has been rolled back to pre-merge HEAD, so
+       `merge-main-into-pbi.sh` would only bring pre-merge main forward
+       and **cannot reproduce** the post-merge state the regression
+       command actually ran against. The Developer reproduces the
+       failure from the captured log instead. SendMessage:
+       `[<pbi-id>] MERGE_REGRESSION log=.scrum/pbi/<pbi-id>/merge-regression.log. Reproduce/fix in .scrum/worktrees/<pbi-id> using the regression log (main was rolled back to pre-merge HEAD, so the post-merge state cannot be replayed locally), then commit-pbi.sh and mark-pbi-ready-to-merge.sh to re-notify.`
      - 3rd consecutive failure of any kind (status flips to `escalated`,
        `merge_failure_count >= 3`, `escalation_reason ∈ {merge_conflict,
        merge_artifact_missing, merge_regression}`) → invoke
