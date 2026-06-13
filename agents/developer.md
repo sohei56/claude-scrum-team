@@ -8,9 +8,16 @@ model: sonnet
 effort: high
 maxTurns: 200
 memory: project
-disallowedTools:
-  - WebFetch
-  - WebSearch
+tools:
+  - Agent
+  - Read
+  - Edit
+  - Write
+  - Bash
+  - Grep
+  - Glob
+  - TodoWrite
+  - SendMessage
 skills:
   - requirements-sprint
   - pbi-pipeline

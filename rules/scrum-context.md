@@ -273,6 +273,42 @@ In reports, **separate fact from interpretation**: "tests fail with
 `AssertionError at line 42`" is a fact; "the impl is probably wrong"
 is interpretation. Both are useful — labeled differently.
 
+### Agent tool unavailability (harness incident — DO NOT invent workaround)
+
+If a Developer reports `Agent` / `Task` tool is not in the deferred-tool
+list, or any sub-agent spawn raises a harness-level failure (not a PBI
+content issue), this is a **harness incident**, not a PBI termination
+condition.
+
+**The following terms are NOT defined anywhere in `skills/pbi-pipeline/`
+or any other skill. Do not write them to `pipeline.log`, `state.json`,
+or any review file. They are not valid states:**
+
+- `SM override`
+- `self_authored`
+- `self_reviewed`
+- `conductor-driven`
+- `agent_tool_unavailable` as an `escalation_reason` (the enum does
+  not contain this value)
+
+**Correct response (SM-side):**
+
+- `po_mode=human` → halt the Sprint and surface the harness incident to
+  the user via the main session. Do NOT proceed with PBI work in any
+  form until the user resolves whether to (a) restart the session with
+  Agent tool exposed, or (b) explicitly amend the spec.
+- `po_mode=agent` → write the incident to `.scrum/po/attention.md` with
+  full transcript pointer, set Sprint status appropriately, and stop.
+  The watchdog will surface this on the next morning report.
+
+**"per pbi-XXX precedent" is never valid justification.** Agents do not
+create case law. If a prior PBI completed via an undefined path, that
+PBI was bugged, not blessed — surface it for review, do not extend it.
+
+The Developer who reports this is doing the **right thing**, even if it
+blocks the Sprint. Reward the report; never instruct the Developer to
+"just write the code inline" as a workaround.
+
 ## When you notice something is wrong
 
 Stop and surface it before continuing:
