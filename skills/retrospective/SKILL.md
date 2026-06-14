@@ -79,7 +79,8 @@ Overrides in agent mode:
    attempt a raw edit (the guard will reject it). Until the wrapper
    lands, `improvements.json` simply accumulates entries. (Tracking:
    `docs/MIGRATION-scrum-state-tools.md` § Known gaps.)
-5. Present retrospective report: went well, to improve, archived items
+5. Present retrospective report: went well, to improve (no "archived
+   items" section until the Step 4 consolidation pass lands)
 6. sprint.json → status: "complete":
    ```bash
    .scrum/scripts/update-sprint-status.sh complete

@@ -10,7 +10,7 @@ agents/                  # Agent + 11 sub-agent definitions (top-level: scrum-ma
   product-owner.md       # PO teammate (autonomous mode; po_mode=agent)
   # Sprint-end cross-review (5-aspect parallel): requirement-conformance-reviewer, functional-quality-reviewer, security-reviewer, maintainability-reviewer, docs-consistency-reviewer
   # PBI pipeline (per Round): pbi-{designer,implementer,ut-author}, codex-{design,impl,ut}-reviewer
-skills/                  # 17 Skills (16 Scrum ceremonies + 1 PO acceptance) — YAML frontmatter + Markdown, deployed to target projects via setup-user.sh
+skills/                  # 17 Skills (Scrum ceremonies + pipeline/merge/orchestration tooling + 1 PO acceptance) — YAML frontmatter + Markdown, deployed to target projects via setup-user.sh
   backlog-refinement/    # Refine PBIs from coarse to sprint-ready
   change-process/        # Manage changes to frozen design docs
   cross-review/          # Sprint-end cross-cutting quality gate
@@ -160,10 +160,14 @@ sh /path/to/claude-scrum-team/scrum-start.sh --autonomous --brief docs/product/b
 - **Stop-hook block policy diverges by mode.** The Stop hook is
   registered as a single entry (`hooks/stop-dispatch.sh`) that
   forwards the payload to `dashboard-event.sh` (best-effort) and
-  then to `completion-gate.sh`. In **autonomous mode** the gate's
-  historical block-every-turn-end behaviour is preserved (the
-  Ralph-Loop watchdog contract depends on it; `.scrum/stop-gate.json`
-  is neither read nor written). In **human mode** the gate
+  then to `completion-gate.sh`. In **autonomous mode with a live
+  watchdog** (`autonomy_loop_active` = `autonomy_enabled` AND
+  `kill -0 watchdog_pid`) the gate's historical block-every-turn-end
+  behaviour is preserved (the Ralph-Loop watchdog contract depends on
+  it; `.scrum/stop-gate.json` is neither read nor written). With no
+  live watchdog the gate degrades to the human-mode behaviour below
+  (storming a session nothing will re-launch is pointless). In
+  **human mode** the gate
   fingerprint-dedups: the first block of a `<phase, situation>`
   tuple emits the verbose reason + exit 2; subsequent identical
   blocks are logged-only and allow exit. `pbi_pipeline_active` in

@@ -72,9 +72,11 @@ block_stop() {
   #               sorted list of incomplete PBI IDs, the current sprint_id.
   #               Empty string is allowed.
   #
-  # In autonomous mode, dedup is intentionally bypassed: the watchdog
-  # contract relies on every Stop block firing while the condition holds.
-  # In human mode, the dedup ledger collapses repeats to logged-only
+  # When the autonomy loop is active (autonomous mode + a live watchdog,
+  # i.e. `autonomy_loop_active`), dedup is intentionally bypassed: the
+  # watchdog contract relies on every Stop block firing while the
+  # condition holds. In human mode — and in autonomous mode with no live
+  # watchdog — the dedup ledger collapses repeats to logged-only
   # allow_stop.
   local reason="$1"
   local block_kind="${2:-unknown}"
@@ -221,14 +223,14 @@ autonomous_intercept_or_allow() {
       # INITIAL backlog (post-requirements, no Sprint history yet) is NOT
       # a checkpoint — fall through so the SM is blocked to proceed
       # directly into the first Sprint Planning.
-      if [ -f ".scrum/sprint-history.json" ] \
-         && jq empty ".scrum/sprint-history.json" >/dev/null 2>&1; then
-        local _sprints
-        _sprints="$(jq -r '(.sprints // []) | length' \
-          ".scrum/sprint-history.json" 2>/dev/null || echo 0)"
-        if [ "${_sprints:-0}" -ge 1 ]; then
-          return 0
-        fi
+      # A single jq read doubles as the validity probe: a missing or
+      # malformed file makes jq fail, and `|| echo 0` defaults the count
+      # to 0, which falls through to block (the conservative direction).
+      local _sprints
+      _sprints="$(jq -r '(.sprints // []) | length' \
+        ".scrum/sprint-history.json" 2>/dev/null || echo 0)"
+      if [ "${_sprints:-0}" -ge 1 ]; then
+        return 0
       fi
       ;;
   esac
@@ -467,12 +469,13 @@ EOF
     # recorded resolution.
     #
     # Block policy diverges by mode:
-    #   * autonomy_enabled (autonomous-PO mode): preserve historical
-    #     behaviour — block on `in_flight_total > 0` so the watchdog's
-    #     inner loop keeps the SM driving teammates, and `escalated`
-    #     without resolution. autonomous_next_action() depends on the
-    #     allow path meaning "all PBIs settled".
-    #   * human mode: do NOT block merely on `in_flight_total > 0`.
+    #   * autonomy_loop_active (autonomous-PO mode + live watchdog):
+    #     preserve historical behaviour — block on `in_flight_total > 0`
+    #     so the watchdog's inner loop keeps the SM driving teammates, and
+    #     `escalated` without resolution. autonomous_next_action() depends
+    #     on the allow path meaning "all PBIs settled".
+    #   * human mode (or autonomous mode with no live watchdog): do NOT
+    #     block merely on `in_flight_total > 0`.
     #     Teammate liveness is handled by an external watchdog
     #     (scripts/stall-watchdog.sh). Only block on `escalated`
     #     without resolution — that is the one situation the SM must
@@ -526,11 +529,10 @@ EOF
         # in_flight_total > 0 with no escalations is also a "still
         # running" signal under autonomy. We pass a block_kind
         # argument to block_stop for shape parity with the human
-        # path; in autonomous mode the early short-circuit at the
-        # top of this function (see lines around the `is_autonomous`
-        # guard) means we never reach the dedup ledger — neither
-        # `stop-gate.json` nor any block_kind tag is read or
-        # persisted here under autonomy.
+        # path; when `autonomy_loop_active` holds, block_stop's
+        # `if autonomy_loop_active` branch bypasses the dedup ledger
+        # — neither `stop-gate.json` nor any block_kind tag is read
+        # or persisted here under the active autonomy loop.
         if [ -n "$escalated_unresolved" ]; then
           block_stop "$msg" "escalated_unresolved" "$escalated_unresolved"
         else

@@ -107,7 +107,7 @@ SM owns these `backlog.json.items[].status` values:
 - Sprint-end cross-review skill start: each `awaiting_cross_review` PBI → `cross_review`
 - cross-review PASS → `done`; FAIL → `in_progress_impl` (Developer fixes on top of merged code)
 - Developer notification `[<pbi-id>] ESCALATED reason=<kind>` → run `pbi-escalation-handler` skill (retry → `in_progress_design`, hold → `blocked`, human-escalate stays `escalated`)
-- Per-PBI merge result is set by `merge-pbi.sh`: success → `awaiting_cross_review`, failure → `escalated` + `merge_failure.kind`
+- Per-PBI merge result is set by `merge-pbi.sh`: success → `awaiting_cross_review`. A failure records `merge_failure.kind` + increments `merge_failure_count` but **leaves status `in_progress_merge`** for the Developer to fix & retry; only the **3rd consecutive** failure flips status to `escalated` (with `escalation_reason` mapped from `merge_failure.kind`). See `skills/pbi-merge/SKILL.md` Outputs.
 
 All status writes go through `.scrum/scripts/update-backlog-status.sh "$PBI" <status>`. No `phase` field exists on per-PBI state.
 

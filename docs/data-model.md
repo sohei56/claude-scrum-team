@@ -80,7 +80,7 @@ Valid phases:
 | `depends_on_pbi_ids` | string[] | IDs of PBIs that must be completed before this one (used by FR-008) |
 | `ux_change` | boolean | Whether this PBI involves UX changes (determines live demo in FR-010) |
 | `parent_pbi_id` | string \| null | ID of the coarse-grained PBI this was refined from |
-| `kind` | enum (`code` \| `docs`) | Pipeline branch selector (default `code`). Set during `backlog-refinement` (the Opus 3-axis OR rule is canonical in `skills/backlog-refinement/SKILL.md`). `kind=docs` reshapes the pipeline (skip Design + UT, `paths_touched ⊆ **/*.md` enforcement, `escalated(kind_mismatch)`) — see the **kind=docs override** subsection below and `skills/pbi-pipeline/SKILL.md` § Stages for the full behaviour. |
+| `kind` | enum (`code` \| `docs`) | Pipeline branch selector (default `code`). Set during `backlog-refinement` (the Opus 3-axis OR rule is canonical in `skills/backlog-refinement/SKILL.md`). For how `kind=docs` reshapes the pipeline, see the **kind=docs override** subsection below (and `skills/pbi-pipeline/SKILL.md` § Stages). |
 | `created_at` | ISO 8601 string | Creation timestamp |
 | `updated_at` | ISO 8601 string | Last update timestamp |
 | `merged_sha` | string \| absent | Mirror of `pbi/<id>/state.json.merged_sha`; written by `mark-pbi-merged.sh` on the per-PBI merge into `main` |
@@ -266,6 +266,7 @@ State descriptions:
 | `created_at` | ISO 8601 string | When recorded |
 | `archived_at` | ISO 8601 string \| null | When archived (during consolidation) |
 | `dec_id` | string \| absent | Optional `dec-NNNN` link to a `po-decisions.json` record. Set by `append-improvement.sh --dec-id` in `po_mode=agent` when the entry derives from a PO decision; omitted otherwise. |
+| `category` | string \| absent | **Deprecated legacy field.** Retained in `improvements.schema.json` for backward compatibility with pre-existing entries; no writer emits it (`append-improvement.sh` never sets it). Do not populate in new entries. |
 
 ### Validation Rules
 - Consolidation is designed to occur every 3 Sprints (FR-012) but is
@@ -437,6 +438,7 @@ with the work events from `.scrum/dashboard.json`.
 | `recipient_id` | string \| null | Agent ID of the recipient; null = broadcast to all |
 | `type` | enum | Message type. SSOT: `docs/contracts/scrum-state/communications.schema.json`. Allowed values: `"file_changed"`, `"tool_use"`, `"status_transition"`, `"subagent_start"`, `"subagent_stop"`, `"task_completed"`, `"teammate_idle"`, `"agent_spawn"`, `"progress_update"`, `"message"`, `"report"`, `"review"`, `"escalation"`, `"info"`. The enum mirrors `dashboard.events[].type` (past-tense convention). Hooks emit `message` (SendMessage), `agent_spawn`, and `progress_update`; the remaining kinds are available to manual `append-communication.sh` callers. (The legacy `"status_change"` value was dropped from the schema — `"status_transition"` is the canonical past-tense form; no writer ever emitted `"status_change"`.) |
 | `content` | string | Human-readable message summary |
+| `pbi_id` | string \| absent | Optional `pbi-NNN` link to the PBI the message concerns. Set by `append-communication.sh --pbi`; omitted otherwise. |
 
 ### Rules
 - Messages are appended by hook scripts (`hooks/dashboard-event.sh`) when
@@ -664,7 +666,7 @@ merge_conflict | merge_artifact_missing | merge_regression
 |-------|------|-------------|
 | `test_runner` | object \| absent | Per-language test command templates (`{pbi_id}`, `{round}` substituted). Documented in `.scrum-config.example.json`. |
 | `coverage_tool` | object \| `null` \| absent | Per-language coverage tool. `null` disables the coverage gate project-wide. |
-| `pragma_pattern` | object \| absent | Regex per language for the pragma-audit step. |
+| `pragma_pattern` | string \| object \| absent | Pragma marker for the pragma-audit step — a plain string (single global marker, as in `.scrum-config.example.json`) or an object keyed per language. |
 | `path_guard` | object \| absent | `impl_globs[]` and `test_globs[]` consumed by `pre-tool-use-path-guard.sh` for `pbi-implementer` / `pbi-ut-author`. |
 | `merge_regression` | object \| absent | `command` run by `merge-pbi.sh` after each per-PBI merge; skipped with WARN when absent. |
 | `po_mode` | enum (`"human"` \| `"agent"`) \| absent | Who plays the Product Owner role. Absent or `"human"` → the user; `"agent"` → the `product-owner` teammate (see `agents/product-owner.md`). Default-absent preserves existing behavior bit-for-bit. |
@@ -723,6 +725,7 @@ documents them and is copied verbatim by `setup-user.sh`).
 | `run_id` | string (UUID or `run-<ts>-<pid>`) | Unique identifier for one autonomous-PO run. |
 | `started_at` | ISO 8601 string | When the watchdog booted this run. |
 | `lead_session_id` | string \| `null` | Session id issued by the watchdog for the current `claude -p` iteration. `is_lead_session()` compares against this to gate the autonomous Stop-hook extension. |
+| `watchdog_pid` | integer \| `null` | PID of the live Ralph-Loop watchdog, set at watchdog startup and cleared on clean exit. `autonomy_loop_active()` checks `kill -0 watchdog_pid` so the autonomous Stop-block policy applies only while a watchdog is actually driving the loop; otherwise the gate degrades to human-mode behaviour. |
 | `iteration` | integer ≥ 0 | Current outer-loop iteration counter (0 before the first iteration). |
 | `total_cost_usd` | number ≥ 0 | Cumulative `total_cost_usd` summed from each `iter-<N>.json` output. |
 | `stop_blocks` | object `{phase, count}` | Stop-block counter for the current workflow phase. Reset to `{phase, 1}` on phase change by `bump_stop_block_counter`. |

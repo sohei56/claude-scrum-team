@@ -363,20 +363,9 @@ build_prompt() {
   printf '%s\n\n%s\n' "$preamble" "$tail"
 }
 
-# _jq_safe is also exposed by report.sh — keep a local copy to avoid
-# coupling watchdog flow to report.sh load order.
-_jq_safe() {
-  local f="$1" expr="$2" fb="$3" out
-  if [ ! -f "$f" ]; then
-    printf '%s\n' "$fb"
-    return 0
-  fi
-  if ! out="$(jq -r "$expr" "$f" 2>/dev/null)" || [ -z "$out" ] || [ "$out" = "null" ]; then
-    printf '%s\n' "$fb"
-    return 0
-  fi
-  printf '%s\n' "$out"
-}
+# _jq_safe is provided by lib/report.sh, sourced unconditionally near the
+# top of this script (the `. "$SCRIPT_DIR/lib/report.sh"` line), so it is
+# already in scope for every call site here. No local copy needed.
 
 # print_startup_banner
 # One-shot ASCII banner that announces autonomous mode and steers the
